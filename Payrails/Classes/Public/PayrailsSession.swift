@@ -20,8 +20,9 @@ public extension Payrails {
         }
 
         public var isApplePayAvailable: Bool {
-            isPaymentAvailable(type: .applePay) && PKPaymentAuthorizationViewController.canMakePayments()
+            return config.paymentOption(for: type) != nil
         }
+
 
         private var paymentHandler: PaymentHandler?
 
