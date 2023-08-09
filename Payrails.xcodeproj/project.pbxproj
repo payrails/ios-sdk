@@ -1,0 +1,583 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		07237D5F2A814824005BE43C /* SDKConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07237D5E2A814824005BE43C /* SDKConfig.swift */; };
+		07237D662A8248A2005BE43C /* KeyedDecodingContainer+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07237D652A8248A2005BE43C /* KeyedDecodingContainer+.swift */; };
+		073FF1EB2A837A2F00B50B76 /* PayrailsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073FF1EA2A837A2F00B50B76 /* PayrailsSession.swift */; };
+		075151572A7BE72600BC3560 /* Payrails.docc in Sources */ = {isa = PBXBuildFile; fileRef = 075151562A7BE72600BC3560 /* Payrails.docc */; };
+		0751515D2A7BE72600BC3560 /* Payrails.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 075151522A7BE72600BC3560 /* Payrails.framework */; };
+		075151622A7BE72600BC3560 /* PayrailsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075151612A7BE72600BC3560 /* PayrailsTests.swift */; };
+		075151632A7BE72600BC3560 /* Payrails.h in Headers */ = {isa = PBXBuildFile; fileRef = 075151552A7BE72600BC3560 /* Payrails.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		075151752A7BE99500BC3560 /* Payrails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075151742A7BE99500BC3560 /* Payrails.swift */; };
+		075151772A7BEA4700BC3560 /* InitResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075151762A7BEA4700BC3560 /* InitResponse.swift */; };
+		0768572A2A83C7AF0070F081 /* PaymentPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076857292A83C7AF0070F081 /* PaymentPresenter.swift */; };
+		0768572C2A83C7D70070F081 /* PaymentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768572B2A83C7D70070F081 /* PaymentHandler.swift */; };
+		0768572E2A83C8370070F081 /* PaymentHandlerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768572D2A83C8370070F081 /* PaymentHandlerDelegate.swift */; };
+		076AACE32A8142D400D4DB6B /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076AACE22A8142D400D4DB6B /* Configuration.swift */; };
+		0776F2072A824CEC00B238E6 /* Callbacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0776F2062A824CEC00B238E6 /* Callbacks.swift */; };
+		0776F2092A824F2800B238E6 /* PayrailsError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0776F2082A824F2800B238E6 /* PayrailsError.swift */; };
+		0784896E2A8267CD00C29E6B /* PaymentType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0784896D2A8267CD00C29E6B /* PaymentType.swift */; };
+		078489712A826A9200C29E6B /* ApplePayButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489702A826A9200C29E6B /* ApplePayButton.swift */; };
+		078489742A8272DC00C29E6B /* ApplePayHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489732A8272DC00C29E6B /* ApplePayHandler.swift */; };
+		078489762A8275FF00C29E6B /* SDKConfig+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489752A8275FF00C29E6B /* SDKConfig+.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0751515E2A7BE72600BC3560 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 075151492A7BE72600BC3560 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 075151512A7BE72600BC3560;
+			remoteInfo = Payrails;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		07237D5E2A814824005BE43C /* SDKConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDKConfig.swift; sourceTree = "<group>"; };
+		07237D652A8248A2005BE43C /* KeyedDecodingContainer+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeyedDecodingContainer+.swift"; sourceTree = "<group>"; };
+		073FF1EA2A837A2F00B50B76 /* PayrailsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayrailsSession.swift; sourceTree = "<group>"; };
+		075151522A7BE72600BC3560 /* Payrails.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Payrails.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		075151552A7BE72600BC3560 /* Payrails.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Payrails.h; sourceTree = "<group>"; };
+		075151562A7BE72600BC3560 /* Payrails.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = Payrails.docc; sourceTree = "<group>"; };
+		0751515C2A7BE72600BC3560 /* PayrailsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PayrailsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		075151612A7BE72600BC3560 /* PayrailsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayrailsTests.swift; sourceTree = "<group>"; };
+		075151742A7BE99500BC3560 /* Payrails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Payrails.swift; sourceTree = "<group>"; };
+		075151762A7BEA4700BC3560 /* InitResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InitResponse.swift; sourceTree = "<group>"; };
+		076857292A83C7AF0070F081 /* PaymentPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentPresenter.swift; sourceTree = "<group>"; };
+		0768572B2A83C7D70070F081 /* PaymentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentHandler.swift; sourceTree = "<group>"; };
+		0768572D2A83C8370070F081 /* PaymentHandlerDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PaymentHandlerDelegate.swift; sourceTree = "<group>"; };
+		076AACE22A8142D400D4DB6B /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
+		0776F2062A824CEC00B238E6 /* Callbacks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Callbacks.swift; sourceTree = "<group>"; };
+		0776F2082A824F2800B238E6 /* PayrailsError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayrailsError.swift; sourceTree = "<group>"; };
+		0784896D2A8267CD00C29E6B /* PaymentType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentType.swift; sourceTree = "<group>"; };
+		078489702A826A9200C29E6B /* ApplePayButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayButton.swift; sourceTree = "<group>"; };
+		078489732A8272DC00C29E6B /* ApplePayHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayHandler.swift; sourceTree = "<group>"; };
+		078489752A8275FF00C29E6B /* SDKConfig+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDKConfig+.swift"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0751514F2A7BE72600BC3560 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		075151592A7BE72600BC3560 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0751515D2A7BE72600BC3560 /* Payrails.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		07237D5D2A81481A005BE43C /* Private */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Private;
+			sourceTree = "<group>";
+		};
+		07237D632A814D95005BE43C /* Public */ = {
+			isa = PBXGroup;
+			children = (
+				076857282A83C7A80070F081 /* Protocols */,
+				078489722A8270AC00C29E6B /* PaymentHelpers */,
+				0784896F2A826A8000C29E6B /* Views */,
+				07237D642A82489B005BE43C /* Extensions */,
+				075151742A7BE99500BC3560 /* Payrails.swift */,
+				073FF1EA2A837A2F00B50B76 /* PayrailsSession.swift */,
+				075151722A7BE99500BC3560 /* Domains */,
+			);
+			path = Public;
+			sourceTree = "<group>";
+		};
+		07237D642A82489B005BE43C /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				07237D652A8248A2005BE43C /* KeyedDecodingContainer+.swift */,
+				078489752A8275FF00C29E6B /* SDKConfig+.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		075151482A7BE72600BC3560 = {
+			isa = PBXGroup;
+			children = (
+				075151542A7BE72600BC3560 /* Payrails */,
+				075151602A7BE72600BC3560 /* PayrailsTests */,
+				075151532A7BE72600BC3560 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		075151532A7BE72600BC3560 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				075151522A7BE72600BC3560 /* Payrails.framework */,
+				0751515C2A7BE72600BC3560 /* PayrailsTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		075151542A7BE72600BC3560 /* Payrails */ = {
+			isa = PBXGroup;
+			children = (
+				075151732A7BE99500BC3560 /* Classes */,
+				075151552A7BE72600BC3560 /* Payrails.h */,
+				075151562A7BE72600BC3560 /* Payrails.docc */,
+			);
+			path = Payrails;
+			sourceTree = "<group>";
+		};
+		075151602A7BE72600BC3560 /* PayrailsTests */ = {
+			isa = PBXGroup;
+			children = (
+				075151612A7BE72600BC3560 /* PayrailsTests.swift */,
+			);
+			path = PayrailsTests;
+			sourceTree = "<group>";
+		};
+		075151722A7BE99500BC3560 /* Domains */ = {
+			isa = PBXGroup;
+			children = (
+				07237D5E2A814824005BE43C /* SDKConfig.swift */,
+				0776F2082A824F2800B238E6 /* PayrailsError.swift */,
+				075151762A7BEA4700BC3560 /* InitResponse.swift */,
+				076AACE22A8142D400D4DB6B /* Configuration.swift */,
+				0776F2062A824CEC00B238E6 /* Callbacks.swift */,
+				0784896D2A8267CD00C29E6B /* PaymentType.swift */,
+			);
+			path = Domains;
+			sourceTree = "<group>";
+		};
+		075151732A7BE99500BC3560 /* Classes */ = {
+			isa = PBXGroup;
+			children = (
+				07237D5D2A81481A005BE43C /* Private */,
+				07237D632A814D95005BE43C /* Public */,
+			);
+			path = Classes;
+			sourceTree = "<group>";
+		};
+		076857282A83C7A80070F081 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				0768572D2A83C8370070F081 /* PaymentHandlerDelegate.swift */,
+				076857292A83C7AF0070F081 /* PaymentPresenter.swift */,
+				0768572B2A83C7D70070F081 /* PaymentHandler.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
+		0784896F2A826A8000C29E6B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				078489702A826A9200C29E6B /* ApplePayButton.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		078489722A8270AC00C29E6B /* PaymentHelpers */ = {
+			isa = PBXGroup;
+			children = (
+				078489732A8272DC00C29E6B /* ApplePayHandler.swift */,
+			);
+			path = PaymentHelpers;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		0751514D2A7BE72600BC3560 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				075151632A7BE72600BC3560 /* Payrails.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		075151512A7BE72600BC3560 /* Payrails */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 075151662A7BE72600BC3560 /* Build configuration list for PBXNativeTarget "Payrails" */;
+			buildPhases = (
+				0751514D2A7BE72600BC3560 /* Headers */,
+				0751514E2A7BE72600BC3560 /* Sources */,
+				0751514F2A7BE72600BC3560 /* Frameworks */,
+				075151502A7BE72600BC3560 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Payrails;
+			productName = Payrails;
+			productReference = 075151522A7BE72600BC3560 /* Payrails.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		0751515B2A7BE72600BC3560 /* PayrailsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 075151692A7BE72600BC3560 /* Build configuration list for PBXNativeTarget "PayrailsTests" */;
+			buildPhases = (
+				075151582A7BE72600BC3560 /* Sources */,
+				075151592A7BE72600BC3560 /* Frameworks */,
+				0751515A2A7BE72600BC3560 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0751515F2A7BE72600BC3560 /* PBXTargetDependency */,
+			);
+			name = PayrailsTests;
+			productName = PayrailsTests;
+			productReference = 0751515C2A7BE72600BC3560 /* PayrailsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		075151492A7BE72600BC3560 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1410;
+				LastUpgradeCheck = 1410;
+				TargetAttributes = {
+					075151512A7BE72600BC3560 = {
+						CreatedOnToolsVersion = 14.1;
+					};
+					0751515B2A7BE72600BC3560 = {
+						CreatedOnToolsVersion = 14.1;
+					};
+				};
+			};
+			buildConfigurationList = 0751514C2A7BE72600BC3560 /* Build configuration list for PBXProject "Payrails" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 075151482A7BE72600BC3560;
+			productRefGroup = 075151532A7BE72600BC3560 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				075151512A7BE72600BC3560 /* Payrails */,
+				0751515B2A7BE72600BC3560 /* PayrailsTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		075151502A7BE72600BC3560 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0751515A2A7BE72600BC3560 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0751514E2A7BE72600BC3560 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				075151772A7BEA4700BC3560 /* InitResponse.swift in Sources */,
+				0768572C2A83C7D70070F081 /* PaymentHandler.swift in Sources */,
+				073FF1EB2A837A2F00B50B76 /* PayrailsSession.swift in Sources */,
+				078489742A8272DC00C29E6B /* ApplePayHandler.swift in Sources */,
+				078489762A8275FF00C29E6B /* SDKConfig+.swift in Sources */,
+				07237D5F2A814824005BE43C /* SDKConfig.swift in Sources */,
+				0776F2072A824CEC00B238E6 /* Callbacks.swift in Sources */,
+				078489712A826A9200C29E6B /* ApplePayButton.swift in Sources */,
+				075151752A7BE99500BC3560 /* Payrails.swift in Sources */,
+				0784896E2A8267CD00C29E6B /* PaymentType.swift in Sources */,
+				07237D662A8248A2005BE43C /* KeyedDecodingContainer+.swift in Sources */,
+				0776F2092A824F2800B238E6 /* PayrailsError.swift in Sources */,
+				0768572A2A83C7AF0070F081 /* PaymentPresenter.swift in Sources */,
+				076AACE32A8142D400D4DB6B /* Configuration.swift in Sources */,
+				0768572E2A83C8370070F081 /* PaymentHandlerDelegate.swift in Sources */,
+				075151572A7BE72600BC3560 /* Payrails.docc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		075151582A7BE72600BC3560 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				075151622A7BE72600BC3560 /* PayrailsTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0751515F2A7BE72600BC3560 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 075151512A7BE72600BC3560 /* Payrails */;
+			targetProxy = 0751515E2A7BE72600BC3560 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		075151642A7BE72600BC3560 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		075151652A7BE72600BC3560 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		075151672A7BE72600BC3560 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.payrails.ios.Payrails;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		075151682A7BE72600BC3560 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.payrails.ios.Payrails;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		0751516A2A7BE72600BC3560 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.payrails.ios.PayrailsTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		0751516B2A7BE72600BC3560 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.payrails.ios.PayrailsTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0751514C2A7BE72600BC3560 /* Build configuration list for PBXProject "Payrails" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				075151642A7BE72600BC3560 /* Debug */,
+				075151652A7BE72600BC3560 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		075151662A7BE72600BC3560 /* Build configuration list for PBXNativeTarget "Payrails" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				075151672A7BE72600BC3560 /* Debug */,
+				075151682A7BE72600BC3560 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		075151692A7BE72600BC3560 /* Build configuration list for PBXNativeTarget "PayrailsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0751516A2A7BE72600BC3560 /* Debug */,
+				0751516B2A7BE72600BC3560 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 075151492A7BE72600BC3560 /* Project object */;
+}
