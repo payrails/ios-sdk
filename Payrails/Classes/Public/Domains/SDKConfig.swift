@@ -1,7 +1,7 @@
 import Foundation
 
 struct SDKConfig: Decodable {
-    let token: String?
+    let token: String
     let holderReference: String?
     let vaultConfiguration: VaultConfiguration?
     let execution: Execution?
@@ -26,6 +26,19 @@ struct VaultConfigurationLinks: Decodable {
 struct Link: Decodable {
     let method: String?
     let href: String?
+    let action: LinkAction?
+}
+
+struct LinkAction: Decodable {
+    let redirectMethod: String
+    let redirectUrl: String
+    let parameters: Parameters
+    let type: String?
+
+    struct Parameters: Decodable {
+        let orderId: String
+        let tokenId: String?
+    }
 }
 
 struct Execution: Decodable {
@@ -37,7 +50,7 @@ struct Execution: Decodable {
     let holderId: String
     let workflow: Workflow
     let links: ExecutionLinks
-    let initialResults: [InitialResult];
+    let initialResults: [InitialResult]
 }
 
 struct Status: Decodable {
@@ -48,6 +61,7 @@ struct Status: Decodable {
 struct ExecutionLinks: Decodable {
   let `self`: String
   let lookup: Link?
+  let confirm: Link?
 }
 
 struct Workflow: Decodable {
@@ -55,7 +69,7 @@ struct Workflow: Decodable {
   let version: Double
 }
 
-struct Amount: Decodable {
+struct Amount: Codable {
   let value: String
   let currency: String
 }
@@ -66,11 +80,11 @@ struct InitialResult: Decodable {
 }
 
 struct Body: Decodable {
-    let name: String;
+    let name: String
     let actionId: String
     let executedAt: Date
     let data: PaymentData
-    let links: BodyLinks;
+    let links: BodyLinks
 }
 
 struct BodyLinks: Decodable {
