@@ -38,5 +38,6 @@ Pod::Spec.new do |spec|
   spec.source       = { :git => "git@github.com:payrails/ios-sdk.git", :tag => "#{spec.version}" }
   
   spec.source_files  = "Payrails/Classes/Public/**/*.{swift}"
+  spec.dependency 'SwiftyJSON'
   #spec.exclude_files = "Payrails/Classes/Private"
 end

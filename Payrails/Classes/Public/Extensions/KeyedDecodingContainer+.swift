@@ -66,7 +66,6 @@ extension UnkeyedDecodingContainer {
     }
 
     mutating func decode(_ type: Dictionary<String, Any>.Type) throws -> Dictionary<String, Any> {
-
         let nestedContainer = try self.nestedContainer(keyedBy: JSONCodingKeys.self)
         return try nestedContainer.decode(type)
     }

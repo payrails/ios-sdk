@@ -16,9 +16,11 @@ public class Payrails {
             onInit(.failure(payrailsError))
         }
     }
+}
 
-    @available(iOS 13.0.0, *)
-    public static func configure(
+@available(iOS 13.0.0, *)
+public extension Payrails {
+    static func configure(
         with configuration: Payrails.Configuration
     ) async throws -> Payrails.Session {
         let result = try await withCheckedThrowingContinuation({ continuation in

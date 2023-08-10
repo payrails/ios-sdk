@@ -1,5 +1,6 @@
 import Foundation
 import PassKit
+import SwiftyJSON
 
 class ApplePayHandler: NSObject, PaymentHandler {
 
@@ -29,7 +30,6 @@ class ApplePayHandler: NSObject, PaymentHandler {
               amount: NSDecimalNumber(value: total)
             )
         ]
-
         guard let paymentController = PKPaymentAuthorizationViewController(paymentRequest: request) else { return }
         paymentController.delegate = self
         presenter.presentPayment(paymentController)
@@ -39,14 +39,14 @@ class ApplePayHandler: NSObject, PaymentHandler {
 extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
     func paymentAuthorizationViewControllerDidFinish(_ controller: PKPaymentAuthorizationViewController) {
         controller.dismiss(animated: true)
-        delegate?.paymentDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
+        delegate?.paymentHandlerDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
     }
 
     func paymentAuthorizationViewController(_ controller: PKPaymentAuthorizationViewController, didAuthorizePayment payment: PKPayment, handler paymentCompletion: @escaping (PKPaymentAuthorizationResult) -> Void) {
 
         guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
             paymentCompletion(.init(status: .failure, errors: nil))
-            delegate?.paymentDidFinish(
+            delegate?.paymentHandlerDidFinish(
                 handler: self,
                 type: .applePay,
                 status: .error(nil),
@@ -55,9 +55,9 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
             return
         }
 
-        let payload: [String: Any?] = [
+        let payload: [String: Any] = [
             "paymentData": paymentData,
-            "paymentInstrumentName": payment.token.paymentMethod.displayName,
+            "paymentInstrumentName": payment.token.paymentMethod.displayName ?? "",
             "paymentNetwork" : payment.token.paymentMethod.network?.rawValue ?? "",
             "transactionIdentifier": payment.token.transactionIdentifier
         ]
@@ -65,11 +65,11 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         paymentCompletion(.init(status: .success, errors: nil))
         controller.dismiss(animated: true)
 
-        delegate?.paymentDidFinish(
+        delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .applePay,
             status: .success,
-            payload: payload
+            payload: ["paymentInstrumentData": JSON(payload).rawValue]
         )
     }
     

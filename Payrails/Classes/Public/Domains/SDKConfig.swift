@@ -1,7 +1,7 @@
 import Foundation
 
 struct SDKConfig: Decodable {
-    let token: String?
+    let token: String
     let holderReference: String?
     let vaultConfiguration: VaultConfiguration?
     let execution: Execution?
@@ -55,7 +55,7 @@ struct Workflow: Decodable {
   let version: Double
 }
 
-struct Amount: Decodable {
+struct Amount: Codable {
   let value: String
   let currency: String
 }

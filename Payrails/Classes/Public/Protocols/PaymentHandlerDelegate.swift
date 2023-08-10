@@ -1,9 +1,9 @@
 protocol PaymentHandlerDelegate {
-    func paymentDidFinish(
+    func paymentHandlerDidFinish(
         handler: PaymentHandler,
         type: Payrails.PaymentType,
         status: PaymentHandlerStatus,
-        payload: [String: Any?]?
+        payload: [String: Any]?
     )
 }
 
