@@ -92,14 +92,17 @@ extension Payrails.Session: PaymentHandlerDelegate {
                     body[key] = value
                 }
             }
-            payrailsAPI.makePayment(type: type, payload: body) { [weak self] result in
+            payrailsAPI.makePayment(
+                type: type, payload: body
+            ) { [weak self] result in
                 self?.onResult?(result)
+                self?.onResult = nil
             }
         case let .error(error):
             onResult?(.error(PayrailsError.unknown(error: error ?? PayrailsError.invalidDataFormat)))
+            onResult = nil
         }
         paymentHandler = nil
-        onResult = nil
     }
 }
 

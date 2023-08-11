@@ -140,7 +140,6 @@ class PayrailsAPI {
     ) {
         getExecution(url: url) { [weak self] executionResult in
             if let authorizeRequestedStatus = executionResult.sortedStatus.first(where: { $0.code == "authorizeRequested" }) {
-                print(authorizeRequestedStatus)
                 if let finalState = executionResult.sortedStatus.first(where: { status in
                     targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestedStatus.time
                 }) {

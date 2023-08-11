@@ -12,8 +12,10 @@ class ApplePayHandler: NSObject, PaymentHandler {
         delegate: PaymentHandlerDelegate?
     ) {
         request.merchantIdentifier = config.parameters.merchantIdentifier
-        request.supportedNetworks = [.visa, .masterCard]
-        request.merchantCapabilities = .capability3DS
+        request.supportedNetworks = config.parameters.supportedNetworks.paymentNetworks
+        if !config.parameters.merchantCapabilities.isEmpty {
+            request.merchantCapabilities = PKMerchantCapability(rawValue: config.parameters.merchantCapabilities.merchantCapabilities)
+        }
         request.countryCode = config.parameters.countryCode
         self.delegate = delegate
     }
@@ -62,15 +64,68 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
             "transactionIdentifier": payment.token.transactionIdentifier
         ]
 
-        paymentCompletion(.init(status: .success, errors: nil))
-        controller.dismiss(animated: true)
+        guard let payloadData = try? JSONSerialization.data(withJSONObject: JSON(payload).rawValue, options: []) else {
+            delegate?.paymentHandlerDidFinish(
+                handler: self,
+                type: .applePay,
+                status: .error(nil),
+                payload: nil
+            )
+            paymentCompletion(.init(status: .failure, errors: nil))
+            return
+        }
 
         delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .applePay,
             status: .success,
-            payload: ["paymentInstrumentData": JSON(payload).rawValue]
+            payload: ["paymentInstrumentData": ["paymentToken":String(data: payloadData, encoding: String.Encoding.utf8)]]
         )
+
+        paymentCompletion(.init(status: .success, errors: nil))
+        controller.dismiss(animated: true)
     }
     
+}
+
+
+private extension Array where Element == String {
+    var merchantCapabilities: UInt {
+        var result: UInt = 0
+        forEach { element in
+            switch element {
+            case "supports3DS":
+                result += PKMerchantCapability.capability3DS.rawValue
+            case "supportsCredit":
+                result += PKMerchantCapability.capabilityCredit.rawValue
+            case "supportsDebit":
+                result += PKMerchantCapability.capabilityDebit.rawValue
+            default:
+                break
+            }
+        }
+        return result
+    }
+    var paymentNetworks: [PKPaymentNetwork] {
+        map { element in
+            switch element {
+            case "AMEX":
+                return PKPaymentNetwork.amex
+            case "VISA":
+                return PKPaymentNetwork.visa
+            case "MASTERCARD":
+                return PKPaymentNetwork.masterCard
+            case "JCB":
+                return PKPaymentNetwork.JCB
+            case "INTERAC":
+                return PKPaymentNetwork.interac
+            case "DISCOVER":
+                return PKPaymentNetwork.discover
+            case "MAESTRO":
+                return PKPaymentNetwork.maestro
+            default:
+                return PKPaymentNetwork(element)
+            }
+        }
+    }
 }
