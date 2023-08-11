@@ -149,7 +149,8 @@ class PayrailsAPI {
                     let currentStatuses = executionResult.sortedStatus.map { $0.code }
                     self?.getExecution(
                         url: url,
-                        statusesToWait: currentStatuses
+                        statusesToWait: currentStatuses,
+                        timeout: 300
                     ) { [weak self] executionResult in
                         if let finalState = executionResult.sortedStatus.first(where: { status in
                             targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestedStatus.time
@@ -174,6 +175,7 @@ class PayrailsAPI {
     private func getExecution(
         url: URL,
         statusesToWait: [String]? = nil,
+        timeout: Int = 120,
         onExecution: @escaping ((GetExecutionResult) -> Void)
     ) {
         var url = url
@@ -187,6 +189,7 @@ class PayrailsAPI {
         call(
             url: url,
             method: .GET,
+            timeout: timeout,
             type: GetExecutionResult.self
         ) { [weak self] result in
             switch result {
@@ -208,6 +211,7 @@ fileprivate extension PayrailsAPI {
         url: URL,
         method: Method,
         body: Data? = nil,
+        timeout: Int = 120,
         type: T.Type?,
         completion: @escaping (Result<T, PayrailsError>) -> Void
     ) {
@@ -240,6 +244,7 @@ fileprivate extension PayrailsAPI {
             forHTTPHeaderField: "x-client-type"
         )
         request.addValue("Bearer " + token, forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = TimeInterval(timeout)
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let status = (response as? HTTPURLResponse)?.statusCode,
