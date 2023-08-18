@@ -12,13 +12,17 @@ public class Payrails {
             )
             onInit(.success(payrailsSession))
         } catch {
-            let payrailsError = PayrailsError.unknown(error: error)
-            onInit(.failure(payrailsError))
+            onInit(
+                .failure(
+                    PayrailsError.unknown(error: error)
+                )
+            )
         }
     }
+}
 
-    @available(iOS 13.0.0, *)
-    public static func configure(
+public extension Payrails {
+    static func configure(
         with configuration: Payrails.Configuration
     ) async throws -> Payrails.Session {
         let result = try await withCheckedThrowingContinuation({ continuation in

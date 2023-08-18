@@ -1,0 +1,22 @@
+PODS:
+  - PayPal/CorePayments (0.0.10)
+  - PayPal/PayPalNativePayments (0.0.10):
+    - PayPal/CorePayments
+    - PayPalCheckout (= 1.0.0)
+  - PayPalCheckout (1.0.0)
+
+DEPENDENCIES:
+  - PayPal/PayPalNativePayments
+
+SPEC REPOS:
+  trunk:
+    - PayPal
+    - PayPalCheckout
+
+SPEC CHECKSUMS:
+  PayPal: 4fd9b3df4ddbba7cb17bd30d18c6d528e9efc0d6
+  PayPalCheckout: 8eb11adfc1b60af3984d8a56e7e2dd16a0c4b996
+
+PODFILE CHECKSUM: e8bccc5fd0455a3ccb316577299b0e253f2aa637
+
+COCOAPODS: 1.11.3

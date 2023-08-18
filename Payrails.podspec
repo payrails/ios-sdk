@@ -33,10 +33,14 @@ Pod::Spec.new do |spec|
   spec.author       = { "Lukasz Lenkiewicz" => "lukasz.lenkiewicz.ext@payrails.com" }
 
   spec.platform     = :ios
-  spec.platform     = :ios, "12.0"
+  spec.platform     = :ios, "14.0"
 
   spec.source       = { :git => "git@github.com:payrails/ios-sdk.git", :tag => "#{spec.version}" }
   
   spec.source_files  = "Payrails/Classes/Public/**/*.{swift}"
+  spec.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
+  spec.dependency 'PayPal/PayPalNativePayments'
+ # spec.dependency 'PayPal/PaymentButtons'
+  
   #spec.exclude_files = "Payrails/Classes/Private"
 end

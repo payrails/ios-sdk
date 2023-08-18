@@ -4,14 +4,26 @@ import PassKit
 public extension Payrails {
     class Session {
         private var config: SDKConfig!
+        private var payrailsAPI: PayrailsAPI!
+        private let option: Payrails.Options
         public var executionId: String?
 
         private var onResult: OnPayCallback?
+        private var paymentHandler: PaymentHandler?
+        private var currentTask: Task<Void, Error>?
+
+        public private(set) var isPaymentInProgress = false {
+            didSet {
+                payrailsAPI.isRunning = isPaymentInProgress
+            }
+        }
 
         init(
             _ configuration: Payrails.Configuration
         ) throws {
+            self.option = configuration.option
             self.config = try parse(config: configuration)
+            self.payrailsAPI = PayrailsAPI(config: config)
             executionId = config.execution?.id
         }
 
@@ -20,24 +32,41 @@ public extension Payrails {
         }
 
         public var isApplePayAvailable: Bool {
-            isPaymentAvailable(type: .applePay) && PKPaymentAuthorizationViewController.canMakePayments()
+            return config.paymentOption(for: .applePay) != nil
         }
-
-        private var paymentHandler: PaymentHandler?
 
         public func executePayment(
             with type: PaymentType,
-            presenter: PaymentPresenter,
+            saveInstrument: Bool = false,
+            presenter: PaymentPresenter?,
             onResult: @escaping OnPayCallback
         ) {
+            weak var presenter = presenter
+            isPaymentInProgress = true
             self.onResult = onResult
+
             guard let paymentComposition = config.paymentOption(for: type) else {
+                isPaymentInProgress = false
                 onResult(.error(.unsupportedPayment(type: type)))
                 return
             }
 
             switch type {
-            case .card, .payPal, .other:
+            case .payPal:
+                switch paymentComposition.config {
+                case let .paypal(payPalConfig):
+                    let payPalHandler = PayPalHandler(
+                        config: payPalConfig,
+                        delegate: self,
+                        saveInstrument: saveInstrument,
+                        environment: option.env
+                    )
+                    self.paymentHandler = payPalHandler
+                default:
+                    onResult(.error(.incorrectPaymentSetup(type: type)))
+                }
+            case .card, .other:
+                isPaymentInProgress = false
                 onResult(.error(.unsupportedPayment(type: type)))
             case .applePay:
                 switch paymentComposition.config {
@@ -46,29 +75,25 @@ public extension Payrails {
                         config: applePayConfig,
                         delegate: self
                     )
-                    applePayHandler.makePayment(
-                        total: Double(config.amount.value) ?? 0,
-                        currency: config.amount.currency,
-                        presenter: presenter
-                    )
                     self.paymentHandler = applePayHandler
                 default:
+                    isPaymentInProgress = false
                     onResult(.error(.incorrectPaymentSetup(type: type)))
                 }
             }
+
+            guard let paymentHandler else { return }
+            paymentHandler.makePayment(
+                total: Double(config.amount.value) ?? 0,
+                currency: config.amount.currency,
+                presenter: presenter
+            )
         }
 
-        @available(iOS 13.0.0, *)
-        public func executePayment(
-            with type: PaymentType,
-            presenter: PaymentPresenter
-        ) async -> OnPayResult {
-            let result = await withCheckedContinuation({ continuation in
-                executePayment(with: type, presenter: presenter) { result in
-                    continuation.resume(returning: result)
-                }
-            })
-            return result
+        public func cancelPayment() {
+            isPaymentInProgress = false
+            currentTask?.cancel()
+            currentTask = nil
         }
     }
 }
@@ -78,28 +103,135 @@ private extension Payrails.Session {
         guard let data = Data(base64Encoded: config.data) else {
             throw(PayrailsError.invalidDataFormat)
         }
-        let jsonDecoder = JSONDecoder()
-        jsonDecoder.dateDecodingStrategy = .iso8601
+        let jsonDecoder = JSONDecoder.API()
         return try jsonDecoder.decode(SDKConfig.self, from: data)
     }
 }
 
 extension Payrails.Session: PaymentHandlerDelegate {
-    func paymentDidFinish(
+    func paymentHandlerDidFinish(
         handler: PaymentHandler,
         type: Payrails.PaymentType,
         status: PaymentHandlerStatus,
-        payload: [String : Any?]?
+        payload: [String: Any]?
     ) {
         switch status {
         case .canceled:
+            isPaymentInProgress = false
             onResult?(.cancelledByUser)
         case .success:
-            onResult?(.success)
+            currentTask = Task { [weak self] in
+                guard let strongSelf = self else { return }
+                var body: [String: Any] = [
+                    "integrationType": "api",
+                    "paymentMethodCode": type.rawValue
+                ]
+                if let payload {
+                    payload.forEach { key, value in
+                        body[key] = value
+                    }
+                }
+                do {
+                    let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
+                        type: type,
+                        payload: body
+                    )
+                    strongSelf.handle(paymentStatus: paymentStatus)
+                } catch {
+                    strongSelf.handle(error: error)
+                }
+            }
         case let .error(error):
+            isPaymentInProgress = false
             onResult?(.error(PayrailsError.unknown(error: error ?? PayrailsError.invalidDataFormat)))
+            onResult = nil
+            paymentHandler = nil
         }
+    }
+
+    func paymentHandlerDidFail(
+        handler: PaymentHandler,
+        error: PayrailsError,
+        type: Payrails.PaymentType
+    ) {
+        isPaymentInProgress = false
+        onResult?(.error(error))
         paymentHandler = nil
+    }
+
+    func paymentHandlerDidHandlePending(
+        handler: PaymentHandler,
+        type: Payrails.PaymentType,
+        link: Link?,
+        payload: [String: Any]?
+    ) {
+        guard let link else {
+            isPaymentInProgress = false
+            onResult?(.error(.missingData("Link response is missing")))
+            paymentHandler = nil
+            return
+        }
+        currentTask = Task { [weak self] in
+            guard let strongSelf = self else { return }
+            do {
+                let paymentStatus = try await payrailsAPI.confirmPayment(
+                    link: link,
+                    payload: payload
+                )
+                strongSelf.handle(paymentStatus: paymentStatus)
+            } catch {
+                strongSelf.handle(error: error)
+            }
+        }
+    }
+
+    private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
+        switch paymentStatus {
+        case .failed:
+            onResult?(.failure)
+        case .success:
+            onResult?(.success)
+        case let .pending(executionResult):
+            paymentHandler?.handlePendingState(with: executionResult)
+            return
+        }
+        isPaymentInProgress = false
         onResult = nil
+        paymentHandler = nil
+    }
+
+    private func handle(error: Error) {
+        if let payrailsError = error as? PayrailsError {
+            switch payrailsError {
+            case .authenticationError:
+                onResult?(.authorizationFailed)
+            default:
+                onResult?(.error(payrailsError))
+            }
+        } else {
+            onResult?(.error(PayrailsError.unknown(error: error)))
+        }
+        isPaymentInProgress = false
+        onResult = nil
+        paymentHandler = nil
+    }
+}
+
+public extension Payrails.Session {
+    func executePayment(
+        with type: Payrails.PaymentType,
+        saveInstrument: Bool = false,
+        presenter: PaymentPresenter?
+    ) async -> OnPayResult {
+        let result = await withCheckedContinuation({ continuation in
+            executePayment(
+                with: type,
+                saveInstrument: saveInstrument,
+                presenter: presenter
+            ) { result in
+                continuation.resume(returning: result)
+            }
+        })
+        return result
     }
 }
