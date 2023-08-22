@@ -65,9 +65,6 @@ public extension Payrails {
                 default:
                     onResult(.error(.incorrectPaymentSetup(type: type)))
                 }
-            case .card, .other:
-                isPaymentInProgress = false
-                onResult(.error(.unsupportedPayment(type: type)))
             case .applePay:
                 switch paymentComposition.config {
                 case let .applePay(applePayConfig):

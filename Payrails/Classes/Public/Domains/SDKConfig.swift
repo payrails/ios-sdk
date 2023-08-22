@@ -95,13 +95,30 @@ struct BodyLinks: Decodable {
 
 struct PaymentData: Decodable {
     let paymentCompositionOptions: [PaymentCompositionOptions]
+
+    enum CodingKeys: CodingKey {
+        case paymentCompositionOptions
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let paymentCompositionOptions = try container.decode(
+            [PaymentCompositionOptions].self,
+            forKey: .paymentCompositionOptions
+        )
+        self.paymentCompositionOptions = paymentCompositionOptions
+            .filter { $0.optionalPaymentType != nil }
+    }
 }
 
 struct PaymentCompositionOptions: Decodable {
     let integrationType: String
     let paymentMethodCode: String
     let description: String?
-    let paymentType: Payrails.PaymentType
+    var paymentType: Payrails.PaymentType {
+        optionalPaymentType!
+    }
+    fileprivate let optionalPaymentType: Payrails.PaymentType?
     let config: PaymentConfig?
     let originalConfig: [String: Any]?
 
@@ -133,23 +150,19 @@ struct PaymentCompositionOptions: Decodable {
         paymentMethodCode = try container.decode(String.self, forKey: .paymentMethodCode)
         description = try? container.decode(String.self, forKey: .description)
 
-        paymentType = Payrails.PaymentType(rawValue: paymentMethodCode) ?? .other
+        optionalPaymentType = Payrails.PaymentType(rawValue: paymentMethodCode)
         originalConfig = try? container.decode([String: Any].self, forKey: .config)
 
-        guard let originalConfig else {
+        guard let optionalPaymentType else {
             config = nil
             return
         }
 
-        switch paymentType {
-        case .card:
-            config = nil
+        switch optionalPaymentType {
         case .payPal:
             config = .paypal(try container.decode(PayPalConfig.self, forKey: .config))
         case .applePay:
             config = .applePay(try container.decode(ApplePayConfig.self, forKey: .config))
-        case .other:
-            config = .other(originalConfig)
         }
     }
 
