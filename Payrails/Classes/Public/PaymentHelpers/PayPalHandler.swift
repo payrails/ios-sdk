@@ -1,11 +1,9 @@
 import Foundation
 import PayPalCheckout
-import PayPal
 
 class PayPalHandler: NSObject {
 
     private weak var delegate: PaymentHandlerDelegate?
-    private let payPalNativeClient: PayPalNativeCheckoutClient
     private let paypalConfig: PaymentCompositionOptions.PayPalConfig
     private var confirmLink: Link?
     private let saveInstrument: Bool
@@ -19,13 +17,11 @@ class PayPalHandler: NSObject {
         self.delegate = delegate
         self.paypalConfig = config
         self.saveInstrument = saveInstrument
-        let config = CoreConfig(
+        let config = CheckoutConfig(
             clientID: config.clientId,
             environment: environment == .dev ? .sandbox : .live
         )
-        payPalNativeClient = PayPalNativeCheckoutClient(
-            config: config
-        )
+        Checkout.set(config: config)
     }
 }
 
@@ -35,7 +31,6 @@ extension PayPalHandler: PaymentHandler {
         currency: String,
         presenter: PaymentPresenter?
     ) {
-        payPalNativeClient.delegate = self
         delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .payPal,
@@ -46,14 +41,13 @@ extension PayPalHandler: PaymentHandler {
                         "merchantId": paypalConfig.merchantId
                     ]
                 ],
-                "savePaymentInstrument": saveInstrument
+                "storeInstrument": saveInstrument
             ]
         )
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
-        guard let confirmLink = executionResult.links.confirm,
-              let orderId = confirmLink.action?.parameters.orderId else {
+        guard let confirmLink = executionResult.links.confirm else {
             delegate?.paymentHandlerDidFail(
                 handler: self,
                 error: .missingData("Pending state failed due to missing OrderId"),
@@ -63,44 +57,63 @@ extension PayPalHandler: PaymentHandler {
         }
         self.confirmLink = confirmLink
 
-        Task {
-            let request = PayPalNativeCheckoutRequest(orderID: orderId)
-            await payPalNativeClient.start(request: request)
+        Checkout.setCreateOrderCallback { [weak self] createOrderActions in
+            if let billingAgreementToken = confirmLink.action?.parameters.tokenId {
+                createOrderActions.set(billingAgreementToken: billingAgreementToken)
+            } else if let orderId = confirmLink.action?.parameters.orderId {
+                createOrderActions.set(orderId: orderId)
+            } else {
+                guard let self else { return }
+                self.delegate?.paymentHandlerDidFail(
+                    handler: self,
+                    error: .missingData("no OrderId or BillingAgreementToken"),
+                    type: .payPal
+                )
+            }
+
         }
 
-    }
-}
-
-extension PayPalHandler: PayPalNativeCheckoutDelegate {
-    func paypal(
-        _ payPalClient: PayPal.PayPalNativeCheckoutClient,
-        didFinishWithResult result: PayPal.PayPalNativeCheckoutResult
-    ) {
-        delegate?.paymentHandlerDidHandlePending(
-            handler: self,
-            type: .payPal,
-            link: confirmLink,
-            payload: [
-                "orderId": result.orderID,
-                "payerId": result.payerID
+        Checkout.setOnApproveCallback { [weak self] approval in
+            let approvalData = approval.data
+            guard let self else { return }
+            var payload: [String: String] = [
+                "orderId": approvalData.ecToken,
+                "payerId": approvalData.payerID
             ]
-        )
-    }
+            if let billingToken = approvalData.billingToken,
+               !billingToken.isEmpty {
+                payload["tokenId"] = billingToken
+            }
+            self.delegate?.paymentHandlerDidHandlePending(
+                handler: self,
+                type: .payPal,
+                link: confirmLink,
+                payload: payload
+            )
+        }
 
-    func paypal(_ payPalClient: PayPalNativeCheckoutClient, didFinishWithError error: CoreSDKError) {
-        delegate?.paymentHandlerDidFail(
-            handler: self,
-            error: .unknown(error: error),
-            type: .payPal
-        )
+        Checkout.setOnCancelCallback { [weak self] in
+            guard let self else { return }
+            self.delegate?.paymentHandlerDidFinish(
+                handler: self,
+                type: .payPal,
+                status: .canceled,
+                payload: nil
+            )
+        }
+
+        Checkout.setOnErrorCallback { [weak self] paypalError in
+            guard let self else { return }
+            self.delegate?.paymentHandlerDidFail(
+                handler: self,
+                error: .unknown(error: paypalError.error),
+                type: .payPal
+            )
+        }
+
+        DispatchQueue.main.async {
+            Checkout.showsExitAlert = false
+            Checkout.start()
+        }
     }
-    func paypalDidCancel(_ payPalClient: PayPalNativeCheckoutClient) {
-        delegate?.paymentHandlerDidFinish(
-            handler: self,
-            type: .payPal,
-            status: .canceled,
-            payload: nil
-        )
-    }
-    func paypalWillStart(_ payPalClient: PayPalNativeCheckoutClient) { }
 }

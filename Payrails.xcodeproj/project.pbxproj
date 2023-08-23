@@ -273,8 +273,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 075151662A7BE72600BC3560 /* Build configuration list for PBXNativeTarget "Payrails" */;
 			buildPhases = (
-				07A5514A2A8E600E00194E3F /* Swiftlint */,
 				9B02B7214B45DAB2CAEF8608 /* [CP] Check Pods Manifest.lock */,
+				07A5514A2A8E600E00194E3F /* Swiftlint */,
 				0751514D2A7BE72600BC3560 /* Headers */,
 				0751514E2A7BE72600BC3560 /* Sources */,
 				0751514F2A7BE72600BC3560 /* Frameworks */,

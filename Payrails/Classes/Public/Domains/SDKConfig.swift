@@ -36,7 +36,7 @@ struct LinkAction: Decodable {
     let type: String?
 
     struct Parameters: Decodable {
-        let orderId: String
+        let orderId: String?
         let tokenId: String?
     }
 }

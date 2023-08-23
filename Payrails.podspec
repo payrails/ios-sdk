@@ -39,8 +39,7 @@ Pod::Spec.new do |spec|
   
   spec.source_files  = "Payrails/Classes/Public/**/*.{swift}"
   spec.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
-  spec.dependency 'PayPal/PayPalNativePayments'
- # spec.dependency 'PayPal/PaymentButtons'
+  spec.dependency 'PayPalCheckout'
   
   #spec.exclude_files = "Payrails/Classes/Private"
 end
