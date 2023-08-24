@@ -35,6 +35,59 @@ public extension Payrails {
             return config.paymentOption(for: .applePay) != nil
         }
 
+        public var storedInstruments: [Payrails.StoredInstrument] {
+            guard let paymentInstruments = config.paymentOption(for: .payPal, extra: {
+                guard let paymentInstruments = $0.paymentInstruments else { return false }
+                switch paymentInstruments {
+                case .paypal:
+                    return true
+                }
+            })?.paymentInstruments else {
+                return []
+            }
+            switch paymentInstruments {
+            case let .paypal(intruments):
+                return intruments
+                    .filter { $0.status == "enabled" }
+                    .map { .init(id: $0.id, email: $0.data?.email, type: .payPal) }
+            }
+        }
+
+        public func executePayment(
+            withStoredInstrument instrument: Payrails.StoredInstrument,
+            presenter: PaymentPresenter?,
+            onResult: @escaping OnPayCallback
+        ) {
+            //weak var presenter = presenter
+            isPaymentInProgress = true
+            self.onResult = onResult
+
+            guard prepareHandler(
+                for: instrument.type,
+                saveInstrument: false
+            ) else {
+                return
+            }
+
+            currentTask = Task { [weak self] in
+                guard let strongSelf = self else { return }
+                let body = [
+                    "paymentInstrumentId": instrument.id,
+                    "integrationType": "api",
+                    "paymentMethodCode": instrument.type.rawValue
+                ]
+                do {
+                    let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
+                        type: instrument.type,
+                        payload: body
+                    )
+                    strongSelf.handle(paymentStatus: paymentStatus)
+                } catch {
+                    strongSelf.handle(error: error)
+                }
+            }
+        }
+
         public func executePayment(
             with type: PaymentType,
             saveInstrument: Bool = false,
@@ -45,10 +98,32 @@ public extension Payrails {
             isPaymentInProgress = true
             self.onResult = onResult
 
+            guard prepareHandler(
+                for: type,
+                saveInstrument: saveInstrument
+            ),
+                let paymentHandler else { return }
+            paymentHandler.makePayment(
+                total: Double(config.amount.value) ?? 0,
+                currency: config.amount.currency,
+                presenter: presenter
+            )
+        }
+
+        public func cancelPayment() {
+            isPaymentInProgress = false
+            currentTask?.cancel()
+            currentTask = nil
+        }
+
+        private func prepareHandler(
+            for type: PaymentType,
+            saveInstrument: Bool
+        ) -> Bool {
             guard let paymentComposition = config.paymentOption(for: type) else {
                 isPaymentInProgress = false
-                onResult(.error(.unsupportedPayment(type: type)))
-                return
+                onResult?(.error(.unsupportedPayment(type: type)))
+                return false
             }
 
             switch type {
@@ -63,7 +138,8 @@ public extension Payrails {
                     )
                     self.paymentHandler = payPalHandler
                 default:
-                    onResult(.error(.incorrectPaymentSetup(type: type)))
+                    onResult?(.error(.incorrectPaymentSetup(type: type)))
+                    return false
                 }
             case .applePay:
                 switch paymentComposition.config {
@@ -75,22 +151,11 @@ public extension Payrails {
                     self.paymentHandler = applePayHandler
                 default:
                     isPaymentInProgress = false
-                    onResult(.error(.incorrectPaymentSetup(type: type)))
+                    onResult?(.error(.incorrectPaymentSetup(type: type)))
+                    return false
                 }
             }
-
-            guard let paymentHandler else { return }
-            paymentHandler.makePayment(
-                total: Double(config.amount.value) ?? 0,
-                currency: config.amount.currency,
-                presenter: presenter
-            )
-        }
-
-        public func cancelPayment() {
-            isPaymentInProgress = false
-            currentTask?.cancel()
-            currentTask = nil
+            return true
         }
     }
 }
@@ -224,6 +289,21 @@ public extension Payrails.Session {
             executePayment(
                 with: type,
                 saveInstrument: saveInstrument,
+                presenter: presenter
+            ) { result in
+                continuation.resume(returning: result)
+            }
+        })
+        return result
+    }
+
+    func executePayment(
+        withStoredInstrument instrument: Payrails.StoredInstrument,
+        presenter: PaymentPresenter?
+    ) async -> OnPayResult {
+        let result = await withCheckedContinuation({ continuation in
+            executePayment(
+                withStoredInstrument: instrument,
                 presenter: presenter
             ) { result in
                 continuation.resume(returning: result)

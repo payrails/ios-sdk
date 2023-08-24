@@ -104,11 +104,11 @@ extension PayPalHandler: PaymentHandler {
 
         Checkout.setOnErrorCallback { [weak self] paypalError in
             guard let self else { return }
-            self.delegate?.paymentHandlerDidFail(
-                handler: self,
-                error: .unknown(error: paypalError.error),
-                type: .payPal
-            )
+//            self.delegate?.paymentHandlerDidFail(
+//                handler: self,
+//                error: .unknown(error: paypalError.error),
+//                type: .payPal
+//            )
         }
 
         DispatchQueue.main.async {

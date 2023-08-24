@@ -17,6 +17,7 @@
 		07237D5F2A814824005BE43C /* SDKConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07237D5E2A814824005BE43C /* SDKConfig.swift */; };
 		07237D662A8248A2005BE43C /* KeyedDecodingContainer+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07237D652A8248A2005BE43C /* KeyedDecodingContainer+.swift */; };
 		073FF1EB2A837A2F00B50B76 /* PayrailsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073FF1EA2A837A2F00B50B76 /* PayrailsSession.swift */; };
+		074D63292A97870600675D61 /* StoredPayPalInstrument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 074D63282A97870600675D61 /* StoredPayPalInstrument.swift */; };
 		075151572A7BE72600BC3560 /* Payrails.docc in Sources */ = {isa = PBXBuildFile; fileRef = 075151562A7BE72600BC3560 /* Payrails.docc */; };
 		0751515D2A7BE72600BC3560 /* Payrails.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 075151522A7BE72600BC3560 /* Payrails.framework */; };
 		075151622A7BE72600BC3560 /* PayrailsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075151612A7BE72600BC3560 /* PayrailsTests.swift */; };
@@ -58,6 +59,7 @@
 		07237D5E2A814824005BE43C /* SDKConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDKConfig.swift; sourceTree = "<group>"; };
 		07237D652A8248A2005BE43C /* KeyedDecodingContainer+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeyedDecodingContainer+.swift"; sourceTree = "<group>"; };
 		073FF1EA2A837A2F00B50B76 /* PayrailsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayrailsSession.swift; sourceTree = "<group>"; };
+		074D63282A97870600675D61 /* StoredPayPalInstrument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredPayPalInstrument.swift; sourceTree = "<group>"; };
 		075151522A7BE72600BC3560 /* Payrails.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Payrails.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		075151552A7BE72600BC3560 /* Payrails.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Payrails.h; sourceTree = "<group>"; };
 		075151562A7BE72600BC3560 /* Payrails.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = Payrails.docc; sourceTree = "<group>"; };
@@ -193,6 +195,7 @@
 				076AACE22A8142D400D4DB6B /* Configuration.swift */,
 				0776F2062A824CEC00B238E6 /* Callbacks.swift */,
 				0784896D2A8267CD00C29E6B /* PaymentType.swift */,
+				074D63282A97870600675D61 /* StoredPayPalInstrument.swift */,
 			);
 			path = Domains;
 			sourceTree = "<group>";
@@ -470,6 +473,7 @@
 				07237D662A8248A2005BE43C /* KeyedDecodingContainer+.swift in Sources */,
 				0776F2092A824F2800B238E6 /* PayrailsError.swift in Sources */,
 				0768572A2A83C7AF0070F081 /* PaymentPresenter.swift in Sources */,
+				074D63292A97870600675D61 /* StoredPayPalInstrument.swift in Sources */,
 				076AACE32A8142D400D4DB6B /* Configuration.swift in Sources */,
 				0768572E2A83C8370070F081 /* PaymentHandlerDelegate.swift in Sources */,
 				075151572A7BE72600BC3560 /* Payrails.docc in Sources */,

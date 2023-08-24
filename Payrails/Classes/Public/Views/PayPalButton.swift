@@ -58,8 +58,8 @@ public final class PayPalButton: UIButton {
             [
                 imageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.66),
                 imageView.widthAnchor.constraint(equalTo: imageView.heightAnchor, multiplier: 3.75),
-                stackView.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor),
-                stackView.trailingAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor),
+                stackView.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor, constant: 6.0),
+                stackView.trailingAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor, constant: 6.0),
                 stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
                 stackView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
                 stackView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor)

@@ -121,12 +121,28 @@ struct PaymentCompositionOptions: Decodable {
     fileprivate let optionalPaymentType: Payrails.PaymentType?
     let config: PaymentConfig?
     let originalConfig: [String: Any]?
+    let paymentInstruments: PaymentInstrument?
+
+    enum PaymentInstrument {
+        case paypal([PayPalPaymentInstrument])
+    }
+
+    struct PayPalPaymentInstrument: Decodable {
+        let id: String
+        let paymentMethod: String
+        let holderId: String
+        let createdAt: String
+        let status: String
+        let data: PayPalInstrumentData?
+    }
+
+    struct PayPalInstrumentData: Decodable {
+        let email: String?
+    }
 
     enum PaymentConfig {
         case applePay(ApplePayConfig)
         case paypal(PayPalConfig)
-        case card
-        case other([String: Any])
     }
 
     struct ApplePayConfig: Decodable {
@@ -155,18 +171,21 @@ struct PaymentCompositionOptions: Decodable {
 
         guard let optionalPaymentType else {
             config = nil
+            paymentInstruments = nil
             return
         }
 
         switch optionalPaymentType {
         case .payPal:
             config = .paypal(try container.decode(PayPalConfig.self, forKey: .config))
+            paymentInstruments = .paypal(try container.decode([PayPalPaymentInstrument].self, forKey: .paymentInstruments))
         case .applePay:
             config = .applePay(try container.decode(ApplePayConfig.self, forKey: .config))
+            paymentInstruments = nil
         }
     }
 
     private enum CodingKeys: CodingKey {
-        case integrationType, paymentMethodCode, description, config
+        case integrationType, paymentMethodCode, description, config, paymentInstruments
     }
 }
