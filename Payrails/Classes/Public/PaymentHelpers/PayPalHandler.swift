@@ -4,12 +4,12 @@ import PayPalCheckout
 class PayPalHandler: NSObject {
 
     private weak var delegate: PaymentHandlerDelegate?
-    private let paypalConfig: PaymentCompositionOptions.PayPalConfig
+    private let paypalConfig: PaymentOptions.PayPalConfig
     private var confirmLink: Link?
     private let saveInstrument: Bool
 
     init(
-        config: PaymentCompositionOptions.PayPalConfig,
+        config: PaymentOptions.PayPalConfig,
         delegate: PaymentHandlerDelegate?,
         saveInstrument: Bool,
         environment: Payrails.Env
@@ -46,7 +46,9 @@ extension PayPalHandler: PaymentHandler {
         )
     }
 
-    func handlePendingState(with executionResult: GetExecutionResult) {
+    func handlePendingState(
+        with executionResult: GetExecutionResult
+    ) {
         guard let confirmLink = executionResult.links.confirm else {
             delegate?.paymentHandlerDidFail(
                 handler: self,

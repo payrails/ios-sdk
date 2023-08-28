@@ -7,7 +7,7 @@ class ApplePayHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
 
     init(
-        config: PaymentCompositionOptions.ApplePayConfig,
+        config: PaymentOptions.ApplePayConfig,
         delegate: PaymentHandlerDelegate?
     ) {
         request.merchantIdentifier = config.parameters.merchantIdentifier

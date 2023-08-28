@@ -94,7 +94,7 @@ struct BodyLinks: Decodable {
 }
 
 struct PaymentData: Decodable {
-    let paymentCompositionOptions: [PaymentCompositionOptions]
+    let paymentOptions: [PaymentOptions]
 
     enum CodingKeys: CodingKey {
         case paymentCompositionOptions
@@ -102,16 +102,16 @@ struct PaymentData: Decodable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let paymentCompositionOptions = try container.decode(
-            [PaymentCompositionOptions].self,
+        let paymentOptions = try container.decode(
+            [PaymentOptions].self,
             forKey: .paymentCompositionOptions
         )
-        self.paymentCompositionOptions = paymentCompositionOptions
+        self.paymentOptions = paymentOptions
             .filter { $0.optionalPaymentType != nil }
     }
 }
 
-struct PaymentCompositionOptions: Decodable {
+struct PaymentOptions: Decodable {
     let integrationType: String
     let paymentMethodCode: String
     let description: String?
@@ -127,7 +127,15 @@ struct PaymentCompositionOptions: Decodable {
         case paypal([PayPalPaymentInstrument])
     }
 
-    struct PayPalPaymentInstrument: Decodable {
+    struct PayPalPaymentInstrument: StoredInstrument, Decodable {
+        var email: String? {
+            data?.email
+        }
+
+        var type: Payrails.PaymentType {
+            .payPal
+        }
+
         let id: String
         let paymentMethod: String
         let holderId: String

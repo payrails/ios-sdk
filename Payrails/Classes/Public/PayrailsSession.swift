@@ -35,7 +35,7 @@ public extension Payrails {
             return config.paymentOption(for: .applePay) != nil
         }
 
-        public var storedInstruments: [Payrails.StoredInstrument] {
+        public var storedInstruments: [StoredInstrument] {
             guard let paymentInstruments = config.paymentOption(for: .payPal, extra: {
                 guard let paymentInstruments = $0.paymentInstruments else { return false }
                 switch paymentInstruments {
@@ -49,12 +49,11 @@ public extension Payrails {
             case let .paypal(intruments):
                 return intruments
                     .filter { $0.status == "enabled" }
-                    .map { .init(id: $0.id, email: $0.data?.email, type: .payPal) }
             }
         }
 
         public func executePayment(
-            withStoredInstrument instrument: Payrails.StoredInstrument,
+            withStoredInstrument instrument: StoredInstrument,
             presenter: PaymentPresenter?,
             onResult: @escaping OnPayCallback
         ) {
@@ -298,7 +297,7 @@ public extension Payrails.Session {
     }
 
     func executePayment(
-        withStoredInstrument instrument: Payrails.StoredInstrument,
+        withStoredInstrument instrument: StoredInstrument,
         presenter: PaymentPresenter?
     ) async -> OnPayResult {
         let result = await withCheckedContinuation({ continuation in

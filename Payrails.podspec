@@ -8,24 +8,11 @@
 
 Pod::Spec.new do |spec|
 
-  # ―――  Spec Metadata  ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
-  #
-  #  These will help people to find your library, and whilst it
-  #  can feel like a chore to fill in it's definitely to your advantage. The
-  #  summary should be tweet-length, and the description more in depth.
-  #
-
   spec.name         = "Payrails"
-  spec.version      = "0.0.1"
+  spec.version      = "1.0.0"
   spec.swift_version = "5.0"
-  spec.summary      = "A short description of Payrails."
-
-  # This description is used to generate tags and improve search results.
-  #   * Think: What does it do? Why did you write it? What is the focus?
-  #   * Try to keep it short, snappy and to the point.
-  #   * Write the description between the DESC delimiters below.
-  #   * Finally, don't worry about the indent, CocoaPods strips it!
-  spec.description  = "This is something that needs to be changed"
+  spec.summary      = "Payrails Checkout SDK for iOS - Seamless Payment Integration"
+  spec.description  = "Payrails Checkout ensures seamless payment integration within iOS applications, providing developers with the means to create versatile payment solutions."
 
   spec.homepage     = "https://github.com/payrails/ios-sdk.git"
 
@@ -37,9 +24,9 @@ Pod::Spec.new do |spec|
 
   spec.source       = { :git => "git@github.com:payrails/ios-sdk.git", :tag => "#{spec.version}" }
   
-  spec.source_files  = "Payrails/Classes/Public/**/*.{swift}"
-  spec.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
-  spec.dependency 'PayPalCheckout'
-  
-  #spec.exclude_files = "Payrails/Classes/Private"
+  spec.subspec 'Checkout' do |checkout|
+  	checkout.source_files  = "Payrails/Classes/Public/**/*.{swift}"
+  	checkout.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
+  	checkout.dependency 'PayPalCheckout'
+  end
 end
