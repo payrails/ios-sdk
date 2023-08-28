@@ -17,7 +17,7 @@ Pod::Spec.new do |spec|
   spec.homepage     = "https://github.com/payrails/ios-sdk.git"
 
   spec.license      = "MIT Licence"
-  spec.author       = { "Lukasz Lenkiewicz" => "lukasz.lenkiewicz.ext@payrails.com" }
+  spec.author       = { "Payrails" => "contact@payrails.com" }
 
   spec.platform     = :ios
   spec.platform     = :ios, "14.0"
