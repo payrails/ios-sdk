@@ -26,6 +26,7 @@ private var payrails: Payrails.Session?
 
 payrails = try await Payrails.configure(
 	with: .init(
+	    version: version,
 		data: data,
 		 option: .init(env: .dev)
 		 )
@@ -36,6 +37,7 @@ Callback
 
 ```(ts)
 Payrails.configure(with: .init(
+				    version: version,
                     data: data,
                     option: .init(env: .dev)
                 )) { [weak self] result in
@@ -48,7 +50,7 @@ Payrails.configure(with: .init(
                 }
 ```
 
-Where `data` is base64 string you receive from your backend.
+Where `data` is base64 string and version is SDK version, you both receive from your backend.
 
 Once your SDK is initialized, it is now allowed to interact directly with Payrails from your client.
 
