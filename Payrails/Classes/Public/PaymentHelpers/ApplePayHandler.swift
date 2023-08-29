@@ -64,12 +64,6 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
 
         guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
             paymentCompletion(.init(status: .failure, errors: nil))
-            delegate?.paymentHandlerDidFinish(
-                handler: self,
-                type: .applePay,
-                status: .error(nil),
-                payload: nil
-            )
             return
         }
 
