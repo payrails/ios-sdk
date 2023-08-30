@@ -1,12 +1,7 @@
 import Foundation
 
-public typealias OnInitCallback = ((Result<Payrails.Session, PayrailsError>) -> ())
-public typealias OnPayCallback = ((OnPayResult) -> ())
-
-public struct OnInitData {
-    public let executionId: String
-    public let session: Payrails
-}
+public typealias OnInitCallback = ((Result<Payrails.Session, PayrailsError>) -> Void)
+public typealias OnPayCallback = ((OnPayResult) -> Void)
 
 public enum OnPayResult {
     case success, authorizationFailed, failure, error(PayrailsError), cancelledByUser

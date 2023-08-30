@@ -1,7 +1,7 @@
 import Foundation
 
 struct SDKConfig: Decodable {
-    let token: String?
+    let token: String
     let holderReference: String?
     let vaultConfiguration: VaultConfiguration?
     let execution: Execution?
@@ -26,6 +26,19 @@ struct VaultConfigurationLinks: Decodable {
 struct Link: Decodable {
     let method: String?
     let href: String?
+    let action: LinkAction?
+}
+
+struct LinkAction: Decodable {
+    let redirectMethod: String
+    let redirectUrl: String
+    let parameters: Parameters
+    let type: String?
+
+    struct Parameters: Decodable {
+        let orderId: String?
+        let tokenId: String?
+    }
 }
 
 struct Execution: Decodable {
@@ -37,7 +50,7 @@ struct Execution: Decodable {
     let holderId: String
     let workflow: Workflow
     let links: ExecutionLinks
-    let initialResults: [InitialResult];
+    let initialResults: [InitialResult]
 }
 
 struct Status: Decodable {
@@ -48,6 +61,7 @@ struct Status: Decodable {
 struct ExecutionLinks: Decodable {
   let `self`: String
   let lookup: Link?
+  let confirm: Link?
 }
 
 struct Workflow: Decodable {
@@ -55,7 +69,7 @@ struct Workflow: Decodable {
   let version: Double
 }
 
-struct Amount: Decodable {
+struct Amount: Codable {
   let value: String
   let currency: String
 }
@@ -66,11 +80,11 @@ struct InitialResult: Decodable {
 }
 
 struct Body: Decodable {
-    let name: String;
+    let name: String
     let actionId: String
     let executedAt: Date
     let data: PaymentData
-    let links: BodyLinks;
+    let links: BodyLinks
 }
 
 struct BodyLinks: Decodable {
@@ -80,22 +94,63 @@ struct BodyLinks: Decodable {
 }
 
 struct PaymentData: Decodable {
-    let paymentCompositionOptions: [PaymentCompositionOptions]
+    let paymentOptions: [PaymentOptions]
+
+    enum CodingKeys: CodingKey {
+        case paymentCompositionOptions
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let paymentOptions = try container.decode(
+            [PaymentOptions].self,
+            forKey: .paymentCompositionOptions
+        )
+        self.paymentOptions = paymentOptions
+            .filter { $0.optionalPaymentType != nil }
+    }
 }
 
-struct PaymentCompositionOptions: Decodable {
+struct PaymentOptions: Decodable {
     let integrationType: String
     let paymentMethodCode: String
     let description: String?
-    let paymentType: Payrails.PaymentType
+    var paymentType: Payrails.PaymentType {
+        optionalPaymentType!
+    }
+    fileprivate let optionalPaymentType: Payrails.PaymentType?
     let config: PaymentConfig?
     let originalConfig: [String: Any]?
+    let paymentInstruments: PaymentInstrument?
+
+    enum PaymentInstrument {
+        case paypal([PayPalPaymentInstrument])
+    }
+
+    struct PayPalPaymentInstrument: StoredInstrument, Decodable {
+        var email: String? {
+            data?.email
+        }
+
+        var type: Payrails.PaymentType {
+            .payPal
+        }
+
+        let id: String
+        let paymentMethod: String
+        let holderId: String
+        let createdAt: String
+        let status: String
+        let data: PayPalInstrumentData?
+    }
+
+    struct PayPalInstrumentData: Decodable {
+        let email: String?
+    }
 
     enum PaymentConfig {
         case applePay(ApplePayConfig)
         case paypal(PayPalConfig)
-        case card
-        case other([String: Any])
     }
 
     struct ApplePayConfig: Decodable {
@@ -119,27 +174,31 @@ struct PaymentCompositionOptions: Decodable {
         paymentMethodCode = try container.decode(String.self, forKey: .paymentMethodCode)
         description = try? container.decode(String.self, forKey: .description)
 
-        paymentType = Payrails.PaymentType(rawValue: paymentMethodCode) ?? .other
+        optionalPaymentType = Payrails.PaymentType(rawValue: paymentMethodCode)
         originalConfig = try? container.decode([String: Any].self, forKey: .config)
 
-        guard let originalConfig else {
+        guard let optionalPaymentType else {
             config = nil
+            paymentInstruments = nil
             return
         }
 
-        switch paymentType {
-        case .card:
-            config = nil
+        switch optionalPaymentType {
         case .payPal:
             config = .paypal(try container.decode(PayPalConfig.self, forKey: .config))
+            if let element = try? container.decode([PayPalPaymentInstrument].self, forKey: .paymentInstruments) {
+                paymentInstruments = .paypal(element)
+            } else {
+                paymentInstruments = nil
+            }
+
         case .applePay:
             config = .applePay(try container.decode(ApplePayConfig.self, forKey: .config))
-        case .other:
-            config = .other(originalConfig)
+            paymentInstruments = nil
         }
     }
 
     private enum CodingKeys: CodingKey {
-        case integrationType, paymentMethodCode, description, config
+        case integrationType, paymentMethodCode, description, config, paymentInstruments
     }
 }

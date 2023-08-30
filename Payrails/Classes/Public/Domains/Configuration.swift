@@ -3,14 +3,14 @@ import Foundation
 public extension Payrails {
     struct Configuration {
         public init(
-            data: String,
+            initData: Payrails.InitData,
             option: Payrails.Options
         ) {
-            self.data = data
+            self.initData = initData
             self.option = option
         }
 
-        let data: String
+        let initData: Payrails.InitData
         let option: Options
     }
 

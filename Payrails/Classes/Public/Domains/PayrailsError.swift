@@ -1,9 +1,11 @@
 import Foundation
 
 public enum PayrailsError: Error, LocalizedError {
+    case authenticationError
     case sdkNotInitialized
+    case missingData(String?)
     case invalidDataFormat
-    case unknown(error: Error)
+    case unknown(error: Error?)
     case unsupportedPayment(type: Payrails.PaymentType)
     case incorrectPaymentSetup(type: Payrails.PaymentType)
 }
@@ -11,12 +13,19 @@ public enum PayrailsError: Error, LocalizedError {
 public extension PayrailsError {
     var errorDescription: String? {
         switch self {
+        case .authenticationError:
+            return "Authentication error: Token has expired"
         case .sdkNotInitialized:
             return "Payrails SDK has not been properly initialized"
         case .invalidDataFormat:
             return "Provided Config data is invalid and can not be parsed"
         case .unknown(let error):
-            return error.localizedDescription
+            return error?.localizedDescription ?? "Unknown error appeared"
+        case let.missingData(missingData):
+            return String(
+                format: "SDK Configuration is missing field: %@",
+                missingData ?? "unknown field"
+            )
         case .unsupportedPayment(type: let type):
             return String(
                 format: "Payrails SDK version does not yet support %@",
