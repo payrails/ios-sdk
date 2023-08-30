@@ -104,8 +104,8 @@ extension PayPalHandler: PaymentHandler {
             )
         }
 
-        Checkout.setOnErrorCallback { [weak self] paypalError in
-            guard let self else { return }
+        Checkout.setOnErrorCallback { _ in
+//            guard let self else { return }
 //            self.delegate?.paymentHandlerDidFail(
 //                handler: self,
 //                error: .unknown(error: paypalError.error),
