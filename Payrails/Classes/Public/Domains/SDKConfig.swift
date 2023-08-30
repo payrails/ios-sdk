@@ -186,7 +186,12 @@ struct PaymentOptions: Decodable {
         switch optionalPaymentType {
         case .payPal:
             config = .paypal(try container.decode(PayPalConfig.self, forKey: .config))
-            paymentInstruments = .paypal(try container.decode([PayPalPaymentInstrument].self, forKey: .paymentInstruments))
+            if let element = try? container.decode([PayPalPaymentInstrument].self, forKey: .paymentInstruments) {
+                paymentInstruments = .paypal(element)
+            } else {
+                paymentInstruments = nil
+            }
+
         case .applePay:
             config = .applePay(try container.decode(ApplePayConfig.self, forKey: .config))
             paymentInstruments = nil
