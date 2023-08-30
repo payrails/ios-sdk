@@ -54,10 +54,8 @@ public extension Payrails {
 
         public func executePayment(
             withStoredInstrument instrument: StoredInstrument,
-            presenter: PaymentPresenter?,
             onResult: @escaping OnPayCallback
         ) {
-            //weak var presenter = presenter
             isPaymentInProgress = true
             self.onResult = onResult
 
@@ -161,7 +159,7 @@ public extension Payrails {
 
 private extension Payrails.Session {
     func parse(config: Payrails.Configuration) throws -> SDKConfig {
-        guard let data = Data(base64Encoded: config.data) else {
+        guard let data = Data(base64Encoded: config.initData.data) else {
             throw(PayrailsError.invalidDataFormat)
         }
         let jsonDecoder = JSONDecoder.API()
@@ -297,13 +295,11 @@ public extension Payrails.Session {
     }
 
     func executePayment(
-        withStoredInstrument instrument: StoredInstrument,
-        presenter: PaymentPresenter?
+        withStoredInstrument instrument: StoredInstrument
     ) async -> OnPayResult {
         let result = await withCheckedContinuation({ continuation in
             executePayment(
-                withStoredInstrument: instrument,
-                presenter: presenter
+                withStoredInstrument: instrument
             ) { result in
                 continuation.resume(returning: result)
             }

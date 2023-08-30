@@ -3,17 +3,14 @@ import Foundation
 public extension Payrails {
     struct Configuration {
         public init(
-            version: String,
-            data: String,
+            initData: Payrails.InitData,
             option: Payrails.Options
         ) {
-            self.version = version
-            self.data = data
+            self.initData = initData
             self.option = option
         }
 
-        let version: String
-        let data: String
+        let initData: Payrails.InitData
         let option: Options
     }
 

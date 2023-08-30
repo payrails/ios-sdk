@@ -30,6 +30,7 @@
 		076AACE32A8142D400D4DB6B /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076AACE22A8142D400D4DB6B /* Configuration.swift */; };
 		0776F2072A824CEC00B238E6 /* Callbacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0776F2062A824CEC00B238E6 /* Callbacks.swift */; };
 		0776F2092A824F2800B238E6 /* PayrailsError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0776F2082A824F2800B238E6 /* PayrailsError.swift */; };
+		0781E6352A9F391D00073068 /* InitData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0781E6342A9F391D00073068 /* InitData.swift */; };
 		0784896E2A8267CD00C29E6B /* PaymentType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0784896D2A8267CD00C29E6B /* PaymentType.swift */; };
 		078489712A826A9200C29E6B /* ApplePayButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489702A826A9200C29E6B /* ApplePayButton.swift */; };
 		078489742A8272DC00C29E6B /* ApplePayHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489732A8272DC00C29E6B /* ApplePayHandler.swift */; };
@@ -73,6 +74,7 @@
 		076AACE22A8142D400D4DB6B /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		0776F2062A824CEC00B238E6 /* Callbacks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Callbacks.swift; sourceTree = "<group>"; };
 		0776F2082A824F2800B238E6 /* PayrailsError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayrailsError.swift; sourceTree = "<group>"; };
+		0781E6342A9F391D00073068 /* InitData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InitData.swift; sourceTree = "<group>"; };
 		0784896D2A8267CD00C29E6B /* PaymentType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentType.swift; sourceTree = "<group>"; };
 		078489702A826A9200C29E6B /* ApplePayButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayButton.swift; sourceTree = "<group>"; };
 		078489732A8272DC00C29E6B /* ApplePayHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayHandler.swift; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 		075151722A7BE99500BC3560 /* Domains */ = {
 			isa = PBXGroup;
 			children = (
+				0781E6342A9F391D00073068 /* InitData.swift */,
 				071E35432A853040007E5704 /* PaymentFlow.swift */,
 				07237D5E2A814824005BE43C /* SDKConfig.swift */,
 				0776F2082A824F2800B238E6 /* PayrailsError.swift */,
@@ -470,6 +473,7 @@
 				0784896E2A8267CD00C29E6B /* PaymentType.swift in Sources */,
 				071E354D2A8B6EE5007E5704 /* PayPalButton.swift in Sources */,
 				071E353C2A84F83A007E5704 /* PayrailsAPI.swift in Sources */,
+				0781E6352A9F391D00073068 /* InitData.swift in Sources */,
 				07237D662A8248A2005BE43C /* KeyedDecodingContainer+.swift in Sources */,
 				0776F2092A824F2800B238E6 /* PayrailsError.swift in Sources */,
 				0768572A2A83C7AF0070F081 /* PaymentPresenter.swift in Sources */,
