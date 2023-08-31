@@ -1,0 +1,15 @@
+disabled_rules:
+  - nesting
+  - todo
+  - explicit_acl
+
+excluded:
+  - Tests
+  - Docs
+  - DerivedData
+  - Pods
+
+line_length:
+  ignores_function_declarations: true
+  ignores_urls: true
+  warning: 140
