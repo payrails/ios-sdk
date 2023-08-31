@@ -4,14 +4,17 @@ Payrails iOS SDK provides you with the building blocks to create a checkout expe
 
 ## Installation with Cocoapods
 
-```(sh)
+```(rb)
 pod 'Payrails/Checkout'
 ```
 
+## Installation with Swift Package Manager
+
+Use `https://github.com/payrails/ios-sdk` as the repository URL.
+
 ### Enabling Apple Pay capability
 
-To enable Apple Pay in your app, you need to add the merchant ID in `Signing & Capabilites` in your project's target's settings.
-
+To enable Apple Pay in your app, you need to add the merchant ID in `Signing & Capabilities` in your project's target's settings.
 
 ## Initializing Payrails React Native SDK
 
@@ -19,25 +22,25 @@ Use the `Payrails` component to initialize a Payrails client context as shown be
 
 Async Await
 
-```(ts)
+```(swift)
 import Payrails
 
 private var payrails: Payrails.Session?
 
 payrails = try await Payrails.configure(
-	with: .init(
-	    version: version,
-		data: data,
-		 option: .init(env: .dev)
-		 )
+ with: .init(
+     version: version,
+  data: data,
+   option: .init(env: .dev)
+   )
 )
 ```
 
 Callback
 
-```(ts)
+```(swift)
 Payrails.configure(with: .init(
-				    version: version,
+        version: version,
                     data: data,
                     option: .init(env: .dev)
                 )) { [weak self] result in
@@ -60,7 +63,7 @@ Payrails iOS SDK provides you buttons for Apple Pay and PayPal.
 
 1. Initialize Tokenization context:
 
-```(ts)
+```(swift)
 private let applePayButton = ApplePayButton(
         paymentButtonType: .checkout,
         paymentButtonStyle: .black
@@ -79,7 +82,7 @@ payPalButton.onTap = { [weak self] in
 
 Payrails iOS SDK allows you to easily check if particular payment is available:
 
-```(ts)
+```(swift)
 applePayButton.isHidden = !payrails.isPaymentAvailable(type: .applePay)
 payPalButton.isHidden = !payrails.isPaymentAvailable(type: .payPal)
 ```
@@ -88,10 +91,9 @@ payPalButton.isHidden = !payrails.isPaymentAvailable(type: .payPal)
 
 Payrails iOS SDK allows you to easily perform payment using:
 
-
 Async Await
 
-```(ts)
+```(swift)
 import Payrails
 
 Task { [weak self, weak payrails] in
@@ -104,7 +106,7 @@ Task { [weak self, weak payrails] in
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    self?.log("Payment was succesfull!")
+                    self?.log("Payment was successful!")
                 case .authorizationFailed:
                     self?.log("Payment failed due to authorization")
                 case .failure:
@@ -123,14 +125,14 @@ Task { [weak self, weak payrails] in
 
 Callback
 
-```(ts)
+```(swift)
 payrails.executePayment(
             with: type, //.applePay or .payPal
             saveInstrument: false, //set to true if you want to store payment
             presenter: self) { [weak self] result in
                 switch result {
                 case .success:
-                    self?.log("Payment was succesfull!")
+                    self?.log("Payment was successful!")
                 case .authorizationFailed:
                     self?.log("Payment failed due to authorization")
                 case .failure:
@@ -148,7 +150,7 @@ payrails.executePayment(
 
 Where
 
-```(ts)
+```(swift)
 extension YourPaymentViewController: PaymentPresenter {
     func presentPayment(_ viewController: UIViewController) {
         DispatchQueue.main.async {
@@ -158,12 +160,11 @@ extension YourPaymentViewController: PaymentPresenter {
 }
 ```
 
-
 ### Stored payments
 
 Payrails iOS SDK allows you to retrieve and reuse stored payments:
 
-```(ts)
+```(swift)
  payrails.storedInstruments.forEach { storedElement in
             switch storedElement.type {
             case .payPal:
@@ -175,7 +176,7 @@ Payrails iOS SDK allows you to retrieve and reuse stored payments:
                 break
             }
         }
-        
+
 private func pay(
         storedInstrument: StoredInstrument
     ) {
@@ -188,7 +189,7 @@ private func pay(
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    self?.log("Payment was succesfull!")
+                    self?.log("Payment was successful!")
                 case .authorizationFailed:
                     self?.log("Payment failed due to authorization")
                 case .failure:

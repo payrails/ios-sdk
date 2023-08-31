@@ -22,7 +22,7 @@ Pod::Spec.new do |spec|
   spec.platform     = :ios
   spec.platform     = :ios, "14.0"
 
-  spec.source       = { :git => "git@github.com:payrails/ios-sdk.git", :tag => "#{spec.version}" }
+  spec.source       = { :git => "https://github.com/payrails/ios-sdk.git", :tag => "#{spec.version}" }
   
   spec.subspec 'Checkout' do |checkout|
   	checkout.source_files  = "Payrails/Classes/Public/**/*.{swift}"
