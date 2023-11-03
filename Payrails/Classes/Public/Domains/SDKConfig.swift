@@ -195,6 +195,10 @@ struct PaymentOptions: Decodable {
         case .applePay:
             config = .applePay(try container.decode(ApplePayConfig.self, forKey: .config))
             paymentInstruments = nil
+
+        case .card:
+            config = nil
+            paymentInstruments = nil
         }
     }
 

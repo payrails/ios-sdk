@@ -11,6 +11,7 @@ public extension Payrails {
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
+        private var cardSession: CardSession?
 
         public private(set) var isPaymentInProgress = false {
             didSet {
@@ -24,6 +25,20 @@ public extension Payrails {
             self.option = configuration.option
             self.config = try parse(config: configuration)
             self.payrailsAPI = PayrailsAPI(config: config)
+            if isPaymentAvailable(type: .card),
+                  let vaultId = config.vaultConfiguration?.vaultId,
+                  let vaultUrl = config.vaultConfiguration?.vaultUrl,
+                  let token = config.vaultConfiguration?.token,
+               let tableName = config.vaultConfiguration?.cardTableName {
+                self.cardSession = CardSession(
+                    vaultId: vaultId,
+                    vaultUrl: vaultUrl,
+                    token: token,
+                    tableName: tableName,
+                    delegate: self
+                )
+            }
+
             executionId = config.execution?.id
         }
 
@@ -113,6 +128,12 @@ public extension Payrails {
             currentTask = nil
         }
 
+        public func buildCardView(
+            with config: CardFormConfig = CardFormConfig.defaultConfig
+        ) -> UIView? {
+            cardSession?.buildCardView(with: config)
+        }
+
         private func prepareHandler(
             for type: PaymentType,
             saveInstrument: Bool
@@ -151,6 +172,10 @@ public extension Payrails {
                     onResult?(.error(.incorrectPaymentSetup(type: type)))
                     return false
                 }
+            case .card:
+                isPaymentInProgress = false
+                onResult?(.error(.unsupportedPayment(type: type)))
+                return false
             }
             return true
         }
@@ -305,5 +330,25 @@ public extension Payrails.Session {
             }
         })
         return result
+    }
+}
+
+extension Payrails.Session: CardSessionDelegate {
+    func cardSessionConfirmed(with response: Any) {
+        print(response)
+        let cardPaymentHandler = CardPaymentHandler(
+            response: response,
+            delegate: self
+        )
+        self.paymentHandler = cardPaymentHandler
+        cardPaymentHandler.makePayment(
+            total: Double(config.amount.value) ?? 0,
+            currency: config.amount.currency,
+            presenter: nil
+        )
+    }
+
+    func cardSessionFailed(with error: Any) {
+        print(error)
     }
 }
