@@ -23,6 +23,8 @@
 		07512BFE2AF52197003C30D1 /* CardFormStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07512BFD2AF52197003C30D1 /* CardFormStyle.swift */; };
 		07512C002AF5294A003C30D1 /* CardSubmitButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07512BFF2AF5294A003C30D1 /* CardSubmitButton.swift */; };
 		07512C022AF53E82003C30D1 /* CardPaymentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07512C012AF53E82003C30D1 /* CardPaymentHandler.swift */; };
+		07512C042AF8EBBE003C30D1 /* CardContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07512C032AF8EBBE003C30D1 /* CardContainer.swift */; };
+		07512C062AF8FF99003C30D1 /* CardFormElementsGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07512C052AF8FF99003C30D1 /* CardFormElementsGenerator.swift */; };
 		075151572A7BE72600BC3560 /* Payrails.docc in Sources */ = {isa = PBXBuildFile; fileRef = 075151562A7BE72600BC3560 /* Payrails.docc */; };
 		0751515D2A7BE72600BC3560 /* Payrails.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 075151522A7BE72600BC3560 /* Payrails.framework */; };
 		075151622A7BE72600BC3560 /* PayrailsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075151612A7BE72600BC3560 /* PayrailsTests.swift */; };
@@ -70,6 +72,8 @@
 		07512BFD2AF52197003C30D1 /* CardFormStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFormStyle.swift; sourceTree = "<group>"; };
 		07512BFF2AF5294A003C30D1 /* CardSubmitButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSubmitButton.swift; sourceTree = "<group>"; };
 		07512C012AF53E82003C30D1 /* CardPaymentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardPaymentHandler.swift; sourceTree = "<group>"; };
+		07512C032AF8EBBE003C30D1 /* CardContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardContainer.swift; sourceTree = "<group>"; };
+		07512C052AF8FF99003C30D1 /* CardFormElementsGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFormElementsGenerator.swift; sourceTree = "<group>"; };
 		075151522A7BE72600BC3560 /* Payrails.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Payrails.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		075151552A7BE72600BC3560 /* Payrails.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Payrails.h; sourceTree = "<group>"; };
 		075151562A7BE72600BC3560 /* Payrails.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = Payrails.docc; sourceTree = "<group>"; };
@@ -170,7 +174,9 @@
 			isa = PBXGroup;
 			children = (
 				07512BFB2AF50ECD003C30D1 /* CardSession.swift */,
+				07512C032AF8EBBE003C30D1 /* CardContainer.swift */,
 				07512BFD2AF52197003C30D1 /* CardFormStyle.swift */,
+				07512C052AF8FF99003C30D1 /* CardFormElementsGenerator.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -498,6 +504,7 @@
 				071E35562A8CD8EA007E5704 /* JSONDecoder+.swift in Sources */,
 				07512C002AF5294A003C30D1 /* CardSubmitButton.swift in Sources */,
 				075151752A7BE99500BC3560 /* Payrails.swift in Sources */,
+				07512C042AF8EBBE003C30D1 /* CardContainer.swift in Sources */,
 				07512BFC2AF50ECD003C30D1 /* CardSession.swift in Sources */,
 				0784896E2A8267CD00C29E6B /* PaymentType.swift in Sources */,
 				071E354D2A8B6EE5007E5704 /* PayPalButton.swift in Sources */,
@@ -509,6 +516,7 @@
 				0776F2092A824F2800B238E6 /* PayrailsError.swift in Sources */,
 				07512C022AF53E82003C30D1 /* CardPaymentHandler.swift in Sources */,
 				0768572A2A83C7AF0070F081 /* PaymentPresenter.swift in Sources */,
+				07512C062AF8FF99003C30D1 /* CardFormElementsGenerator.swift in Sources */,
 				074D63292A97870600675D61 /* StoredPayPalInstrument.swift in Sources */,
 				076AACE32A8142D400D4DB6B /* Configuration.swift in Sources */,
 				0768572E2A83C8370070F081 /* PaymentHandlerDelegate.swift in Sources */,

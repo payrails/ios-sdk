@@ -50,11 +50,11 @@ public extension Payrails {
             return config.paymentOption(for: .applePay) != nil
         }
 
-        public var storedInstruments: [StoredInstrument] {
-            guard let paymentInstruments = config.paymentOption(for: .payPal, extra: {
+        public func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
+            guard let paymentInstruments = config.paymentOption(for: type, extra: {
                 guard let paymentInstruments = $0.paymentInstruments else { return false }
                 switch paymentInstruments {
-                case .paypal:
+                case .paypal, .card:
                     return true
                 }
             })?.paymentInstruments else {
@@ -64,7 +64,15 @@ public extension Payrails {
             case let .paypal(intruments):
                 return intruments
                     .filter { $0.status == "enabled" }
+            case let .card(intruments):
+                return intruments
+                    .filter { $0.status == "enabled" }
             }
+        }
+
+        @available(*, deprecated)
+        public var storedInstruments: [StoredInstrument] {
+            storedInstruments(for: .payPal)
         }
 
         public func executePayment(
@@ -100,6 +108,7 @@ public extension Payrails {
             }
         }
 
+        @MainActor
         public func executePayment(
             with type: PaymentType,
             saveInstrument: Bool = false,
@@ -114,12 +123,18 @@ public extension Payrails {
                 for: type,
                 saveInstrument: saveInstrument
             ),
-                let paymentHandler else { return }
-            paymentHandler.makePayment(
-                total: Double(config.amount.value) ?? 0,
-                currency: config.amount.currency,
-                presenter: presenter
-            )
+                  let paymentHandler else { return }
+            if type == .card {
+                DispatchQueue.main.async {
+                    self.cardSession?.collect()
+                }
+            } else {
+                paymentHandler.makePayment(
+                    total: Double(config.amount.value) ?? 0,
+                    currency: config.amount.currency,
+                    presenter: presenter
+                )
+            }
         }
 
         public func cancelPayment() {
@@ -132,6 +147,12 @@ public extension Payrails {
             with config: CardFormConfig = CardFormConfig.defaultConfig
         ) -> UIView? {
             cardSession?.buildCardView(with: config)
+        }
+
+        public func buildCardFields(
+            with config: CardFormConfig = CardFormConfig.defaultConfig
+        ) -> [CardField]? {
+            cardSession?.buildCardFields(with: config)
         }
 
         private func prepareHandler(
@@ -173,9 +194,12 @@ public extension Payrails {
                     return false
                 }
             case .card:
-                isPaymentInProgress = false
-                onResult?(.error(.unsupportedPayment(type: type)))
-                return false
+                let cardPaymentHandler = CardPaymentHandler(
+                    delegate: self,
+                    saveInstrument: saveInstrument
+                )
+                self.paymentHandler = cardPaymentHandler
+                return true
             }
             return true
         }
@@ -302,6 +326,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
 }
 
 public extension Payrails.Session {
+    @MainActor
     func executePayment(
         with type: Payrails.PaymentType,
         saveInstrument: Bool = false,
@@ -335,12 +360,10 @@ public extension Payrails.Session {
 
 extension Payrails.Session: CardSessionDelegate {
     func cardSessionConfirmed(with response: Any) {
-        print(response)
-        let cardPaymentHandler = CardPaymentHandler(
-            response: response,
-            delegate: self
-        )
-        self.paymentHandler = cardPaymentHandler
+        guard let cardPaymentHandler = paymentHandler as? CardPaymentHandler else {
+            return
+        }
+        cardPaymentHandler.set(response: response)
         cardPaymentHandler.makePayment(
             total: Double(config.amount.value) ?? 0,
             currency: config.amount.currency,
@@ -349,6 +372,9 @@ extension Payrails.Session: CardSessionDelegate {
     }
 
     func cardSessionFailed(with error: Any) {
-        print(error)
+        onResult?(.error(PayrailsError.invalidCardData(error: error as? Error)))
+        isPaymentInProgress = false
+        onResult = nil
+        paymentHandler = nil
     }
 }

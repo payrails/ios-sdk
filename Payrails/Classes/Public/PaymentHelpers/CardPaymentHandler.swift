@@ -3,32 +3,48 @@ import Foundation
 class CardPaymentHandler {
 
     private weak var delegate: PaymentHandlerDelegate?
-    private let response: Any
-    
+    private var response: Any?
+    private let saveInstrument: Bool
+
     init(
-        response: Any,
-        delegate: PaymentHandlerDelegate?
+        delegate: PaymentHandlerDelegate?,
+        saveInstrument: Bool
     ) {
-        self.response = response
         self.delegate = delegate
+        self.saveInstrument = saveInstrument
     }
 }
 
 extension CardPaymentHandler: PaymentHandler {
+    func set(response: Any) {
+        self.response = response
+    }
+    
     func makePayment(
         total: Double,
         currency: String,
         presenter: PaymentPresenter?
     ) {
+        let dictionary = ((response as? [String: Any])?["records"] as? [Any])?.first as? [String: Any]
+        guard let fields = dictionary?["fields"] as? [String: Any] else {
+            delegate?.paymentHandlerDidFail(handler: self, error: .missingData("fields"), type: .card)
+            return
+        }
+
+        var data: [String: Any] = [:]
+        data["vaultToken"] = fields["skyflow_id"]
+        data["card"] = [
+            "numberToken": fields["card_number"],
+            "securityCodeToken": fields["security_code"]
+        ]
+
         delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .card,
             status: .success,
             payload: [
-                "paymentInstrumentData": [
-                    "providerData": [ ]
-                ],
-                "storeInstrument": false
+                "paymentInstrumentData": data,
+                "storeInstrument": saveInstrument
             ]
         )
     }
