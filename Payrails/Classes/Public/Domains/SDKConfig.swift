@@ -125,9 +125,36 @@ struct PaymentOptions: Decodable {
 
     enum PaymentInstrument {
         case paypal([PayPalPaymentInstrument])
+        case card([CardInstrument])
+    }
+
+    struct CardInstrument: StoredInstrument, Decodable {
+        var id: String
+        
+        var email: String? { nil }
+
+        var description: String? { String(format: "%@***%@", data?.bin ?? "", data?.suffix ?? "") }
+
+        var type: Payrails.PaymentType {
+            .card
+        }
+
+        let createdAt: String
+        let status: String
+        let data: CardInstrumentData?
+    }
+
+
+    struct CardInstrumentData: Decodable {
+        let bin: String?
+        let suffix: String?
     }
 
     struct PayPalPaymentInstrument: StoredInstrument, Decodable {
+        var description: String? {
+            email
+        }
+
         var email: String? {
             data?.email
         }
@@ -198,7 +225,13 @@ struct PaymentOptions: Decodable {
 
         case .card:
             config = nil
-            paymentInstruments = nil
+
+            if let element = try? container.decode([CardInstrument].self, forKey: .paymentInstruments) {
+                paymentInstruments = .card(element)
+            } else {
+                paymentInstruments = nil
+            }
+            
         }
     }
 

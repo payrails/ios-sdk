@@ -1,10 +1,19 @@
-import UIKit
 import Skyflow
 
-final class CardCollectContainer: CardContainer {
-    let container: Skyflow.Container<Skyflow.ComposableContainer>
-    
-    init(container: Skyflow.Container<Skyflow.ComposableContainer>) {
+public struct CardField  {
+    public let type: CardFieldType
+    public let textField: TextField
+
+    init(type: CardFieldType, textField: TextField) {
+        self.type = type
+        self.textField = textField
+    }
+}
+
+final class CardElementsContainer: CardContainer {
+    let container: Skyflow.Container<Skyflow.CollectContainer>
+
+    init(container: Skyflow.Container<Skyflow.CollectContainer>) {
         self.container = container
     }
 
@@ -16,15 +25,15 @@ final class CardCollectContainer: CardContainer {
     }
 }
 
+final class CardFormElementsGenerator {
 
-final class CardCollectView: UIStackView {
     private let config: CardFormConfig
     private let skyflow: Skyflow.Client
-    private var container: Skyflow.Container<Skyflow.ComposableContainer>?
     private let tableName: String
-    var cardContainer: CardCollectContainer?
+    private let container: Skyflow.Container<Skyflow.CollectContainer>
+    let cardElemenetsContainer: CardElementsContainer
 
-    init(
+    init?(
         skyflow: Skyflow.Client,
         config: CardFormConfig,
         tableName: String
@@ -32,29 +41,18 @@ final class CardCollectView: UIStackView {
         self.skyflow = skyflow
         self.config = config
         self.tableName = tableName
-        super.init(frame: .zero)
-        setupViews()
-    }
 
-    required init(coder: NSCoder) {
-        fatalError(
-            "Not implemented: please use init(skyflow: Skyflow.Client, config: Skyflow.Configuration)"
-        )
-    }
-
-    private func setupViews() {
         guard let container = skyflow.container(
-            type: Skyflow.ContainerType.COMPOSABLE,
-            options: ContainerOptions(
-                layout: config.showNameField ? [2, 1, 2] : [2, 2],
-                errorTextStyles: Styles(base: config.style.errorTextStyle)
-            )
+            type: Skyflow.ContainerType.COLLECT,
+            options: nil
         ) else {
-            return
+            return nil
         }
         self.container = container
-        self.cardContainer = CardCollectContainer(container: container)
+        self.cardElemenetsContainer = .init(container: container)
+    }
 
+    func buildCardFields() -> [CardField] {
         let styles = config.style.skyflowStyles
 
         let collectCardNumberInput = Skyflow.CollectElementInput(
@@ -98,22 +96,26 @@ final class CardCollectView: UIStackView {
             placeholder: config.fieldConfig(for: .EXPIRATION_YEAR)?.placeholder ?? "YYYY",
             type: .EXPIRATION_YEAR
         )
-        let requiredOption = Skyflow.CollectElementOptions(required: true)
-        _ = container.create(input: collectCardNumberInput, options: requiredOption)
-        _ = container.create(input: collectCVVInput, options: requiredOption)
+
+        var results: [CardField] = []
+
+        let collectCardNumber = container.create(input: collectCardNumberInput, options: Skyflow.CollectElementOptions(required: true, format: "XXXX-XXXX-XXXX-XXXX"))
+        results.append(.init(type: .CARD_NUMBER, textField: collectCardNumber))
+        
         if config.showNameField {
-            _ = container.create(input: collectNameInput, options: requiredOption)
+            let collectName = container.create(input: collectNameInput, options: Skyflow.CollectElementOptions(required: true))
+            results.append(.init(type: .CARDHOLDER_NAME, textField: collectName))
         }
-        _ = container.create(input: collectExpMonthInput, options: requiredOption)
-        _ = container.create(input: collectExpYearInput, options: requiredOption)
+        
+        let collectCVV = container.create(input: collectCVVInput, options: Skyflow.CollectElementOptions(required: true))
+        results.append(.init(type: .CVV, textField: collectCVV))
+        
+        let collectExpMonth = container.create(input: collectExpMonthInput, options: Skyflow.CollectElementOptions(required: true))
+        results.append(.init(type: .EXPIRATION_MONTH, textField: collectExpMonth))
 
-        self.axis = .vertical
-        self.spacing = 6
+        let collectExpYear = container.create(input: collectExpYearInput, options: Skyflow.CollectElementOptions(required: true))
+        results.append(.init(type: .EXPIRATION_YEAR, textField: collectExpYear))
 
-
-        do {
-            let cardForm = try container.getComposableView()
-            self.addArrangedSubview(cardForm)
-        } catch {}
+        return results
     }
 }

@@ -11,7 +11,8 @@ class CardSession {
     private let config: Skyflow.Configuration
     private let skyflow: Skyflow.Client
     private let tableName: String
-    private let submitCallback: SubmitCallback
+    private var cardContainer: CardContainer?
+    fileprivate var delegate: CardSessionDelegate?
 
     init(
         vaultId: String,
@@ -25,23 +26,41 @@ class CardSession {
             vaultURL: vaultUrl,
             tokenProvider: PayrailsTokenProvider(token: token),
             options: Skyflow.Options(
-                logLevel: Skyflow.LogLevel.DEBUG
+                logLevel: Skyflow.LogLevel.ERROR
             )
         )
         self.skyflow = Skyflow.initialize(config)
         self.tableName = tableName
-        self.submitCallback = .init(delegate: delegate)
+        self.delegate = delegate
     }
 
     func buildCardView(
         with config: CardFormConfig
     ) -> UIView? {
-        CardCollectView(
+        let view = CardCollectView(
             skyflow: skyflow,
             config: config,
-            tableName: tableName,
-            callback: submitCallback
+            tableName: tableName
         )
+        self.cardContainer = view.cardContainer
+        return view
+    }
+
+    func buildCardFields(
+        with config: CardFormConfig
+    ) -> [CardField]? {
+        let elementsGenerater = CardFormElementsGenerator(
+            skyflow: skyflow,
+            config: config,
+            tableName: tableName
+        )
+        self.cardContainer = elementsGenerater?.cardElemenetsContainer
+        return elementsGenerater?.buildCardFields() ?? []
+    }
+
+    @MainActor
+    func collect() {
+        cardContainer?.collect(with: self)
     }
 }
 
@@ -58,13 +77,7 @@ private class PayrailsTokenProvider: TokenProvider {
 
 }
 
-private class SubmitCallback: Skyflow.Callback {
-
-    private weak var delegate: CardSessionDelegate?
-
-    init(delegate: CardSessionDelegate?) {
-        self.delegate = delegate
-    }
+extension CardSession: Skyflow.Callback {
 
     func onSuccess(_ responseBody: Any) {
         delegate?.cardSessionConfirmed(with: responseBody)

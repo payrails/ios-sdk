@@ -4,7 +4,6 @@ public typealias CardStyle = Skyflow.Style
 public typealias CardFieldType = Skyflow.ElementType
 
 public struct CardFormConfig {
-    public let payButton: UIButton
     public let style: CardFormStyle
     public let showNameField: Bool
     public let fieldConfigs: [CardFieldConfig]
@@ -12,23 +11,11 @@ public struct CardFormConfig {
     public init(
         style: CardFormStyle = .defaultStyle,
         showNameField: Bool = true,
-        fieldConfigs: [CardFieldConfig] = [],
-        payButton: UIButton = {
-            let cardButton = CardSubmitButton()
-            let heightConstraint = cardButton.heightAnchor.constraint(equalToConstant: 46)
-            heightConstraint.priority = .init(500)
-            NSLayoutConstraint.activate(
-                [
-                    heightConstraint
-                ]
-            )
-            return cardButton
-        }()
+        fieldConfigs: [CardFieldConfig] = []
     ) {
         self.style = style
         self.showNameField = showNameField
         self.fieldConfigs = fieldConfigs
-        self.payButton = payButton
     }
 
     public static var defaultConfig: CardFormConfig {
@@ -103,5 +90,11 @@ public struct CardFormStyle {
             focus: focusStyle,
             invalid: invalidStyle
         )
+    }
+}
+
+extension CardFormConfig {
+    func fieldConfig(for type: CardFieldType) -> CardFieldConfig? {
+        fieldConfigs.first(where: { $0.type == type })
     }
 }
