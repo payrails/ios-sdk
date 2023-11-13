@@ -35,6 +35,7 @@ public extension Payrails {
                     vaultUrl: vaultUrl,
                     token: token,
                     tableName: tableName,
+                    config: config,
                     delegate: self
                 )
             }
@@ -77,6 +78,7 @@ public extension Payrails {
 
         public func executePayment(
             withStoredInstrument instrument: StoredInstrument,
+            presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
         ) {
             isPaymentInProgress = true
@@ -84,7 +86,8 @@ public extension Payrails {
 
             guard prepareHandler(
                 for: instrument.type,
-                saveInstrument: false
+                saveInstrument: false,
+                presenter: presenter
             ) else {
                 return
             }
@@ -108,11 +111,10 @@ public extension Payrails {
             }
         }
 
-        @MainActor
         public func executePayment(
             with type: PaymentType,
             saveInstrument: Bool = false,
-            presenter: PaymentPresenter?,
+            presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
         ) {
             weak var presenter = presenter
@@ -121,7 +123,8 @@ public extension Payrails {
 
             guard prepareHandler(
                 for: type,
-                saveInstrument: saveInstrument
+                saveInstrument: saveInstrument,
+                presenter: presenter
             ),
                   let paymentHandler else { return }
             if type == .card {
@@ -155,9 +158,35 @@ public extension Payrails {
             cardSession?.buildCardFields(with: config)
         }
 
+        public func buildDropInView(
+            with config: CardFormConfig = CardFormConfig.defaultConfig,
+            presenter: PaymentPresenter? = nil,
+            onResult: @escaping OnPayCallback
+        ) -> DropInView? {
+            cardSession?.buildDropInView(with: config, session: self) { [weak self] item in
+                guard let self else { return }
+                switch item {
+                case let .stored(element):
+                    self.executePayment(
+                        withStoredInstrument: element,
+                        presenter: presenter,
+                        onResult: onResult
+                    )
+                case let .new(type):
+                    self.executePayment(
+                        with: type,
+                        presenter: presenter,
+                        onResult: onResult
+                    )
+
+                }
+            }
+        }
+
         private func prepareHandler(
             for type: PaymentType,
-            saveInstrument: Bool
+            saveInstrument: Bool,
+            presenter: PaymentPresenter?
         ) -> Bool {
             guard let paymentComposition = config.paymentOption(for: type) else {
                 isPaymentInProgress = false
@@ -196,7 +225,8 @@ public extension Payrails {
             case .card:
                 let cardPaymentHandler = CardPaymentHandler(
                     delegate: self,
-                    saveInstrument: saveInstrument
+                    saveInstrument: saveInstrument,
+                    presenter: presenter
                 )
                 self.paymentHandler = cardPaymentHandler
                 return true
@@ -344,12 +374,15 @@ public extension Payrails.Session {
         return result
     }
 
+    @MainActor
     func executePayment(
-        withStoredInstrument instrument: StoredInstrument
+        withStoredInstrument instrument: StoredInstrument,
+        presenter: PaymentPresenter? = nil
     ) async -> OnPayResult {
         let result = await withCheckedContinuation({ continuation in
             executePayment(
-                withStoredInstrument: instrument
+                withStoredInstrument: instrument,
+                presenter: presenter
             ) { result in
                 continuation.resume(returning: result)
             }

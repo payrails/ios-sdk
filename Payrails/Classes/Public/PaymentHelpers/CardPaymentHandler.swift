@@ -1,17 +1,21 @@
 import Foundation
+import WebKit
 
-class CardPaymentHandler {
+class CardPaymentHandler: NSObject {
 
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
     private let saveInstrument: Bool
+    private weak var presenter: PaymentPresenter?
 
     init(
         delegate: PaymentHandlerDelegate?,
-        saveInstrument: Bool
+        saveInstrument: Bool,
+        presenter: PaymentPresenter?
     ) {
         self.delegate = delegate
         self.saveInstrument = saveInstrument
+        self.presenter = presenter
     }
 }
 
@@ -49,7 +53,63 @@ extension CardPaymentHandler: PaymentHandler {
         )
     }
 
-    func handlePendingState(with: GetExecutionResult) {
+    func handlePendingState(with executionResult: GetExecutionResult) {
+        guard let link = executionResult.links.threeDS,
+              let url = URL(string: link) else {
+            delegate?.paymentHandlerDidFail(
+                handler: self,
+                error: .missingData("Pending state failed due to missing 3ds link"),
+                type: .card
+            )
+            return
+        }
+        DispatchQueue.main.async {
+            let webView = PayWebViewController(
+                url: url,
+                delegate: self
+            )
+            self.presenter?.presentPayment(webView)
+        }
+    }
+}
 
+extension CardPaymentHandler: WKNavigationDelegate {
+
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        print(navigationAction)
+        if let body = navigationAction.request.httpBody {
+            print(String(data: body, encoding: .utf8))
+        }
+        decisionHandler(.allow)
+    }
+}
+
+private class PayWebViewController: UIViewController {
+    private let webView: WKWebView = WKWebView(frame: .zero)
+    private let url: URL
+
+    init(url: URL, delegate: WKNavigationDelegate) {
+        self.url = url
+        webView.navigationDelegate = delegate
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) { nil }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .white
+        view.addSubview(webView)
+
+        webView.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: view.topAnchor),
+            webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        webView.load(.init(url: url, cachePolicy: .reloadIgnoringLocalCacheData))
     }
 }

@@ -1,6 +1,19 @@
 import UIKit
 
-public final class CardSubmitButton: UIButton {
+public final class CardSubmitButton: ActionButton {
+    override func setupViews() {
+        translatesAutoresizingMaskIntoConstraints = false
+        backgroundColor = .init(
+            red: 255/255,
+            green: 204/255,
+            blue: 0/255, alpha: 1
+        )
+        layer.cornerRadius = 6.0
+        setTitle("Confirm payment", for: .normal)
+    }
+}
+
+public class ActionButton: UIButton {
     public var onTap: (() -> Void)?
 
     public required init() {
@@ -14,16 +27,7 @@ public final class CardSubmitButton: UIButton {
         setupOnTap()
     }
 
-    private func setupViews() {
-        translatesAutoresizingMaskIntoConstraints = false
-        backgroundColor = .init(
-            red: 255/255,
-            green: 204/255,
-            blue: 0/255, alpha: 1
-        )
-        layer.cornerRadius = 6.0
-        setTitle("Confirm payment", for: .normal)
-    }
+    func setupViews() {}
 
     private func setupOnTap() {
         addTarget(
