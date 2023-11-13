@@ -41,6 +41,8 @@
 		078489712A826A9200C29E6B /* ApplePayButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489702A826A9200C29E6B /* ApplePayButton.swift */; };
 		078489742A8272DC00C29E6B /* ApplePayHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489732A8272DC00C29E6B /* ApplePayHandler.swift */; };
 		078489762A8275FF00C29E6B /* SDKConfig+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078489752A8275FF00C29E6B /* SDKConfig+.swift */; };
+		07F65A372AFD2FD20099812F /* DropInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F65A362AFD2FD20099812F /* DropInView.swift */; };
+		07F65A392AFD2FEC0099812F /* DropInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F65A382AFD2FEC0099812F /* DropInViewController.swift */; };
 		39AB4AE0E3BF68F5DD30A995 /* Pods_Payrails_PayrailsTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B17C40BF69FF94C36BBBB39 /* Pods_Payrails_PayrailsTests.framework */; };
 		74A1AB30E90B2E626E8B73D8 /* Pods_Payrails.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08B60C8AE00088C3F8B99D2E /* Pods_Payrails.framework */; };
 /* End PBXBuildFile section */
@@ -91,6 +93,8 @@
 		078489702A826A9200C29E6B /* ApplePayButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayButton.swift; sourceTree = "<group>"; };
 		078489732A8272DC00C29E6B /* ApplePayHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayHandler.swift; sourceTree = "<group>"; };
 		078489752A8275FF00C29E6B /* SDKConfig+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDKConfig+.swift"; sourceTree = "<group>"; };
+		07F65A362AFD2FD20099812F /* DropInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropInView.swift; sourceTree = "<group>"; };
+		07F65A382AFD2FEC0099812F /* DropInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropInViewController.swift; sourceTree = "<group>"; };
 		08B60C8AE00088C3F8B99D2E /* Pods_Payrails.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Payrails.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B17C40BF69FF94C36BBBB39 /* Pods_Payrails_PayrailsTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Payrails_PayrailsTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A793496DB427F57490FD397 /* Pods-Payrails-PayrailsTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Payrails-PayrailsTests.release.xcconfig"; path = "Target Support Files/Pods-Payrails-PayrailsTests/Pods-Payrails-PayrailsTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -260,6 +264,8 @@
 				078489702A826A9200C29E6B /* ApplePayButton.swift */,
 				071E354C2A8B6EE5007E5704 /* PayPalButton.swift */,
 				07512BFF2AF5294A003C30D1 /* CardSubmitButton.swift */,
+				07F65A362AFD2FD20099812F /* DropInView.swift */,
+				07F65A382AFD2FEC0099812F /* DropInViewController.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -492,6 +498,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				07F65A392AFD2FEC0099812F /* DropInViewController.swift in Sources */,
 				0768572C2A83C7D70070F081 /* PaymentHandler.swift in Sources */,
 				073FF1EB2A837A2F00B50B76 /* PayrailsSession.swift in Sources */,
 				071E35462A85567F007E5704 /* KeyedEncodingContainer+.swift in Sources */,
@@ -500,6 +507,7 @@
 				078489762A8275FF00C29E6B /* SDKConfig+.swift in Sources */,
 				07237D5F2A814824005BE43C /* SDKConfig.swift in Sources */,
 				0776F2072A824CEC00B238E6 /* Callbacks.swift in Sources */,
+				07F65A372AFD2FD20099812F /* DropInView.swift in Sources */,
 				078489712A826A9200C29E6B /* ApplePayButton.swift in Sources */,
 				071E35562A8CD8EA007E5704 /* JSONDecoder+.swift in Sources */,
 				07512C002AF5294A003C30D1 /* CardSubmitButton.swift in Sources */,

@@ -60,8 +60,16 @@ struct Status: Decodable {
 
 struct ExecutionLinks: Decodable {
   let `self`: String
+  let threeDS: String?
   let lookup: Link?
   let confirm: Link?
+
+    enum CodingKeys: String, CodingKey {
+        case `self`
+        case threeDS = "3ds"
+        case lookup
+        case confirm
+    }
 }
 
 struct Workflow: Decodable {
