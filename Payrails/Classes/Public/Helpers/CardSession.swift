@@ -12,7 +12,6 @@ class CardSession {
     private let skyflow: Skyflow.Client
     private let tableName: String
     private var cardContainer: CardContainer?
-    private let payrailsConfig: SDKConfig
     fileprivate var delegate: CardSessionDelegate?
 
     init(
@@ -20,7 +19,6 @@ class CardSession {
         vaultUrl: String,
         token: String,
         tableName: String,
-        config payrailsConfig: SDKConfig,
         delegate: CardSessionDelegate?
     ) {
         config = Skyflow.Configuration(
@@ -33,7 +31,6 @@ class CardSession {
         )
         self.skyflow = Skyflow.initialize(config)
         self.tableName = tableName
-        self.payrailsConfig = payrailsConfig
         self.delegate = delegate
     }
 
@@ -59,19 +56,6 @@ class CardSession {
         )
         self.cardContainer = elementsGenerater?.cardElemenetsContainer
         return elementsGenerater?.buildCardFields() ?? []
-    }
-
-    func buildDropInView(
-        with formConfig: CardFormConfig = CardFormConfig.defaultConfig,
-        session: Payrails.Session,
-        onPay: @escaping ((DropInPaymentType) -> Void)
-    ) -> DropInView? {
-        DropInView(
-            with: payrailsConfig,
-            session: session,
-            formConfig: formConfig,
-            onPay: onPay
-        )
     }
 
     @MainActor

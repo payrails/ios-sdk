@@ -11,7 +11,7 @@ public extension Payrails {
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
-        private var cardSession: CardSession?
+        internal var cardSession: CardSession?
 
         public private(set) var isPaymentInProgress = false {
             didSet {
@@ -35,7 +35,6 @@ public extension Payrails {
                     vaultUrl: vaultUrl,
                     token: token,
                     tableName: tableName,
-                    config: config,
                     delegate: self
                 )
             }
@@ -159,28 +158,42 @@ public extension Payrails {
         }
 
         public func buildDropInView(
-            with config: CardFormConfig = CardFormConfig.defaultConfig,
+            with formConfig: CardFormConfig? = nil,
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
-        ) -> DropInView? {
-            cardSession?.buildDropInView(with: config, session: self) { [weak self] item in
+        ) -> DropInView {
+            let view = DropInView(
+                with: config,
+                session: self,
+                formConfig: formConfig ?? CardFormConfig.dropInConfig
+            )
+            view.onPay = { [weak self] item in
                 guard let self else { return }
                 switch item {
                 case let .stored(element):
                     self.executePayment(
                         withStoredInstrument: element,
-                        presenter: presenter,
-                        onResult: onResult
-                    )
-                case let .new(type):
+                        presenter: presenter
+                    ) { [weak view] result in
+                        DispatchQueue.main.async {
+                            view?.hideLoading()
+                            onResult(result)
+                        }
+                    }
+                case let .new(type, saveInstrument):
                     self.executePayment(
                         with: type,
-                        presenter: presenter,
-                        onResult: onResult
-                    )
-
+                        saveInstrument: saveInstrument,
+                        presenter: presenter
+                    ) { [weak view] result in
+                        DispatchQueue.main.async {
+                            view?.hideLoading()
+                            onResult(result)
+                        }
+                    }
                 }
             }
+            return view
         }
 
         private func prepareHandler(
@@ -405,7 +418,7 @@ extension Payrails.Session: CardSessionDelegate {
     }
 
     func cardSessionFailed(with error: Any) {
-        onResult?(.error(PayrailsError.invalidCardData(error: error as? Error)))
+        onResult?(.error(PayrailsError.invalidCardData))
         isPaymentInProgress = false
         onResult = nil
         paymentHandler = nil

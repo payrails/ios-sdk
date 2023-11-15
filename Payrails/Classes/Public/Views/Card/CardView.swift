@@ -61,6 +61,8 @@ final class CardCollectView: UIStackView {
             table: tableName,
             column: "card_number",
             inputStyles: config.fieldConfig(for: .CARD_NUMBER)?.style?.skyflowStyles ?? styles,
+            labelStyles: config.style.labelStyles,
+            errorTextStyles: config.style.errorStyles,
             label: config.fieldConfig(for: .CARD_NUMBER)?.title ?? "Card Number",
             placeholder: config.fieldConfig(for: .CARD_NUMBER)?.placeholder ?? "4111-1111-1111-1111",
             type: .CARD_NUMBER
@@ -70,6 +72,8 @@ final class CardCollectView: UIStackView {
             table: tableName,
             column: "cardholder_name",
             inputStyles: config.fieldConfig(for: .CARDHOLDER_NAME)?.style?.skyflowStyles ?? styles,
+            labelStyles: config.style.labelStyles,
+            errorTextStyles: config.style.errorStyles,
             label: config.fieldConfig(for: .CARDHOLDER_NAME)?.title ?? "Card Holder Name",
             placeholder: config.fieldConfig(for: .CARDHOLDER_NAME)?.placeholder ?? "",
             type: .CARDHOLDER_NAME
@@ -78,6 +82,8 @@ final class CardCollectView: UIStackView {
             table: tableName,
             column: "security_code",
             inputStyles: config.fieldConfig(for: .CVV)?.style?.skyflowStyles ?? styles,
+            labelStyles: config.style.labelStyles,
+            errorTextStyles: config.style.errorStyles,
             label: config.fieldConfig(for: .CVV)?.title ??  "CVV",
             placeholder: config.fieldConfig(for: .CVV)?.placeholder ?? "***",
             type: .CVV
@@ -86,6 +92,8 @@ final class CardCollectView: UIStackView {
             table: tableName,
             column: "expiry_month",
             inputStyles: config.fieldConfig(for: .EXPIRATION_MONTH)?.style?.skyflowStyles ?? styles,
+            labelStyles: config.style.labelStyles,
+            errorTextStyles: config.style.errorStyles,
             label: config.fieldConfig(for: .EXPIRATION_MONTH)?.title ??  "Expiration Month",
             placeholder: config.fieldConfig(for: .EXPIRATION_MONTH)?.placeholder ?? "MM",
             type: .EXPIRATION_MONTH
@@ -94,6 +102,8 @@ final class CardCollectView: UIStackView {
             table: tableName,
             column: "expiry_year",
             inputStyles: config.fieldConfig(for: .EXPIRATION_YEAR)?.style?.skyflowStyles ?? styles,
+            labelStyles: config.style.labelStyles,
+            errorTextStyles: config.style.errorStyles,
             label: config.fieldConfig(for: .EXPIRATION_YEAR)?.title ??  "Expiration Year",
             placeholder: config.fieldConfig(for: .EXPIRATION_YEAR)?.placeholder ?? "YYYY",
             type: .EXPIRATION_YEAR

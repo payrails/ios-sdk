@@ -4,7 +4,7 @@ import UIKit
 
 enum DropInPaymentType {
     case stored(StoredInstrument)
-    case new(Payrails.PaymentType)
+    case new(Payrails.PaymentType, storePayment: Bool)
 }
 
 final public class DropInView: UIView {
@@ -15,22 +15,29 @@ final public class DropInView: UIView {
 
     private let scrollView = UIScrollView()
     private let stackView = UIStackView()
-    private let onPay: ((DropInPaymentType) -> Void)
+    private let ccFields: [CardField]
+    internal var onPay: ((DropInPaymentType) -> Void)?
 
     init(
         with config: SDKConfig,
         session: Payrails.Session,
-        formConfig: CardFormConfig = CardFormConfig.defaultConfig,
-        onPay: @escaping ((DropInPaymentType) -> Void)
+        formConfig: CardFormConfig = CardFormConfig.defaultConfig
     ) {
         self.config = config
         self.formConfig = formConfig
         self.session = session
-        self.onPay = onPay
+        self.ccFields = session.cardSession?.buildCardFields(with: formConfig) ?? []
         super.init(frame: .zero)
         setupViews()
     }
-    
+
+    func hideLoading() {
+        self.isUserInteractionEnabled = true
+        stackView.arrangedSubviews.filter { $0 is Loadingable }.forEach { view in
+            (view as? Loadingable)?.show(loading: false)
+        }
+    }
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -50,7 +57,7 @@ final public class DropInView: UIView {
 
         scrollView.addSubview(stackView)
         stackView.axis = .vertical
-        stackView.spacing = 6
+        stackView.spacing = 12
 
         scrollView.setup(with: stackView)
 
@@ -70,6 +77,11 @@ final public class DropInView: UIView {
             let button = self.buildPaymentView(with: item, title: item.email)
             stackView.addArrangedSubview(button)
         }
+        if session.isPaymentAvailable(type: .card),
+           !ccFields.isEmpty {
+            let cardView = buildCardView()
+            stackView.addArrangedSubview(cardView)
+        }
         if session.isApplePayAvailable {
             stackView.addArrangedSubview(buildPaymentButton(for: .applePay))
         }
@@ -87,13 +99,14 @@ final public class DropInView: UIView {
         case .applePay:
             let applePayButton = ApplePayButton()
             applePayButton.onTap = { [weak self] in
-                self?.onPay(.new(type))
+                self?.onPay?(.new(type, storePayment: false))
             }
             button = applePayButton
         case .payPal:
             let payPalButton = PayPalButton()
             payPalButton.onTap = { [weak self] in
-                self?.onPay(.new(type))
+                payPalButton.show(loading: true)
+                self?.onPay?(.new(type, storePayment: false))
             }
             button = payPalButton
         case .card:
@@ -116,10 +129,10 @@ final public class DropInView: UIView {
     }
 
     private func buildPaymentView(with item: StoredInstrument, title: String?) -> UIView {
-        let button = PaymentView(with: title)
+        let button = DropInPaymentView(with: title)
         button.onTap = { [weak self] in
             self?.stackView.arrangedSubviews.forEach { view in
-                if let view = view as? PaymentView {
+                if let view = view as? DropInPaymentView {
                     view.isSelected = false
                 }
             }
@@ -129,93 +142,34 @@ final public class DropInView: UIView {
             }
         }
         button.onPay = { [weak self] in
-            self?.onPay(.stored(item))
+            self?.isUserInteractionEnabled = false
+            button.show(loading: true)
+            self?.onPay?(.stored(item))
         }
         return button
     }
 
-}
-
-private class PaymentView: UIView {
-
-    private let payButton = PaymentButton()
-    private let topButton = ActionButton()
-    var isSelected: Bool = false {
-        didSet {
-            payButton.isHidden = !isSelected
+    private func buildCardView() -> UIView {
+        let cardView = DropInCardView(fields: ccFields)
+        let button = DropInPaymentView(with: "Card", insideView: cardView)
+        button.onTap = { [weak self] in
+            self?.stackView.arrangedSubviews.forEach { view in
+                if let view = view as? DropInPaymentView {
+                    view.isSelected = false
+                }
+            }
+            button.isSelected = !button.isSelected
+            UIView.animate(withDuration: 0.3) {
+                self?.stackView.layoutIfNeeded()
+            }
         }
-    }
-
-    var onTap: (() -> Void)? = nil {
-        didSet {
-            topButton.onTap = onTap
+        button.onPay = { [weak self, weak cardView] in
+            self?.isUserInteractionEnabled = false
+            button.show(loading: true)
+            self?.onPay?(.new(.card, storePayment: cardView?.savePayment ?? false))
         }
+        return button
     }
-
-    var onPay: (() -> Void)? = nil {
-        didSet {
-            payButton.onTap = onPay
-        }
-    }
-
-    init(
-        with text: String?
-    ) {
-        super.init(frame: .zero)
-        let stackView = UIStackView()
-        addSubview(stackView)
-
-        stackView.axis = .vertical
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.spacing = 6
-
-        let top = stackView.topAnchor.constraint(equalTo: self.topAnchor, constant: 0)
-        let bottom = stackView.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: 0)
-        let leading = stackView.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 12)
-        let trailing = stackView.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -12)
-
-        top.priority = .defaultHigh
-        bottom.priority = .defaultLow
-        leading.priority = .defaultHigh
-        trailing.priority = .defaultHigh
-
-        NSLayoutConstraint.activate(
-            [
-                top,
-                bottom,
-                leading,
-                trailing
-            ]
-        )
-
-        topButton.setTitle(text ?? "-", for: .normal)
-        topButton.onTap = onTap
-        topButton.contentHorizontalAlignment = .left
-        topButton.contentEdgeInsets = UIEdgeInsets(top: 16, left: 20, bottom: 16, right: 10)
-        topButton.setTitleColor(.black.withAlphaComponent(0.81), for: .normal)
-        topButton.titleLabel?.font = .systemFont(ofSize: 12)
-
-        stackView.addArrangedSubview(topButton)
-        stackView.addArrangedSubview(payButton)
-
-
-        payButton.onTap = onPay
-        payButton.setTitle("Pay", for: .normal)
-        payButton.isHidden = true
-        payButton.setTitleColor(.black.withAlphaComponent(0.81), for: .normal)
-        payButton.titleLabel?.font = .systemFont(ofSize: 15)
-        payButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 16, bottom: 16, right: 10)
-
-        stackView.layer.cornerRadius = 6
-        stackView.layer.borderColor = UIColor.systemGray.cgColor
-        stackView.layer.borderWidth = 1
-    }
-    
-    required init?(coder: NSCoder) { nil }
-}
-
-private class PaymentButton: ActionButton {
-
 }
 
 private extension UIScrollView {
@@ -229,7 +183,7 @@ private extension UIScrollView {
         NSLayoutConstraint.activate(
             [
                 view.topAnchor.constraint(equalTo: self.topAnchor),
-                view.bottomAnchor.constraint(equalTo: self.bottomAnchor),
+                view.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: -40),
                 view.leadingAnchor.constraint(equalTo: self.leadingAnchor),
                 view.trailingAnchor.constraint(equalTo: self.trailingAnchor),
                 self.widthAnchor.constraint(equalTo: view.widthAnchor)
