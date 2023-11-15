@@ -30,6 +30,9 @@
 		075151622A7BE72600BC3560 /* PayrailsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075151612A7BE72600BC3560 /* PayrailsTests.swift */; };
 		075151632A7BE72600BC3560 /* Payrails.h in Headers */ = {isa = PBXBuildFile; fileRef = 075151552A7BE72600BC3560 /* Payrails.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		075151752A7BE99500BC3560 /* Payrails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075151742A7BE99500BC3560 /* Payrails.swift */; };
+		07543DFE2B03E1420051E710 /* PaymentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07543DFD2B03E1420051E710 /* PaymentButton.swift */; };
+		07543E002B03E16E0051E710 /* DropInPaymentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07543DFF2B03E16E0051E710 /* DropInPaymentView.swift */; };
+		07543E022B03E1930051E710 /* DropInCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07543E012B03E1930051E710 /* DropInCardView.swift */; };
 		0768572A2A83C7AF0070F081 /* PaymentPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076857292A83C7AF0070F081 /* PaymentPresenter.swift */; };
 		0768572C2A83C7D70070F081 /* PaymentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768572B2A83C7D70070F081 /* PaymentHandler.swift */; };
 		0768572E2A83C8370070F081 /* PaymentHandlerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768572D2A83C8370070F081 /* PaymentHandlerDelegate.swift */; };
@@ -82,6 +85,9 @@
 		0751515C2A7BE72600BC3560 /* PayrailsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PayrailsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		075151612A7BE72600BC3560 /* PayrailsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayrailsTests.swift; sourceTree = "<group>"; };
 		075151742A7BE99500BC3560 /* Payrails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Payrails.swift; sourceTree = "<group>"; };
+		07543DFD2B03E1420051E710 /* PaymentButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentButton.swift; sourceTree = "<group>"; };
+		07543DFF2B03E16E0051E710 /* DropInPaymentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropInPaymentView.swift; sourceTree = "<group>"; };
+		07543E012B03E1930051E710 /* DropInCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropInCardView.swift; sourceTree = "<group>"; };
 		076857292A83C7AF0070F081 /* PaymentPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentPresenter.swift; sourceTree = "<group>"; };
 		0768572B2A83C7D70070F081 /* PaymentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentHandler.swift; sourceTree = "<group>"; };
 		0768572D2A83C8370070F081 /* PaymentHandlerDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PaymentHandlerDelegate.swift; sourceTree = "<group>"; };
@@ -169,7 +175,11 @@
 		07512BF72AF50BB7003C30D1 /* Card */ = {
 			isa = PBXGroup;
 			children = (
+				07F65A362AFD2FD20099812F /* DropInView.swift */,
+				07543E012B03E1930051E710 /* DropInCardView.swift */,
+				07543DFF2B03E16E0051E710 /* DropInPaymentView.swift */,
 				07512BF82AF50BC3003C30D1 /* CardView.swift */,
+				07543DFD2B03E1420051E710 /* PaymentButton.swift */,
 			);
 			path = Card;
 			sourceTree = "<group>";
@@ -264,7 +274,6 @@
 				078489702A826A9200C29E6B /* ApplePayButton.swift */,
 				071E354C2A8B6EE5007E5704 /* PayPalButton.swift */,
 				07512BFF2AF5294A003C30D1 /* CardSubmitButton.swift */,
-				07F65A362AFD2FD20099812F /* DropInView.swift */,
 				07F65A382AFD2FEC0099812F /* DropInViewController.swift */,
 			);
 			path = Views;
@@ -499,6 +508,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				07F65A392AFD2FEC0099812F /* DropInViewController.swift in Sources */,
+				07543E022B03E1930051E710 /* DropInCardView.swift in Sources */,
 				0768572C2A83C7D70070F081 /* PaymentHandler.swift in Sources */,
 				073FF1EB2A837A2F00B50B76 /* PayrailsSession.swift in Sources */,
 				071E35462A85567F007E5704 /* KeyedEncodingContainer+.swift in Sources */,
@@ -507,6 +517,7 @@
 				078489762A8275FF00C29E6B /* SDKConfig+.swift in Sources */,
 				07237D5F2A814824005BE43C /* SDKConfig.swift in Sources */,
 				0776F2072A824CEC00B238E6 /* Callbacks.swift in Sources */,
+				07543E002B03E16E0051E710 /* DropInPaymentView.swift in Sources */,
 				07F65A372AFD2FD20099812F /* DropInView.swift in Sources */,
 				078489712A826A9200C29E6B /* ApplePayButton.swift in Sources */,
 				071E35562A8CD8EA007E5704 /* JSONDecoder+.swift in Sources */,
@@ -522,6 +533,7 @@
 				07512BFE2AF52197003C30D1 /* CardFormStyle.swift in Sources */,
 				07237D662A8248A2005BE43C /* KeyedDecodingContainer+.swift in Sources */,
 				0776F2092A824F2800B238E6 /* PayrailsError.swift in Sources */,
+				07543DFE2B03E1420051E710 /* PaymentButton.swift in Sources */,
 				07512C022AF53E82003C30D1 /* CardPaymentHandler.swift in Sources */,
 				0768572A2A83C7AF0070F081 /* PaymentPresenter.swift in Sources */,
 				07512C062AF8FF99003C30D1 /* CardFormElementsGenerator.swift in Sources */,

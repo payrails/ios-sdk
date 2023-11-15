@@ -3,7 +3,7 @@ import UIKit
 
 final public class DropInViewController: UIViewController, PaymentPresenter {
     public func presentPayment(_ viewController: UIViewController) {
-        present(viewController, animated: true)
+        (view.window?.rootViewController ?? self).present(viewController, animated: true)
     }
     
 
@@ -19,18 +19,16 @@ final public class DropInViewController: UIViewController, PaymentPresenter {
         session = try Payrails.Session(configuration)
         self.configuration = configuration
         super.init(nibName: nil, bundle: nil)
-        if let dropInView = session.buildDropInView(
+        self.dropInView = session.buildDropInView(
             presenter: self,
             onResult: onPayCallback
-        ) {
-            self.dropInView = dropInView
-        } else {
-            throw PayrailsError.sdkNotInitialized
-        }
+        )
     }
 
     private lazy var onPayCallback: OnPayCallback = { [weak self] result in
-        self?.callback?(result)
+        DispatchQueue.main.async {
+            self?.callback?(result)
+        }
     }
 
     required init?(coder: NSCoder) { nil }
