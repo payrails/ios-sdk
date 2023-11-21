@@ -54,6 +54,13 @@ extension CardPaymentHandler: PaymentHandler {
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
+        delegate?.paymentHandlerDidFail(
+            handler: self,
+            error: .missingData("3DS not yet supported"),
+            type: .card
+        )
+
+        return;
         guard let link = executionResult.links.threeDS,
               let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
@@ -77,9 +84,7 @@ extension CardPaymentHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         print(navigationAction)
-        if let body = navigationAction.request.httpBody {
-            print(String(data: body, encoding: .utf8))
-        }
+        if let body = navigationAction.request.httpBody { }
         decisionHandler(.allow)
     }
 }
