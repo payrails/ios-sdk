@@ -62,7 +62,7 @@ final class CardFormElementsGenerator {
             labelStyles: config.style.labelStyles,
             errorTextStyles: config.style.errorStyles,
             label: config.fieldConfig(for: .CARD_NUMBER)?.title ?? "Card Number",
-            placeholder: config.fieldConfig(for: .CARD_NUMBER)?.placeholder ?? "4111-1111-1111-1111",
+            placeholder: config.fieldConfig(for: .CARD_NUMBER)?.placeholder ?? "Card Number",
             type: .CARD_NUMBER
         )
 
