@@ -60,8 +60,16 @@ struct Status: Decodable {
 
 struct ExecutionLinks: Decodable {
   let `self`: String
+  let threeDS: String?
   let lookup: Link?
   let confirm: Link?
+
+    enum CodingKeys: String, CodingKey {
+        case `self`
+        case threeDS = "3ds"
+        case lookup
+        case confirm
+    }
 }
 
 struct Workflow: Decodable {
@@ -125,9 +133,36 @@ struct PaymentOptions: Decodable {
 
     enum PaymentInstrument {
         case paypal([PayPalPaymentInstrument])
+        case card([CardInstrument])
+    }
+
+    struct CardInstrument: StoredInstrument, Decodable {
+        var id: String
+        
+        var email: String? { nil }
+
+        var description: String? { String(format: "%@***%@", data?.bin ?? "", data?.suffix ?? "") }
+
+        var type: Payrails.PaymentType {
+            .card
+        }
+
+        let createdAt: String
+        let status: String
+        let data: CardInstrumentData?
+    }
+
+
+    struct CardInstrumentData: Decodable {
+        let bin: String?
+        let suffix: String?
     }
 
     struct PayPalPaymentInstrument: StoredInstrument, Decodable {
+        var description: String? {
+            email
+        }
+
         var email: String? {
             data?.email
         }
@@ -195,6 +230,16 @@ struct PaymentOptions: Decodable {
         case .applePay:
             config = .applePay(try container.decode(ApplePayConfig.self, forKey: .config))
             paymentInstruments = nil
+
+        case .card:
+            config = nil
+
+            if let element = try? container.decode([CardInstrument].self, forKey: .paymentInstruments) {
+                paymentInstruments = .card(element)
+            } else {
+                paymentInstruments = nil
+            }
+            
         }
     }
 

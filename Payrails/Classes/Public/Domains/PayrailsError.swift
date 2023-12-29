@@ -5,6 +5,7 @@ public enum PayrailsError: Error, LocalizedError {
     case sdkNotInitialized
     case missingData(String?)
     case invalidDataFormat
+    case invalidCardData
     case unknown(error: Error?)
     case unsupportedPayment(type: Payrails.PaymentType)
     case incorrectPaymentSetup(type: Payrails.PaymentType)
@@ -19,6 +20,8 @@ public extension PayrailsError {
             return "Payrails SDK has not been properly initialized"
         case .invalidDataFormat:
             return "Provided Config data is invalid and can not be parsed"
+        case .invalidCardData:
+            return "Invalid Card Data provided"
         case .unknown(let error):
             return error?.localizedDescription ?? "Unknown error appeared"
         case let.missingData(missingData):
