@@ -316,6 +316,11 @@ extension Payrails.Session: PaymentHandlerDelegate {
         link: Link?,
         payload: [String: Any]?
     ) {
+        if type == .card {
+            onResult?(.success)
+            return
+        }
+
         guard let link else {
             isPaymentInProgress = false
             onResult?(.error(.missingData("Link response is missing")))

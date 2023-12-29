@@ -7,6 +7,7 @@ class CardPaymentHandler: NSObject {
     private var response: Any?
     private let saveInstrument: Bool
     private weak var presenter: PaymentPresenter?
+    private var webViewController: PayWebViewController?
 
     init(
         delegate: PaymentHandlerDelegate?,
@@ -54,13 +55,6 @@ extension CardPaymentHandler: PaymentHandler {
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
-        delegate?.paymentHandlerDidFail(
-            handler: self,
-            error: .missingData("3DS not yet supported"),
-            type: .card
-        )
-
-        return;
         guard let link = executionResult.links.threeDS,
               let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
@@ -71,11 +65,12 @@ extension CardPaymentHandler: PaymentHandler {
             return
         }
         DispatchQueue.main.async {
-            let webView = PayWebViewController(
+            let webViewController = PayWebViewController(
                 url: url,
                 delegate: self
             )
-            self.presenter?.presentPayment(webView)
+            self.presenter?.presentPayment(webViewController)
+            self.webViewController = webViewController
         }
     }
 }
@@ -84,28 +79,66 @@ extension CardPaymentHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         print(navigationAction)
-        if let body = navigationAction.request.httpBody { }
+        if let url = navigationAction.request.mainDocumentURL?.absoluteString {
+
+            if url.hasPrefix("https://www.bootstrap.payrails.io/success") {
+                decisionHandler(.cancel)
+                delegate?.paymentHandlerDidHandlePending(
+                    handler: self,
+                    type: .card,
+                    link: nil,
+                    payload: [:]
+                )
+                webViewController?.dismiss(animated: true)
+                webViewController = nil
+                return
+            } else if url.hasPrefix("https://www.bootstrap.payrails.io/cancel") {
+                decisionHandler(.cancel)
+                delegate?.paymentHandlerDidFinish(
+                    handler: self,
+                    type: .card,
+                    status: .canceled,
+                    payload: nil
+                )
+                webViewController?.dismiss(animated: true)
+                webViewController = nil
+                return
+            } else if url.hasPrefix("https://www.bootstrap.payrails.io/error") {
+                decisionHandler(.cancel)
+                delegate?.paymentHandlerDidFinish(
+                    handler: self,
+                    type: .card,
+                    status: .error(nil),
+                    payload: nil
+                )
+                webViewController?.dismiss(animated: true)
+                webViewController = nil
+                return
+            }
+
+        }
+
         decisionHandler(.allow)
     }
 }
 
 private class PayWebViewController: UIViewController {
-    private let webView: WKWebView = WKWebView(frame: .zero)
+
+    private var webView = WKWebView(frame: .zero)
     private let url: URL
 
     init(url: URL, delegate: WKNavigationDelegate) {
         self.url = url
         webView.navigationDelegate = delegate
         super.init(nibName: nil, bundle: nil)
-    }
-    
+     }
+
     required init?(coder: NSCoder) { nil }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         view.addSubview(webView)
-
         webView.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
