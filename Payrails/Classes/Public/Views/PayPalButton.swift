@@ -1,9 +1,14 @@
 import UIKit
 
-public final class PayPalButton: UIButton {
-    public var onTap: (() -> Void)?
-
+public final class PayPalButton: ActionButton {
     private let prefixLabel = UILabel()
+    private let paypalImageView = UIImageView(
+        image: UIImage(
+            named: "PayPal",
+            in: Bundle(for: PayPalButton.self),
+            with: nil
+        )
+    )
 
     override public var titleLabel: UILabel? {
         return prefixLabel
@@ -13,18 +18,7 @@ public final class PayPalButton: UIButton {
         prefixLabel.text = title
     }
 
-    public required init() {
-        super.init(frame: .zero)
-        setupViews()
-        setupOnTap()
-    }
-
-    public required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupOnTap()
-    }
-
-    private func setupViews() {
+    override func setupViews() {
         translatesAutoresizingMaskIntoConstraints = false
         backgroundColor = .init(
             red: 255/255,
@@ -41,23 +35,16 @@ public final class PayPalButton: UIButton {
         stackView.spacing = 8
         stackView.alignment = .center
 
-        let logo = UIImage(
-            named: "PayPal",
-            in: Bundle(for: PayPalButton.self),
-            with: nil
-        )
-
-        let imageView = UIImageView(image: logo)
-        imageView.contentMode = .scaleAspectFit
+        paypalImageView.contentMode = .scaleAspectFit
 
         stackView.addArrangedSubview(prefixLabel)
-        stackView.addArrangedSubview(imageView)
+        stackView.addArrangedSubview(paypalImageView)
         addSubview(stackView)
 
         NSLayoutConstraint.activate(
             [
-                imageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.66),
-                imageView.widthAnchor.constraint(equalTo: imageView.heightAnchor, multiplier: 3.75),
+                paypalImageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.66),
+                paypalImageView.widthAnchor.constraint(equalTo: paypalImageView.heightAnchor, multiplier: 3.75),
                 stackView.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor, constant: 6.0),
                 stackView.trailingAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor, constant: 6.0),
                 stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -67,16 +54,9 @@ public final class PayPalButton: UIButton {
         )
     }
 
-    private func setupOnTap() {
-        addTarget(
-            self,
-            action: #selector(didTap),
-            for: .touchUpInside
-        )
+    override func show(loading: Bool) {
+        super.show(loading: loading)
+        prefixLabel.isHidden = loading
+        paypalImageView.isHidden = loading
     }
-
-    @objc private func didTap() {
-        onTap?()
-    }
-
 }
