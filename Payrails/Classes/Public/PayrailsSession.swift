@@ -11,7 +11,7 @@ public extension Payrails {
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
-        internal var cardSession: CardSession?
+     
 
         public private(set) var isPaymentInProgress = false {
             didSet {
@@ -30,13 +30,6 @@ public extension Payrails {
                   let vaultUrl = config.vaultConfiguration?.vaultUrl,
                   let token = config.vaultConfiguration?.token,
                let tableName = config.vaultConfiguration?.cardTableName {
-                self.cardSession = CardSession(
-                    vaultId: vaultId,
-                    vaultUrl: vaultUrl,
-                    token: token,
-                    tableName: tableName,
-                    delegate: self
-                )
             }
 
             executionId = config.execution?.id
@@ -126,17 +119,7 @@ public extension Payrails {
                 presenter: presenter
             ),
                   let paymentHandler else { return }
-            if type == .card {
-                DispatchQueue.main.async {
-                    self.cardSession?.collect()
-                }
-            } else {
-                paymentHandler.makePayment(
-                    total: Double(config.amount.value) ?? 0,
-                    currency: config.amount.currency,
-                    presenter: presenter
-                )
-            }
+
         }
 
         public func cancelPayment() {
@@ -145,56 +128,9 @@ public extension Payrails {
             currentTask = nil
         }
 
-        public func buildCardView(
-            with config: CardFormConfig = CardFormConfig.defaultConfig
-        ) -> UIView? {
-            cardSession?.buildCardView(with: config)
-        }
 
-        public func buildCardFields(
-            with config: CardFormConfig = CardFormConfig.defaultConfig
-        ) -> [CardField]? {
-            cardSession?.buildCardFields(with: config)
-        }
 
-        public func buildDropInView(
-            with formConfig: CardFormConfig? = nil,
-            presenter: PaymentPresenter? = nil,
-            onResult: @escaping OnPayCallback
-        ) -> DropInView {
-            let view = DropInView(
-                with: config,
-                session: self,
-                formConfig: formConfig ?? CardFormConfig.dropInConfig
-            )
-            view.onPay = { [weak self] item in
-                guard let self else { return }
-                switch item {
-                case let .stored(element):
-                    self.executePayment(
-                        withStoredInstrument: element,
-                        presenter: presenter
-                    ) { [weak view] result in
-                        DispatchQueue.main.async {
-                            view?.hideLoading()
-                            onResult(result)
-                        }
-                    }
-                case let .new(type, saveInstrument):
-                    self.executePayment(
-                        with: type,
-                        saveInstrument: saveInstrument,
-                        presenter: presenter
-                    ) { [weak view] result in
-                        DispatchQueue.main.async {
-                            view?.hideLoading()
-                            onResult(result)
-                        }
-                    }
-                }
-            }
-            return view
-        }
+
 
         private func prepareHandler(
             for type: PaymentType,
@@ -409,23 +345,4 @@ public extension Payrails.Session {
     }
 }
 
-extension Payrails.Session: CardSessionDelegate {
-    func cardSessionConfirmed(with response: Any) {
-        guard let cardPaymentHandler = paymentHandler as? CardPaymentHandler else {
-            return
-        }
-        cardPaymentHandler.set(response: response)
-        cardPaymentHandler.makePayment(
-            total: Double(config.amount.value) ?? 0,
-            currency: config.amount.currency,
-            presenter: nil
-        )
-    }
 
-    func cardSessionFailed(with error: Any) {
-        onResult?(.error(PayrailsError.invalidCardData))
-        isPaymentInProgress = false
-        onResult = nil
-        paymentHandler = nil
-    }
-}
