@@ -5,7 +5,7 @@
 // Implementation of Skyflow Client class
 
 import Foundation
-import AEXML
+
 
 public class Client {
     var vaultID: String
