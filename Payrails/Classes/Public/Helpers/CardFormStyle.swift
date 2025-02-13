@@ -1,7 +1,5 @@
-import Skyflow
-
-public typealias CardStyle = Skyflow.Style
-public typealias CardFieldType = Skyflow.ElementType
+public typealias CardStyle = Style
+public typealias CardFieldType = ElementType
 
 public struct CardFormConfig {
     public let style: CardFormStyle
@@ -115,8 +113,8 @@ public struct CardFormStyle {
         self.errorTextStyle = errorTextStyle
     }
 
-    var skyflowStyles: Skyflow.Styles {
-        Skyflow.Styles(
+    var skyflowStyles: Styles {
+        Styles(
             base: baseStyle,
             complete: completedStyle,
             focus: focusStyle,
@@ -124,8 +122,8 @@ public struct CardFormStyle {
         )
     }
 
-    var labelStyles: Skyflow.Styles {
-        Skyflow.Styles(
+    var labelStyles: Styles {
+        Styles(
             base: labelStyle,
             complete: labelStyle,
             focus: labelStyle,
@@ -133,8 +131,8 @@ public struct CardFormStyle {
         )
     }
 
-    var errorStyles: Skyflow.Styles {
-        Skyflow.Styles(
+    var errorStyles: Styles {
+        Styles(
             base: errorTextStyle,
             complete: errorTextStyle,
             focus: errorTextStyle,
