@@ -14,7 +14,6 @@ import UIKit
 #endif
 
 
-
 public class TextField: SkyflowElement, Element, BaseElement {
     var onBeginEditing: (() -> Void)?
     var onEndEditing: (() -> Void)?
@@ -761,7 +760,6 @@ extension TextField {
 }
 
 extension TextField {
-    
     internal func updateInputStyle(_ style: Style? = nil) {
         self.textField.translatesAutoresizingMaskIntoConstraints = false
         let fallbackStyle = self.collectInput.inputStyles.base
@@ -850,8 +848,19 @@ extension TextField {
     
     @objc func  textFieldDidChange(_ textField: UITextField) {
         isDirty = true
+        print("TextField before updateActualValue - secureText:", self.textField.secureText ?? "nil")
+        print("TextField before updateActualValue - getSecureRawText:", self.textField.getSecureRawText ?? "nil")
+        
         updateActualValue()
+        print("TextField after updateActualValue - actualValue:", self.actualValue)
+        print("TextField contextOptions.env:", self.contextOptions.env)
+        
         textFieldValueChanged()
+        let state = self.state as! StateforText
+        print("TextField state values - isEmpty:", state.isEmpty)
+        print("TextField state values - value:", state.value ?? "nil")
+        print("TextField state values - isValid:", state.isValid)
+        
         onChangeHandler?((self.state as! StateforText).getStateForListener())
         if self.fieldType == .CARD_NUMBER {
             let t = self.textField.secureText!.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
@@ -874,8 +883,10 @@ extension TextField {
     func updateActualValue() {
         if self.fieldType == .CARD_NUMBER {
             self.actualValue = textField.getSecureRawText ?? ""
+            print("actual value", self.actualValue)
         } else {
             self.actualValue = textField.secureText ?? ""
+            print("actual value", self.actualValue)
         }
     }
     

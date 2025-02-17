@@ -37,17 +37,31 @@ internal class StateforText: State
 
     init(tf: TextField) {
         super.init(columnName: tf.columnName, isRequired: tf.isRequired)
+        print("StateforText init - columnName:", tf.columnName)
+        print("StateforText init - isRequired:", tf.isRequired)
+        
         validationError = tf.validate()
+        print("StateforText init - validationError:", validationError)
+        
         isDefaultRuleFailed = validationError.count != 0
         let customError = tf.validateCustomRules()
         isCustomRuleFailed = customError.count != 0
         isValid = !(isDefaultRuleFailed || isCustomRuleFailed)
+        print("StateforText init - isValid:", isValid)
+        
+        print("StateforText init - getSecureRawText:", tf.textField.getSecureRawText ?? "nil")
         isEmpty = (tf.textField.getSecureRawText?.count == 0)
+        print("StateforText init - isEmpty:", isEmpty)
+        
         isDirty = tf.isDirty
         inputLength = tf.textField.getSecureRawText?.count ?? 0
         elementType = tf.collectInput.type
         isFocused = tf.hasFocus
         selectedCardScheme = tf.selectedCardBrand
+        
+        print("StateforText init - actualValue:", tf.actualValue)
+        print("StateforText init - contextOptions.env:", tf.contextOptions.env)
+        
         if tf.contextOptions.env == .DEV {
             value = tf.actualValue
         } else {
@@ -61,6 +75,7 @@ internal class StateforText: State
                 }
             }
         }
+        print("StateforText init - final value:", value ?? "nil")
         
         if validationError.count == 0 {
             validationError = customError
@@ -78,6 +93,7 @@ internal class StateforText: State
         result["validationError"] = validationError
         result["isCustomRuleFailed"] = isCustomRuleFailed
         result["isDefaultRuleFailed"] = isDefaultRuleFailed
+        result["value"] = value
 
         return result
     }

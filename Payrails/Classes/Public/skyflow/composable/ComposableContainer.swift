@@ -12,6 +12,7 @@ public class ComposableContainer: ContainerProtocol {}
 public extension Container {
     
     func create(input: CollectElementInput, options: CollectElementOptions? = CollectElementOptions()) -> TextField where T: ComposableContainer {
+        print("Creating element")
         var tempContextOptions = self.skyflow.contextOptions
         tempContextOptions.interface = .COMPOSABLE_CONTAINER
 
@@ -240,17 +241,46 @@ public extension Container {
         var currentRecord: [String: Any] = [:]
         var fields: [String: Any] = [:]
         
-        for element in self.elements {
+        print("DEBUG: ---- Starting Collection ----")
+        print("DEBUG: Number of elements:", self.elements.count)
+        
+        for (index, element) in self.elements.enumerated() {
+            print("\nDEBUG: Processing Element \(index + 1):")
+            print("DEBUG: Column Name:", element.columnName ?? "nil")
+            print("DEBUG: Field Type:", element.fieldType)
+            
             let state = element.getState()
+            print("DEBUG: Raw State:", state)
+            
+            // Print each state property
+            print("DEBUG: State Properties:")
+            print("- isRequired:", state["isRequired"] as? Bool ?? "nil")
+            print("- isEmpty:", state["isEmpty"] as? Bool ?? "nil")
+            print("- isDirty:", state["isDirty"] as? Bool ?? "nil")
+            print("- isValid:", state["isValid"] as? Bool ?? "nil")
+            print("- value:", state["value"] ?? "nil")
+            
+            // Try to get value
             if let value = state["value"] as? String {
+                print("DEBUG: Found value:", value)
                 fields[element.columnName] = value
+            } else {
+                print("DEBUG: No value found in state")
+                
+                // Try to get value directly from element
+                print("DEBUG: Actual Value:", element.actualValue)
+                print("DEBUG: Get Output:", element.getOutput() ?? "nil")
+                print("DEBUG: Get Value:", element.getValue())
             }
         }
+        
+        print("\nDEBUG: ---- Collection Results ----")
+        print("DEBUG: Table:", self.elements.first?.collectInput.table ?? "nil")
+        print("DEBUG: Fields:", fields)
         
         currentRecord["table"] = self.elements.first?.collectInput.table
         currentRecord["fields"] = fields
         records.append(currentRecord)
-
         
         let result = ["records": records]
         Log.info(message: .COLLECT_SUBMIT_SUCCESS, contextOptions: tempContextOptions)

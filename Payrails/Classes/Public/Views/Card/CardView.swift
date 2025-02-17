@@ -15,14 +15,14 @@ final class CardCollectContainer: CardContainer {
 }
 
 
-final class CardCollectView: UIStackView {
+public class CardCollectView: UIStackView {
     private let config: CardFormConfig
     private let skyflow: Client
     private var container: Container<ComposableContainer>?
     private let tableName: String
     var cardContainer: CardCollectContainer?
 
-    init(
+    public init(
         skyflow: Client,
         config: CardFormConfig,
         tableName: String
@@ -44,7 +44,7 @@ final class CardCollectView: UIStackView {
         guard let container = skyflow.container(
             type: ContainerType.COMPOSABLE,
             options: ContainerOptions(
-                layout: config.showNameField ? [2, 1, 2] : [2, 2],
+                layout: config.showNameField ? [2, 1, 2] : [1, 1, 2],
                 errorTextStyles: Styles(base: config.style.errorTextStyle)
             )
         ) else {
@@ -106,8 +106,20 @@ final class CardCollectView: UIStackView {
             placeholder: config.fieldConfig(for: .EXPIRATION_YEAR)?.placeholder ?? "YYYY",
             type: .EXPIRATION_YEAR
         )
+        let collectExpDateInput = CollectElementInput(
+            table: tableName,
+            column: "expiry_date",
+            inputStyles: config.fieldConfig(for: .EXPIRATION_DATE)?.style?.skyflowStyles ?? styles,
+            labelStyles: config.style.labelStyles,
+            errorTextStyles: config.style.errorStyles,
+            label: config.fieldConfig(for: .EXPIRATION_DATE)?.title ??  "Expiration Date",
+            placeholder: config.fieldConfig(for: .CVV)?.placeholder ?? "***",
+            type: .EXPIRATION_DATE
+        )
+            
         let requiredOption = CollectElementOptions(required: true)
         _ = container.create(input: collectCardNumberInput, options: requiredOption)
+//        _ = container.create(input: collectExpDateInput, options: requiredOption)
         _ = container.create(input: collectCVVInput, options: requiredOption)
         if config.showNameField {
             _ = container.create(input: collectNameInput, options: requiredOption)
@@ -122,6 +134,39 @@ final class CardCollectView: UIStackView {
         do {
             let cardForm = try container.getComposableView()
             self.addArrangedSubview(cardForm)
+            
+            // Add test button
+            let button = UIButton(type: .system)
+            button.setTitle("Test Button", for: .normal)
+            button.setTitleColor(.white, for: .normal)
+            button.backgroundColor = .black
+            button.layer.cornerRadius = 8
+            button.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
+            self.addArrangedSubview(button)
         } catch {}
+    }
+    
+    private class CardCollectCallback: Callback {
+        func onSuccess(_ responseBody: Any) {
+            if let response = responseBody as? [String: Any],
+               let records = response["records"] as? [[String: Any]],
+               let firstRecord = records.first,
+               let fields = firstRecord["fields"] as? [String: Any] {
+                print("Collection successful!")
+                print("Table:", firstRecord["table"] ?? "")
+                print("Fields:", fields)
+            } else {
+                print("Collection successful but unexpected response format:", responseBody)
+            }
+        }
+        
+        func onFailure(_ error: Any) {
+            print("Collection failed!")
+            print("Error details:", error)
+        }
+    }
+    
+    @objc private func buttonTapped() {
+        cardContainer?.collect(with: CardCollectCallback())
     }
 }
