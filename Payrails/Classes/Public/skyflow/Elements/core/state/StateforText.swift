@@ -68,10 +68,10 @@ internal class StateforText: State
             if tf.fieldType == .CARD_NUMBER {
                 // AMEX supports only first 6 characters as BIN
                 if CardType.forCardNumber(cardNumber: tf.actualValue) == .AMEX {
-                    value = Card.getBIN(tf.actualValue, 6)
+                    value = CreditCard.getBIN(tf.actualValue, 6)
                 } else {
                     // Default 8 char BIN for all other card types
-                    value = Card.getBIN(tf.actualValue)
+                    value = CreditCard.getBIN(tf.actualValue)
                 }
             }
         }

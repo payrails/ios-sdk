@@ -4,7 +4,7 @@
 
 import Foundation
 
-extension Card {
+extension CreditCard {
     /// Get the BIN of a cardNumber,
     /// binCount is the number of characters that aren't masked
     internal class func getBIN(_ cardNumber: String, _ binCount: Int = 8) -> String {

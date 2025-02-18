@@ -15,22 +15,32 @@ public final class CardCollectContainer: CardContainer {
     }
 }
 
-
 public class CardCollectView: UIStackView {
     private let config: CardFormConfig
     private let skyflow: Client
     private var container: Container<ComposableContainer>?
     private let tableName: String
     public var cardContainer: CardCollectContainer?
+    private var payrailsCSE: PayrailsCSE?
+    
     public init(
         skyflow: Client,
         config: CardFormConfig,
-        tableName: String
+        tableName: String,
+        cseConfig: String
     ) {
         self.skyflow = skyflow
         self.config = config
         self.tableName = tableName
         super.init(frame: .zero)
+        
+        // Initialize PayrailsCSE
+        do {
+            self.payrailsCSE = try PayrailsCSE(data: cseConfig, version: "1.0.0")
+        } catch {
+            print("Failed to initialize PayrailsCSE:", error)
+        }
+        
         setupViews()
     }
 
@@ -130,7 +140,6 @@ public class CardCollectView: UIStackView {
         self.axis = .vertical
         self.spacing = 6
 
-
         do {
             let cardForm = try container.getComposableView()
             self.addArrangedSubview(cardForm)
@@ -147,17 +156,63 @@ public class CardCollectView: UIStackView {
     }
     
     public class CardCollectCallback: Callback {
+        var onSuccess: ((Any) -> Void)?
+        var onFailure: ((Any) -> Void)?
+        
         public func onSuccess(_ responseBody: Any) {
-            print("Collection successful:", responseBody)
+            onSuccess?(responseBody)
         }
         
         public func onFailure(_ error: Any) {
-            print("Collection failed!")
-            print("Error details:", error)
+            onFailure?(error)
         }
     }
     
     @objc private func buttonTapped() {
-        cardContainer?.collect(with: CardCollectCallback())
+        guard let container = self.container else { return }
+        
+        // Create a callback to handle the collected data
+        let callback = CardCollectCallback()
+        callback.onSuccess = { [weak self] responseBody in
+            guard let self = self else { return }
+            
+            // Parse the response to get card details
+            if let records = responseBody as? [[String: Any]],
+               let firstRecord = records.first,
+               let cardData = firstRecord["records"] as? [[String: Any]],
+               let cardNumber = cardData.first(where: { ($0["column"] as? String) == "card_number" })?["value"] as? String,
+               let expiryMonth = cardData.first(where: { ($0["column"] as? String) == "expiry_month" })?["value"] as? String,
+               let expiryYear = cardData.first(where: { ($0["column"] as? String) == "expiry_year" })?["value"] as? String,
+               let securityCode = cardData.first(where: { ($0["column"] as? String) == "security_code" })?["value"] as? String {
+                
+                // Create card object
+                // Use Card from PayrailsCSE import
+                let payrailsCard = Card(
+                    holderReference: "nil",
+                    cardNumber: cardNumber,
+                    expiryMonth: expiryMonth,
+                    expiryYear: expiryYear,
+                    holderName: "nil",
+                    securityCode: securityCode
+                )
+                
+                do {
+                    // Encrypt card data
+                    if let payrailsCSE = self.payrailsCSE {
+                        let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
+                        print("Successfully encrypted card data:", encryptedData)
+                    }
+                } catch {
+                    print("Failed to encrypt card data:", error)
+                }
+            }
+        }
+        
+        callback.onFailure = { error in
+            print("Failed to collect card data:", error)
+        }
+        
+        // Collect the data
+        cardContainer?.collect(with: callback)
     }
 }

@@ -11,7 +11,7 @@
 
 import Foundation
 
-internal class Card {
+internal class CreditCard {
     var defaultName: String
     var regex: String
     var cardLengths: [Int]
@@ -54,65 +54,65 @@ public enum  CardType: CaseIterable {
     case UNKNOWN
     case EMPTY
 
-    var instance: Card {
+    var instance: CreditCard {
         switch self {
-        case .VISA : return Card(
+        case .VISA : return CreditCard(
             defaultName: "Visa", regex: "^4\\d*", cardLengths: [13, 16],
             formatPattern: "#### #### #### ####", securityCodeLength: 3,
             securityCodeName: SecurityCode.cvv.rawValue, imageName: "Visa-Card")
 
-        case .MASTERCARD: return Card(
+        case .MASTERCARD: return CreditCard(
             defaultName: "Mastercard", regex: "^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)\\d*",
             cardLengths: [16], formatPattern: "#### #### #### ####",
             securityCodeLength: 3, securityCodeName: SecurityCode.cvc.rawValue, imageName: "Mastercard-Card")
 
-        case .DISCOVER : return Card(
+        case .DISCOVER : return CreditCard(
             defaultName: "Discover", regex: "^(6011|65|64[4-9]|622)\\d*",
             cardLengths: [16, 17, 18, 19],
             formatPattern: "#### #### #### #### ###", securityCodeLength: 3, securityCodeName: SecurityCode.cid.rawValue, imageName: "Discover-Card")
 
-        case .AMEX: return Card(
+        case .AMEX: return CreditCard(
             defaultName: "Amex", regex: "^3[47]\\d*",
             cardLengths: [15], formatPattern: "#### ###### #####",
             securityCodeLength: 4, securityCodeName: SecurityCode.cid.rawValue, imageName: "Amex-Card")
 
-        case .DINERS_CLUB: return Card(
+        case .DINERS_CLUB: return CreditCard(
             defaultName: "DinersClub", regex: "^(36|38|30[0-5])\\d*",
             cardLengths: [14,15,16, 17, 18, 19],
             formatPattern: "#### ###### #########", securityCodeLength: 3,
             securityCodeName: SecurityCode.cvv.rawValue, imageName: "Diners-Card")
 
-        case .JCB: return Card(
+        case .JCB: return CreditCard(
             defaultName: "Jcb", regex: "^35\\d*",
             cardLengths: [16, 17, 18, 19],
             formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
             securityCodeName: SecurityCode.cvv.rawValue, imageName: "JCB-Card")
 
-        case .MAESTRO: return Card(
+        case .MAESTRO: return CreditCard(
             defaultName: "Maestro", regex: "^(5018|5020|5038|5043|5[6-9]|6020|6304|6703|6759|676[1-3])\\d*",
             cardLengths: [12, 13, 14, 15, 16, 17, 18, 19],
             formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
             securityCodeName: SecurityCode.cvc.rawValue, imageName: "Maestro-Card")
 
-        case .UNIONPAY: return Card(
+        case .UNIONPAY: return CreditCard(
             defaultName: "Unionpay", regex: "^62\\d*",
             cardLengths: [16, 17, 18, 19], formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
             securityCodeName: SecurityCode.cvn.rawValue, imageName: "Unionpay-Card")
 
-        case .HIPERCARD: return Card(
+        case .HIPERCARD: return CreditCard(
             defaultName: "Hipercard", regex: "^606282\\d*",
             cardLengths: [14, 15, 16, 17, 18, 19], formatPattern: "#### #### #### #### ###",
             securityCodeLength: 3, securityCodeName: SecurityCode.cvc.rawValue, imageName: "Hipercard-Card")
-        case .UNKNOWN: return Card(
+        case .UNKNOWN: return CreditCard(
             defaultName: "Unknown", regex: "\\d+",
             cardLengths: [12, 13, 14, 15, 16, 17, 18, 19], formatPattern: "#### #### #### #### ###",
             securityCodeLength: 3, securityCodeName: SecurityCode.cvv.rawValue, imageName: "Unknown-Card")
-        case .EMPTY: return Card(
+        case .EMPTY: return CreditCard(
             defaultName: "Empty", regex: "^$",
             cardLengths: [12, 13, 14, 15, 16, 17, 18, 19], formatPattern: "#### #### #### #### ###",
             securityCodeLength: 3, securityCodeName: SecurityCode.cvv.rawValue, imageName: "Unknown-Card")
         case .CARTES_BANCAIRES:
-            return Card(defaultName: "Cartes Bancaires", imageName: "Cartes-Bancaires-Card")
+            return CreditCard(defaultName: "Cartes Bancaires", imageName: "Cartes-Bancaires-Card")
         }
     }
         static func forCardNumber(cardNumber: String) -> CardType {
