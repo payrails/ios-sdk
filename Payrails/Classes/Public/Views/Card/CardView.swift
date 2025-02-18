@@ -1,13 +1,14 @@
 import UIKit
+import PayrailsCSE
 
-final class CardCollectContainer: CardContainer {
-    let container: Container<ComposableContainer>
+public final class CardCollectContainer: CardContainer {
+    public let container: Container<ComposableContainer>
 
-    init(container: Container<ComposableContainer>) {
+    public init(container: Container<ComposableContainer>) {
         self.container = container
     }
 
-    func collect(with callback: Callback) {
+    public func collect(with callback: Callback) {
         container.collect(
             callback: callback
         )
@@ -20,8 +21,7 @@ public class CardCollectView: UIStackView {
     private let skyflow: Client
     private var container: Container<ComposableContainer>?
     private let tableName: String
-    var cardContainer: CardCollectContainer?
-
+    public var cardContainer: CardCollectContainer?
     public init(
         skyflow: Client,
         config: CardFormConfig,
@@ -146,21 +146,12 @@ public class CardCollectView: UIStackView {
         } catch {}
     }
     
-    private class CardCollectCallback: Callback {
-        func onSuccess(_ responseBody: Any) {
-            if let response = responseBody as? [String: Any],
-               let records = response["records"] as? [[String: Any]],
-               let firstRecord = records.first,
-               let fields = firstRecord["fields"] as? [String: Any] {
-                print("Collection successful!")
-                print("Table:", firstRecord["table"] ?? "")
-                print("Fields:", fields)
-            } else {
-                print("Collection successful but unexpected response format:", responseBody)
-            }
+    public class CardCollectCallback: Callback {
+        public func onSuccess(_ responseBody: Any) {
+            print("Collection successful:", responseBody)
         }
         
-        func onFailure(_ error: Any) {
+        public func onFailure(_ error: Any) {
             print("Collection failed!")
             print("Error details:", error)
         }
