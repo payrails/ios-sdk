@@ -20,6 +20,7 @@ public class CardCollectView: UIStackView {
     private let skyflow: Client
     private var container: Container<ComposableContainer>?
     private let tableName: String
+    private let holderReference: String
     public var cardContainer: CardCollectContainer?
     private var payrailsCSE: PayrailsCSE?
     
@@ -27,16 +28,29 @@ public class CardCollectView: UIStackView {
         skyflow: Client,
         config: CardFormConfig,
         tableName: String,
-        cseConfig: String
+        cseConfig: (data: String, version: String),
+        holderReference: String
     ) {
         self.skyflow = skyflow
         self.config = config
         self.tableName = tableName
+        self.holderReference = holderReference
+        
         super.init(frame: .zero)
+        
+        // Add border to the view
+        self.layer.borderWidth = 1.0
+        self.layer.borderColor = UIColor.gray.cgColor
+        self.layer.cornerRadius = 8.0
+        self.clipsToBounds = true
+        
+        // Add padding
+        self.layoutMargins = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        self.isLayoutMarginsRelativeArrangement = true
         
         // Initialize PayrailsCSE
         do {
-            self.payrailsCSE = try PayrailsCSE(data: cseConfig, version: "1.0.0")
+            self.payrailsCSE = try PayrailsCSE(data: cseConfig.data, version: cseConfig.version)
         } catch {
             print("Failed to initialize PayrailsCSE:", error)
         }
@@ -54,7 +68,7 @@ public class CardCollectView: UIStackView {
         guard let container = skyflow.container(
             type: ContainerType.COMPOSABLE,
             options: ContainerOptions(
-                layout: config.showNameField ? [2, 1, 2] : [1, 1, 2],
+                layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2],
                 errorTextStyles: Styles(base: config.style.errorTextStyle)
             )
         ) else {
@@ -146,7 +160,7 @@ public class CardCollectView: UIStackView {
             
             // Add test button
             let button = UIButton(type: .system)
-            button.setTitle("Test Button", for: .normal)
+            button.setTitle("Tokenize", for: .normal)
             button.setTitleColor(.white, for: .normal)
             button.backgroundColor = .black
             button.layer.cornerRadius = 8
@@ -188,11 +202,11 @@ public class CardCollectView: UIStackView {
                 // Create card object
                 // Use Card from PayrailsCSE import
                 let payrailsCard = Card(
-                    holderReference: "nil",
+                    holderReference: self.holderReference,
                     cardNumber: cardNumber,
                     expiryMonth: expiryMonth,
                     expiryYear: expiryYear,
-                    holderName: "nil",
+                    holderName: "nil sasds",
                     securityCode: securityCode
                 )
                 

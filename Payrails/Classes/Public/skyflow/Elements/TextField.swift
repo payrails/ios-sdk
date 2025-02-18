@@ -306,7 +306,6 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
         if (newStyle.width != nil){
             destination?.width = newStyle.width
-
         }
         if (newStyle.height != nil){
             destination?.height = newStyle.height
