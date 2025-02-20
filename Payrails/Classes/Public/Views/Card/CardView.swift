@@ -160,7 +160,7 @@ public class CardCollectView: UIStackView {
             
             // Add test button
             let button = UIButton(type: .system)
-            button.setTitle("Tokenize", for: .normal)
+            button.setTitle("Tokenizerr", for: .normal)
             button.setTitleColor(.white, for: .normal)
             button.backgroundColor = .black
             button.layer.cornerRadius = 8
@@ -189,18 +189,17 @@ public class CardCollectView: UIStackView {
         let callback = CardCollectCallback()
         callback.onSuccess = { [weak self] responseBody in
             guard let self = self else { return }
-            
+            print("Successfully collected card data:", responseBody)
             // Parse the response to get card details
-            if let records = responseBody as? [[String: Any]],
+            if let response = responseBody as? [String: Any],
+               let records = response["records"] as? [[String: Any]],
                let firstRecord = records.first,
-               let cardData = firstRecord["records"] as? [[String: Any]],
-               let cardNumber = cardData.first(where: { ($0["column"] as? String) == "card_number" })?["value"] as? String,
-               let expiryMonth = cardData.first(where: { ($0["column"] as? String) == "expiry_month" })?["value"] as? String,
-               let expiryYear = cardData.first(where: { ($0["column"] as? String) == "expiry_year" })?["value"] as? String,
-               let securityCode = cardData.first(where: { ($0["column"] as? String) == "security_code" })?["value"] as? String {
-                
+               let fields = firstRecord["fields"] as? [String: Any],
+               let cardNumber = fields["card_number"] as? String,
+               let expiryMonth = fields["expiry_month"] as? String,
+               let expiryYear = fields["expiry_year"] as? String,
+               let securityCode = fields["security_code"] as? String {
                 // Create card object
-                // Use Card from PayrailsCSE import
                 let payrailsCard = Card(
                     holderReference: self.holderReference,
                     cardNumber: cardNumber,
@@ -215,7 +214,24 @@ public class CardCollectView: UIStackView {
                     if let payrailsCSE = self.payrailsCSE {
                         let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
                         print("Successfully encrypted card data:", encryptedData)
+
+                    let tokenizedResponse = try payrailsCSE.tokenize(
+                        cardNumber: "4242424242424242",
+                        expiryMonth: "12",
+                        expiryYear: "25",
+                        completion: {(result: Result<TokenizeResponse, Error>) in
+                            switch result {
+                            case .success(let response):
+                                debugPrint("tokenization request successful")
+                                debugPrint(response)
+                            case .failure(let error):
+                                debugPrint("tokenization request failed")
+                            }
+                        }
+                    )
                     }
+
+
                 } catch {
                     print("Failed to encrypt card data:", error)
                 }
