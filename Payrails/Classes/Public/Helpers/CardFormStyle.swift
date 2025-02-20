@@ -1,3 +1,5 @@
+import PayrailsVault
+
 public typealias CardStyle = Style
 public typealias CardFieldType = ElementType
 

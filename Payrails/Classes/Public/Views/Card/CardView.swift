@@ -1,7 +1,8 @@
 import UIKit
 import PayrailsCSE
+import PayrailsVault
 
-public final class CardCollectContainer: CardContainer {
+public final class CardCollectContainer: CardContainer{
     public let container: Container<ComposableContainer>
 
     public init(container: Container<ComposableContainer>) {
@@ -23,6 +24,7 @@ public class CardCollectView: UIStackView {
     private let holderReference: String
     public var cardContainer: CardCollectContainer?
     private var payrailsCSE: PayrailsCSE?
+    
     
     public init(
         skyflow: Client,
@@ -54,6 +56,14 @@ public class CardCollectView: UIStackView {
         } catch {
             print("Failed to initialize PayrailsCSE:", error)
         }
+        
+//        let helper = SimpleHelper()
+//        let qualifiedHelper = PayrailsVault.SimpleHelper()
+//        print(helper.greet())
+
+        
+//        let helper = PayrailsVault.SimpleHelper()
+//        print(helper.greet())
         
         setupViews()
     }

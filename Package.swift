@@ -13,7 +13,8 @@ let package = Package(
         // Existing dependency on PayPal Checkout SDK
         .package(url: "https://github.com/paypal/paypalcheckout-ios", from: "1.0.0"),
         // New dependency on ios-cse (PayrailsCSE)
-        .package(url: "https://github.com/payrails/ios-cse.git", from: "1.0.0")
+        .package(url: "https://github.com/payrails/ios-cse.git", from: "1.0.0"),
+        .package(name: "PayrailsVault", path: "../PayrailsVault")
     ],
     targets: [
         .target(

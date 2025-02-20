@@ -29,5 +29,6 @@ Pod::Spec.new do |spec|
   	checkout.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
   	checkout.dependency 'PayPalCheckout'
     checkout.dependency 'PayrailsCSE'
+    checkout.dependency 'PayrailsVault'
   end
 end
