@@ -22,6 +22,8 @@ public final class CardCollectContainer: CardContainer{
 }
 
 public class CardCollectView: UIStackView {
+    public weak var delegate: CardCollectViewDelegate?
+
     private let config: CardFormConfig
     private let skyflow: Client
     private var container: Container<ComposableContainer>?
@@ -228,13 +230,17 @@ public class CardCollectView: UIStackView {
                         expiryYear: expiryYear,
                         holderName: self.holderReference,
                         securityCode: securityCode,
-                        completion: {(result: Result<TokenizeResponse, Error>) in
+                        completion: { [weak self] (result: Result<TokenizeResponse, Error>) in
+                            guard let self = self else { return }
+
                             switch result {
                             case .success(let response):
                                 debugPrint("tokenization request successful")
                                 debugPrint(response)
+                                self.delegate?.cardCollectView(self, didCollectCardData: response)
                             case .failure(let error):
                                 debugPrint("tokenization request failed")
+                                self.delegate?.cardCollectView(self, didFailWithError: error)
                             }
                         }
                     )
