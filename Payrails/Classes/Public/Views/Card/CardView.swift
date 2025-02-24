@@ -2,6 +2,11 @@ import UIKit
 import PayrailsCSE
 import PayrailsVault
 
+public protocol CardCollectViewDelegate: AnyObject {
+    func cardCollectView(_ view: CardCollectView, didCollectCardData data: TokenizeResponse)
+    func cardCollectView(_ view: CardCollectView, didFailWithError error: Error)
+}
+
 public final class CardCollectContainer: CardContainer{
     public let container: Container<ComposableContainer>
 
@@ -56,14 +61,6 @@ public class CardCollectView: UIStackView {
         } catch {
             print("Failed to initialize PayrailsCSE:", error)
         }
-        
-//        let helper = SimpleHelper()
-//        let qualifiedHelper = PayrailsVault.SimpleHelper()
-//        print(helper.greet())
-
-        
-//        let helper = PayrailsVault.SimpleHelper()
-//        print(helper.greet())
         
         setupViews()
     }
@@ -223,12 +220,14 @@ public class CardCollectView: UIStackView {
                     // Encrypt card data
                     if let payrailsCSE = self.payrailsCSE {
                         let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
-                        print("Successfully encrypted card data:", encryptedData)
+                        print("Successfully encrypted card data is here:", encryptedData)
 
                     let tokenizedResponse = try payrailsCSE.tokenize(
-                        cardNumber: "4242424242424242",
-                        expiryMonth: "12",
-                        expiryYear: "25",
+                        cardNumber: cardNumber,
+                        expiryMonth: expiryMonth,
+                        expiryYear: expiryYear,
+                        holderName: self.holderReference,
+                        securityCode: securityCode,
                         completion: {(result: Result<TokenizeResponse, Error>) in
                             switch result {
                             case .success(let response):
@@ -240,8 +239,6 @@ public class CardCollectView: UIStackView {
                         }
                     )
                     }
-
-
                 } catch {
                     print("Failed to encrypt card data:", error)
                 }
