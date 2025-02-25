@@ -223,24 +223,41 @@ public class CardCollectView: UIStackView {
                     if let payrailsCSE = self.payrailsCSE {
                         let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
                         print("Successfully encrypted card data is here:", encryptedData)
-
+                        
+                        print(cardNumber)
+                        print(expiryMonth)
+                        print(expiryYear)
+                        print(securityCode)
+                        
                     let tokenizedResponse = try payrailsCSE.tokenize(
                         cardNumber: cardNumber,
                         expiryMonth: expiryMonth,
                         expiryYear: expiryYear,
-                        holderName: self.holderReference,
+                        holderName: "sdssdsds",
                         securityCode: securityCode,
                         completion: { [weak self] (result: Result<TokenizeResponse, Error>) in
                             guard let self = self else { return }
 
                             switch result {
                             case .success(let response):
-                                debugPrint("tokenization request successful")
+                                debugPrint("tokenization request successful totally")
                                 debugPrint(response)
-                                self.delegate?.cardCollectView(self, didCollectCardData: response)
+                                debugPrint("Delegate exists: \(self.delegate != nil)")
+                                
+                                // Dispatch to main thread explicitly
+                                DispatchQueue.main.async {
+                                    debugPrint("Calling delegate on main thread")
+                                    self.delegate?.cardCollectView(self, didCollectCardData: response)
+                                    debugPrint("Delegate method called")
+                                }
                             case .failure(let error):
                                 debugPrint("tokenization request failed")
-                                self.delegate?.cardCollectView(self, didFailWithError: error)
+                                debugPrint("Error: \(error)")
+                                
+                                // Dispatch to main thread explicitly
+                                DispatchQueue.main.async {
+                                    self.delegate?.cardCollectView(self, didFailWithError: error)
+                                }
                             }
                         }
                     )
