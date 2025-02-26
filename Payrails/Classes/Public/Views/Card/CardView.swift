@@ -191,15 +191,16 @@ public class CardCollectView: UIStackView {
         }
     }
     
-    @objc private func buttonTapped() {
+    public func collectFields() {
         guard let container = self.container else { return }
         
         // Create a callback to handle the collected data
         let callback = CardCollectCallback()
         callback.onSuccess = { [weak self] responseBody in
             guard let self = self else { return }
+            // (Same logic from `buttonTapped`)
+
             print("Successfully collected card data:", responseBody)
-            // Parse the response to get card details
             if let response = responseBody as? [String: Any],
                let records = response["records"] as? [[String: Any]],
                let firstRecord = records.first,
@@ -208,6 +209,7 @@ public class CardCollectView: UIStackView {
                let expiryMonth = fields["expiry_month"] as? String,
                let expiryYear = fields["expiry_year"] as? String,
                let securityCode = fields["security_code"] as? String {
+               
                 // Create card object
                 let payrailsCard = Card(
                     holderReference: self.holderReference,
@@ -219,48 +221,36 @@ public class CardCollectView: UIStackView {
                 )
                 
                 do {
-                    // Encrypt card data
                     if let payrailsCSE = self.payrailsCSE {
                         let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
                         print("Successfully encrypted card data is here:", encryptedData)
                         
-                        print(cardNumber)
-                        print(expiryMonth)
-                        print(expiryYear)
-                        print(securityCode)
-                        
-                    let tokenizedResponse = try payrailsCSE.tokenize(
-                        cardNumber: cardNumber,
-                        expiryMonth: expiryMonth,
-                        expiryYear: expiryYear,
-                        holderName: "sdssdsds",
-                        securityCode: securityCode,
-                        completion: { [weak self] (result: Result<TokenizeResponse, Error>) in
-                            guard let self = self else { return }
+                        // Call tokenize
+                        let tokenizedResponse = try payrailsCSE.tokenize(
+                            cardNumber: cardNumber,
+                            expiryMonth: expiryMonth,
+                            expiryYear: expiryYear,
+                            holderName: "sdssdsds",
+                            securityCode: securityCode,
+                            completion: { [weak self] (result: Result<TokenizeResponse, Error>) in
+                                guard let self = self else { return }
 
-                            switch result {
-                            case .success(let response):
-                                debugPrint("tokenization request successful totally")
-                                debugPrint(response)
-                                debugPrint("Delegate exists: \(self.delegate != nil)")
-                                
-                                // Dispatch to main thread explicitly
-                                DispatchQueue.main.async {
-                                    debugPrint("Calling delegate on main thread")
-                                    self.delegate?.cardCollectView(self, didCollectCardData: response)
-                                    debugPrint("Delegate method called")
-                                }
-                            case .failure(let error):
-                                debugPrint("tokenization request failed")
-                                debugPrint("Error: \(error)")
-                                
-                                // Dispatch to main thread explicitly
-                                DispatchQueue.main.async {
-                                    self.delegate?.cardCollectView(self, didFailWithError: error)
+                                switch result {
+                                case .success(let response):
+                                    debugPrint("tokenization request successful totally")
+                                    debugPrint(response)
+                                    DispatchQueue.main.async {
+                                        self.delegate?.cardCollectView(self, didCollectCardData: response)
+                                    }
+                                case .failure(let error):
+                                    debugPrint("tokenization request failed")
+                                    debugPrint("Error: \(error)")
+                                    DispatchQueue.main.async {
+                                        self.delegate?.cardCollectView(self, didFailWithError: error)
+                                    }
                                 }
                             }
-                        }
-                    )
+                        )
                     }
                 } catch {
                     print("Failed to encrypt card data:", error)
@@ -272,7 +262,11 @@ public class CardCollectView: UIStackView {
             print("Failed to collect card data:", error)
         }
         
-        // Collect the data
+        // Perform collection
         cardContainer?.collect(with: callback)
+    }
+    
+    @objc private func buttonTapped() {
+        collectFields()
     }
 }
