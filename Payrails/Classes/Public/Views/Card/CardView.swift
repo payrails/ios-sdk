@@ -1,6 +1,5 @@
 import UIKit
 import PayrailsCSE
-import PayrailsVault
 
 public protocol CardCollectViewDelegate: AnyObject {
     func cardCollectView(_ view: CardCollectView, didCollectCardData data: TokenizeResponse)

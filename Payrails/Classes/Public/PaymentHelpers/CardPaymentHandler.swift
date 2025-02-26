@@ -40,7 +40,7 @@ extension CardPaymentHandler: PaymentHandler {
         data["vaultToken"] = fields["skyflow_id"]
         data["card"] = [
             "numberToken": fields["card_number"],
-            "securityCodeToken": fields["security_code"]
+            "securityCodeToken": fields["/"]
         ]
 
         delegate?.paymentHandlerDidFinish(
