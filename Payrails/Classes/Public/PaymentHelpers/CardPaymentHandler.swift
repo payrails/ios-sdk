@@ -14,6 +14,7 @@ class CardPaymentHandler: NSObject {
         saveInstrument: Bool,
         presenter: PaymentPresenter?
     ) {
+        print("init card payment handler")
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
@@ -30,6 +31,7 @@ extension CardPaymentHandler: PaymentHandler {
         currency: String,
         presenter: PaymentPresenter?
     ) {
+        print("are you making a payment")
         let dictionary = ((response as? [String: Any])?["records"] as? [Any])?.first as? [String: Any]
         guard let fields = dictionary?["fields"] as? [String: Any] else {
             delegate?.paymentHandlerDidFail(handler: self, error: .missingData("fields"), type: .card)

@@ -181,14 +181,15 @@ public class CardForm: UIStackView {
         }
     }
     
-    public func collectFields() {
-        guard let container = self.container else { return }
+    public func collectFields() -> String? {
+        guard let container = self.container else { return nil }
         
         // Create a callback to handle the collected data
         let callback = CardCollectCallback()
+        var encryptedCardData: String?
+        
         callback.onSuccess = { [weak self] responseBody in
             guard let self = self else { return }
-            // (Same logic from `buttonTapped`)
 
             print("Successfully collected card data:", responseBody)
             if let response = responseBody as? [String: Any],
@@ -212,10 +213,46 @@ public class CardForm: UIStackView {
                 
                 do {
                     if let payrailsCSE = self.payrailsCSE {
-                        let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
-                        print("Successfully encrypted card data is here:", encryptedData)
-                        
-                        // Call tokenize
+                        encryptedCardData = try payrailsCSE.encryptCardData(card: payrailsCard)
+                        print("Successfully encrypted card data is here:", encryptedCardData ?? "")
+                    }
+                } catch {
+                    print("Failed to encrypt card data:", error)
+                }
+            }
+        }
+        
+        callback.onFailure = { error in
+            print("Failed to collect card data:", error)
+        }
+        
+        // Perform collection
+        cardContainer?.collect(with: callback)
+        
+        return encryptedCardData
+    }
+    
+    public func tokenizeFields() {
+        guard let container = self.container else { return }
+        
+        // Create a callback to handle the collected data
+        let callback = CardCollectCallback()
+        callback.onSuccess = { [weak self] responseBody in
+            guard let self = self else { return }
+
+            print("Successfully collected card data:", responseBody)
+            if let response = responseBody as? [String: Any],
+               let records = response["records"] as? [[String: Any]],
+               let firstRecord = records.first,
+               let fields = firstRecord["fields"] as? [String: Any],
+               let cardNumber = fields["card_number"] as? String,
+               let expiryMonth = fields["expiry_month"] as? String,
+               let expiryYear = fields["expiry_year"] as? String,
+               let securityCode = fields["security_code"] as? String {
+                
+                do {
+                    if let payrailsCSE = self.payrailsCSE {
+                        // Call tokenize only
                         let tokenizedResponse = try payrailsCSE.tokenize(
                             cardNumber: cardNumber,
                             expiryMonth: expiryMonth,
@@ -227,8 +264,8 @@ public class CardForm: UIStackView {
 
                                 switch result {
                                 case .success(let response):
-                                    debugPrint("tokenization request successful totally")
-                                    debugPrint(response)
+                                    // debugPrint("tokenization request successful totally")
+                                    // debugPrint(response)
                                     DispatchQueue.main.async {
                                         self.delegate?.cardCollectView(self, didCollectCardData: response)
                                     }
@@ -243,7 +280,7 @@ public class CardForm: UIStackView {
                         )
                     }
                 } catch {
-                    print("Failed to encrypt card data:", error)
+                    print("Failed to tokenize card data:", error)
                 }
             }
         }
@@ -254,9 +291,5 @@ public class CardForm: UIStackView {
         
         // Perform collection
         cardContainer?.collect(with: callback)
-    }
-    
-    @objc private func buttonTapped() {
-        collectFields()
     }
 }

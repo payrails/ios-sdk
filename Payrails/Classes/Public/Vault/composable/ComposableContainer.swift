@@ -12,7 +12,6 @@ public class ComposableContainer: ContainerProtocol {}
 public extension Container {
     
     func create(input: CollectElementInput, options: CollectElementOptions? = CollectElementOptions()) -> TextField where T: ComposableContainer {
-        print("Creating element")
         var tempContextOptions = self.skyflow.contextOptions
         tempContextOptions.interface = .COMPOSABLE_CONTAINER
 
