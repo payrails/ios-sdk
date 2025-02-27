@@ -1,9 +1,9 @@
 import UIKit
 import PayrailsCSE
 
-public protocol CardCollectViewDelegate: AnyObject {
-    func cardCollectView(_ view: CardCollectView, didCollectCardData data: TokenizeResponse)
-    func cardCollectView(_ view: CardCollectView, didFailWithError error: Error)
+public protocol CardFormDelegate: AnyObject {
+    func cardCollectView(_ view: CardForm, didCollectCardData data: TokenizeResponse)
+    func cardCollectView(_ view: CardForm, didFailWithError error: Error)
 }
 
 public final class CardCollectContainer: CardContainer{
@@ -20,8 +20,8 @@ public final class CardCollectContainer: CardContainer{
     }
 }
 
-public class CardCollectView: UIStackView {
-    public weak var delegate: CardCollectViewDelegate?
+public class CardForm: UIStackView {
+    public weak var delegate: CardFormDelegate?
 
     private let config: CardFormConfig
     private let skyflow: Client
@@ -165,15 +165,6 @@ public class CardCollectView: UIStackView {
         do {
             let cardForm = try container.getComposableView()
             self.addArrangedSubview(cardForm)
-            
-            // Add test button
-            let button = UIButton(type: .system)
-            button.setTitle("Tokenizerr", for: .normal)
-            button.setTitleColor(.white, for: .normal)
-            button.backgroundColor = .black
-            button.layer.cornerRadius = 8
-            button.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
-            self.addArrangedSubview(button)
         } catch {}
     }
     
