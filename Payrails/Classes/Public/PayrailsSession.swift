@@ -140,10 +140,6 @@ public extension Payrails {
             currentTask = nil
         }
 
-
-
-
-
         private func prepareHandler(
             for type: PaymentType,
             saveInstrument: Bool,
@@ -225,33 +221,77 @@ extension Payrails.Session: PaymentHandlerDelegate {
         status: PaymentHandlerStatus,
         payload: [String: Any]?
     ) {
-        print("pa[yment handler did finish: \(status)")
+        print("payment handler did finish: \(status)")
         switch status {
         case .canceled:
             isPaymentInProgress = false
             onResult?(.cancelledByUser)
         case .success:
-            currentTask = Task { [weak self] in
-                guard let strongSelf = self else { return }
-                var body: [String: Any] = [
-                    "integrationType": "api",
-                    "paymentMethodCode": type.rawValue
-                ]
-                if let payload {
-                    payload.forEach { key, value in
-                        body[key] = value
-                    }
-                }
-                do {
-                    let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
-                        type: type,
-                        payload: body
-                    )
-                    strongSelf.handle(paymentStatus: paymentStatus)
-                } catch {
-                    strongSelf.handle(error: error)
-                }
+            print("payment successfully completed")
+            print(self.config)
+            print("payload: \(String(describing: payload))")
+       
+            var body: [String: Any] = [
+                "integrationType": "api",
+                "paymentMethodCode": type.rawValue,
+                "amount": self.config.amount,
+                
+            ]
+            
+            if let payload = payload,
+               let paymentInstrumentData = payload["paymentInstrumentData"] as? [String: Any],
+               let cardData = paymentInstrumentData["card"] as? [String: Any],
+               let encryptedData = cardData["encryptedData"] as? String,
+               let vaultProviderConfigId = cardData["vaultProviderConfigId"] as? String,
+               let storeInstrument = payload["storeInstrument"] as? Bool {
+                
+                // Create the nested objects
+                let country = Country(code: "DE", fullName: "Germany", iso3: "DEU")
+                let billingAddress = BillingAddress(country: country)
+                
+                let instrumentData = PaymentInstrumentData(
+                    encryptedData: encryptedData,
+                    vaultProviderConfigId: vaultProviderConfigId,
+                    billingAddress: billingAddress
+                )
+                
+                // Get amount from config
+                let amount = Amount(value: self.config.amount.value, currency: self.config.amount.currency)
+                
+                // Create the PaymentComposition
+                let paymentComposition = PaymentComposition(
+                    paymentMethodCode: type.rawValue,
+                    integrationType: "api",
+                    amount: amount,
+                    storeInstrument: storeInstrument,
+                    paymentInstrumentData: instrumentData,
+                    enrollInstrumentToNetworkOffers: false
+                )
+                
+                // Now you can use paymentComposition for your API call or whatever you need
+                print("Created payment composition: \(paymentComposition)")
             }
+//            currentTask = Task { [weak self] in
+//                guard let strongSelf = self else { return }
+//                var body: [String: Any] = [
+//                    "integrationType": "api",
+//                    "paymentMethodCode": type.rawValue
+//                ]
+//                if let payload {
+//                    payload.forEach { key, value in
+//                        body[key] = value
+//                    }
+//                }
+//                do {
+//                    let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
+//                        type: type,
+//                        payload: body
+//                    )
+//                    strongSelf.handle(paymentStatus: paymentStatus)
+//                } catch {
+//                    strongSelf.handle(error: error)
+//                }
+//            }
         case let .error(error):
             isPaymentInProgress = false
             onResult?(.error(PayrailsError.unknown(error: error ?? PayrailsError.invalidDataFormat)))
@@ -265,7 +305,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
         error: PayrailsError,
         type: Payrails.PaymentType
     ) {
-        print("payment handler failed: \(error)")
+        print("payment handler failed here: \(error)")
         isPaymentInProgress = false
         onResult?(.error(error))
         paymentHandler = nil
@@ -320,7 +360,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(error: Error) {
-        print("eeeeeeee")
         if let payrailsError = error as? PayrailsError {
             switch payrailsError {
             case .authenticationError:
