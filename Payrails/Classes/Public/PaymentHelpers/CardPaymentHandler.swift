@@ -31,7 +31,7 @@ extension CardPaymentHandler: PaymentHandler {
         currency: String,
         presenter: PaymentPresenter?
     ) {
-        print("are you making a payment")
+        print("let's make a payment!")
         let dictionary = ((response as? [String: Any])?["records"] as? [Any])?.first as? [String: Any]
         guard let fields = dictionary?["fields"] as? [String: Any] else {
             delegate?.paymentHandlerDidFail(handler: self, error: .missingData("fields"), type: .card)

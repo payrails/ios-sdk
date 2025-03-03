@@ -115,6 +115,7 @@ public extension Payrails {
         ) {
             print("Payrails: Executing payment...")
             weak var presenter = presenter
+            
             isPaymentInProgress = true
             self.onResult = onResult
 
@@ -343,7 +344,7 @@ public extension Payrails.Session {
         saveInstrument: Bool = false,
         presenter: PaymentPresenter?
     ) async -> OnPayResult {
-        print("step 2 executePayment is called on session", type)
+        print("executePayment called for payment type:", type)
         let result = await withCheckedContinuation({ continuation in
             executePayment(
                 with: type,
