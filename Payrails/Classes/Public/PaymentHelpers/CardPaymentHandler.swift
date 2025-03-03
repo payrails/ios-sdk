@@ -32,6 +32,11 @@ extension CardPaymentHandler: PaymentHandler {
         presenter: PaymentPresenter?
     ) {
         print("let's make a payment!")
+        var encryptedCardData = presenter?.encryptedCardData ?? ""
+        
+        print("encryptedCardData: \(encryptedCardData)")
+        
+        
         let dictionary = ((response as? [String: Any])?["records"] as? [Any])?.first as? [String: Any]
         guard let fields = dictionary?["fields"] as? [String: Any] else {
             delegate?.paymentHandlerDidFail(handler: self, error: .missingData("fields"), type: .card)

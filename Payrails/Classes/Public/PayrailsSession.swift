@@ -265,7 +265,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
         error: PayrailsError,
         type: Payrails.PaymentType
     ) {
-        print("paymen handler failed: \(error)")
+        print("payment handler failed: \(error)")
         isPaymentInProgress = false
         onResult?(.error(error))
         paymentHandler = nil
