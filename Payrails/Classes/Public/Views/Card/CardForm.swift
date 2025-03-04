@@ -24,6 +24,7 @@ public class CardForm: UIStackView {
     public weak var delegate: CardFormDelegate?
 
     private let config: CardFormConfig
+    private let  containerClient : Client
     private var container: Container<ComposableContainer>?
     private let tableName: String
     private let holderReference: String
@@ -37,6 +38,7 @@ public class CardForm: UIStackView {
         cseConfig: (data: String, version: String),
         holderReference: String
     ) {
+        self.containerClient = Client()
         self.config = config
         self.tableName = tableName
         self.holderReference = holderReference
@@ -70,7 +72,7 @@ public class CardForm: UIStackView {
     }
 
     private func setupViews() {
-        guard let container = skyflow.container(
+        guard let container = self.containerClient.container(
             type: ContainerType.COMPOSABLE,
             options: ContainerOptions(
                 layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2],
@@ -188,6 +190,7 @@ public class CardForm: UIStackView {
         callback.onSuccess = { [weak self] responseBody in
             guard let self = self else { return }
 
+            print("Successfully collected card data:", responseBody)
             if let response = responseBody as? [String: Any],
                let records = response["records"] as? [[String: Any]],
                let firstRecord = records.first,
