@@ -210,7 +210,24 @@ private extension Payrails.Session {
         }
         print("Parsed init data: \(String(data: data, encoding: .utf8) ?? "Unable to parse")")
         let jsonDecoder = JSONDecoder.API()
-        return try jsonDecoder.decode(SDKConfig.self, from: data)
+        do {
+            return try jsonDecoder.decode(SDKConfig.self, from: data)
+        } catch let decodingError as DecodingError {
+            // Print more details about the decoding error
+            switch decodingError {
+            case .keyNotFound(let key, let context):
+                print("Missing key: \(key.stringValue), path: \(context.codingPath)")
+            case .typeMismatch(let type, let context):
+                print("Type mismatch: expected \(type), path: \(context.codingPath)")
+            case .valueNotFound(let type, let context):
+                print("Value not found: expected \(type), path: \(context.codingPath)")
+            case .dataCorrupted(let context):
+                print("Data corrupted: \(context.debugDescription)")
+            @unknown default:
+                print("Unknown decoding error: \(decodingError)")
+            }
+            throw decodingError
+        }
     }
 }
 
