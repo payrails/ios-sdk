@@ -25,7 +25,7 @@ public extension Payrails {
             self.option = configuration.option
             self.config = try parse(config: configuration)
             print("config init")
-            
+            print(self.config)
             self.payrailsAPI = PayrailsAPI(config: config)
             if isPaymentAvailable(type: .card),
                   let vaultId = config.vaultConfiguration?.vaultId,
@@ -231,12 +231,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
             print(self.config)
             print("payload: \(String(describing: payload))")
        
-            var body: [String: Any] = [
-                "integrationType": "api",
-                "paymentMethodCode": type.rawValue,
-                "amount": self.config.amount,
-                
-            ]
             
             if let payload = payload,
                let paymentInstrumentData = payload["paymentInstrumentData"] as? [String: Any],
@@ -270,28 +264,51 @@ extension Payrails.Session: PaymentHandlerDelegate {
                 
                 // Now you can use paymentComposition for your API call or whatever you need
                 print("Created payment composition: \(paymentComposition)")
+                
+                let returnInfo: [String: String] = [
+                    "success": "https://assets.payrails.io/html/payrails-success.html",
+                    "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
+                    "error": "https://assets.payrails.io/html/payrails-error.html",
+                    "pending": "https://assets.payrails.io/html/payrails-pending.html"
+                ]
+
+                // Create the meta dictionary with risk info
+                let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
+                let meta = ["risk": risk]
+
+                // Create the amount dictionary (assuming you're using the same amount as in paymentComposition)
+                let amountDict = [
+                    "value": paymentComposition.amount.value,
+                    "currency": paymentComposition.amount.currency
+                ]
+                
+                var body: [String: Any] = [
+                    "amount": amountDict,
+                    "paymentComposition": [paymentComposition], // Array containing the single paymentComposition
+                    "returnInfo": returnInfo,
+                    "meta": meta
+                ]
+
+                // Now you can use this body dictionary for your API request
+                print("Final body: \(body)")
+                
+                currentTask = Task { [weak self] in
+                    guard let strongSelf = self else { return }
+
+                    do {
+                        let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
+                            type: type,
+                            payload: body
+                        )
+                        strongSelf.handle(paymentStatus: paymentStatus)
+                    } catch {
+                        strongSelf.handle(error: error)
+                    }
+                }
             }
-//            currentTask = Task { [weak self] in
-//                guard let strongSelf = self else { return }
-//                var body: [String: Any] = [
-//                    "integrationType": "api",
-//                    "paymentMethodCode": type.rawValue
-//                ]
-//                if let payload {
-//                    payload.forEach { key, value in
-//                        body[key] = value
-//                    }
-//                }
-//                do {
-//                    let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
-//                        type: type,
-//                        payload: body
-//                    )
-//                    strongSelf.handle(paymentStatus: paymentStatus)
-//                } catch {
-//                    strongSelf.handle(error: error)
-//                }
-//            }
+            
+            
+
         case let .error(error):
             isPaymentInProgress = false
             onResult?(.error(PayrailsError.unknown(error: error ?? PayrailsError.invalidDataFormat)))
@@ -344,7 +361,8 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
-        print("asdasdasd")
+        print("calling handle payment status")
+        print(paymentStatus)    
         switch paymentStatus {
         case .failed:
             onResult?(.failure)
