@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUICore
 
 public class Payrails {
 
@@ -36,5 +37,13 @@ public extension Payrails {
             }
         })
         return result
+    }
+}
+
+public extension Payrails {
+    struct Debug {
+        public static func configViewer(session: Payrails.Session) -> some View {
+            SimplePayrailsViewer(config: session.debugConfig)
+        }
     }
 }

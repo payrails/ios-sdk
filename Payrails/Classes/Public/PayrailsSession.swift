@@ -11,6 +11,10 @@ public extension Payrails {
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
+        
+        var debugConfig: SDKConfig {
+            return self.config
+        }
      
 
         public private(set) var isPaymentInProgress = false {
@@ -36,7 +40,9 @@ public extension Payrails {
 
             executionId = config.execution?.id
         }
+        
 
+        
         public func isPaymentAvailable(type: PaymentType) -> Bool {
             return config.paymentOption(for: type) != nil
         }
