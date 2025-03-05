@@ -366,3 +366,12 @@ struct PaymentOptions: Decodable {
         case integrationType, paymentMethodCode, description, config, clientConfig, paymentInstruments
     }
 }
+
+
+public struct PublicSDKConfig {
+    public let holderRefecerence: String
+    
+    internal init(from config: SDKConfig) {
+        self.holderRefecerence = config.holderReference ?? ""
+    }
+}

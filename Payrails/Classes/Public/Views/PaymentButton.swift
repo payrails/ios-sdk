@@ -23,9 +23,9 @@ public extension Payrails {
         public var presenter: PaymentPresenter?
         
         // MARK: - Initialization
-        public init(cardForm: Payrails.CardForm, payrails: Payrails.Session?) {
+        public init(cardForm: Payrails.CardForm, session: Payrails.Session?) {
             self.cardForm = cardForm
-            self.payrails = payrails
+            self.payrails = session
             super.init(frame: .zero)
             
             setupButton()

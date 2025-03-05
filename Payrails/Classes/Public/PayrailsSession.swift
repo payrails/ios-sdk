@@ -467,4 +467,11 @@ public extension Payrails.Session {
     }
 }
 
+public extension Payrails.Session {
+    func getSDKConfiguration() -> PublicSDKConfig? {
+        guard let config = self.config else { return nil }
+        return PublicSDKConfig(from: config)
+    }
+}
+
 
