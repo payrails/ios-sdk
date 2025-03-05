@@ -21,54 +21,6 @@ public class Payrails {
             )
         }
     }
-    
-    public struct CardInitResult {
-        public let session: Payrails.Session
-        public let initData: Payrails.InitData
-    }
-    
-    public typealias CardInitCallback = (Result<CardInitResult, PayrailsError>) -> Void
-    
-    // A simpler method that just handles the session initialization and returns both
-    // the session and the original init data
-    public static func initializeCard(
-        with configuration: Payrails.Configuration,
-        onInit: @escaping CardInitCallback
-    ) {
-        do {
-            let payrailsSession = try Payrails.Session(
-                configuration
-            )
-            let result = CardInitResult(
-                session: payrailsSession,
-                initData: configuration.initData
-            )
-            onInit(.success(result))
-        } catch {
-            onInit(
-                .failure(
-                    PayrailsError.unknown(error: error)
-                )
-            )
-        }
-    }
-    
-    // Async/await version
-    public static func initializeCard(
-        with configuration: Payrails.Configuration
-    ) async throws -> CardInitResult {
-        let result = try await withCheckedThrowingContinuation { continuation in
-            Payrails.initializeCard(with: configuration) { result in
-                switch result {
-                case .success(let initResult):
-                    continuation.resume(returning: initResult)
-                case .failure(let error):
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-        return result
-    }
 }
 
 // Keep existing extensions
@@ -87,6 +39,27 @@ public extension Payrails {
             }
         })
         return result
+    }
+    
+    static func createCardForm(
+        session: Payrails.Session,
+        config: CardFormConfig,
+        cseConfig: (data: String, version: String),
+        holderReference: String
+    ) -> Payrails.CardForm {
+        
+        let cardForm = Payrails.CardForm(
+            config: config,
+            tableName: "tableName",
+            cseConfig: (data: "", version: ""),  // Placeholder values
+            holderReference: holderReference,
+            cseInstance: session.getCSEInstance()!
+        )
+        
+        // Set the CSE instance directly from the session
+//        cardForm.payrailsCSE = session.payrailsCSE
+        
+        return cardForm
     }
 }
 

@@ -1,5 +1,6 @@
 import Foundation
 import PassKit
+import PayrailsCSE
 
 public extension Payrails {
     class Session {
@@ -11,6 +12,7 @@ public extension Payrails {
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
+        private var payrailsCSE: PayrailsCSE?
         
         var debugConfig: SDKConfig {
             return self.config
@@ -39,6 +41,12 @@ public extension Payrails {
             }
 
             executionId = config.execution?.id
+            
+            do {
+                self.payrailsCSE = try PayrailsCSE(data: configuration.initData.data, version: configuration.initData.version)
+            } catch {
+                print("Failed to initialize PayrailsCSE:", error)
+            }
         }
         
 
@@ -244,7 +252,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
         status: PaymentHandlerStatus,
         payload: [String: Any]?
     ) {
-        print("payment handler did finish: \(status)")
         switch status {
         case .canceled:
             isPaymentInProgress = false
@@ -451,6 +458,12 @@ public extension Payrails.Session {
             }
         })
         return result
+    }
+}
+
+public extension Payrails.Session {
+    func getCSEInstance() -> PayrailsCSE? {
+        return payrailsCSE
     }
 }
 

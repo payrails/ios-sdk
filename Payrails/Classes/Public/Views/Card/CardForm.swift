@@ -39,12 +39,14 @@ public extension Payrails {
             config: CardFormConfig,
             tableName: String,
             cseConfig: (data: String, version: String),
-            holderReference: String
+            holderReference: String,
+            cseInstance: PayrailsCSE
         ) {
             self.containerClient = Client()
             self.config = config
             self.tableName = tableName
             self.holderReference = holderReference
+            self.payrailsCSE = cseInstance
             
             super.init(frame: .zero)
             
@@ -58,12 +60,6 @@ public extension Payrails {
             self.layoutMargins = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
             self.isLayoutMarginsRelativeArrangement = true
             
-            // Initialize PayrailsCSE
-            do {
-                self.payrailsCSE = try PayrailsCSE(data: cseConfig.data, version: cseConfig.version)
-            } catch {
-                print("Failed to initialize PayrailsCSE:", error)
-            }
             
             setupViews()
         }
