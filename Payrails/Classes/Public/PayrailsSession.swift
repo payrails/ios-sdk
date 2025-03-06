@@ -1,5 +1,6 @@
 import Foundation
 import PassKit
+import PayrailsCSE
 
 public extension Payrails {
     class Session {
@@ -11,7 +12,12 @@ public extension Payrails {
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
-        internal var cardSession: CardSession?
+        private var payrailsCSE: PayrailsCSE?
+        
+        var debugConfig: SDKConfig {
+            return self.config
+        }
+     
 
         public private(set) var isPaymentInProgress = false {
             didSet {
@@ -24,24 +30,27 @@ public extension Payrails {
         ) throws {
             self.option = configuration.option
             self.config = try parse(config: configuration)
+            print("config init")
+            print(self.config)
             self.payrailsAPI = PayrailsAPI(config: config)
             if isPaymentAvailable(type: .card),
                   let vaultId = config.vaultConfiguration?.vaultId,
                   let vaultUrl = config.vaultConfiguration?.vaultUrl,
                   let token = config.vaultConfiguration?.token,
                let tableName = config.vaultConfiguration?.cardTableName {
-                self.cardSession = CardSession(
-                    vaultId: vaultId,
-                    vaultUrl: vaultUrl,
-                    token: token,
-                    tableName: tableName,
-                    delegate: self
-                )
             }
 
             executionId = config.execution?.id
+            
+            do {
+                self.payrailsCSE = try PayrailsCSE(data: configuration.initData.data, version: configuration.initData.version)
+            } catch {
+                print("Failed to initialize PayrailsCSE:", error)
+            }
         }
+        
 
+        
         public func isPaymentAvailable(type: PaymentType) -> Bool {
             return config.paymentOption(for: type) != nil
         }
@@ -88,9 +97,11 @@ public extension Payrails {
                 saveInstrument: false,
                 presenter: presenter
             ) else {
+                print("step 2: prepare handler failed")
                 return
             }
 
+            print("step 3: before make payment")
             currentTask = Task { [weak self] in
                 guard let strongSelf = self else { return }
                 let body = [
@@ -116,7 +127,9 @@ public extension Payrails {
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
         ) {
+            print("Payrails: Executing payment...")
             weak var presenter = presenter
+            
             isPaymentInProgress = true
             self.onResult = onResult
 
@@ -125,18 +138,14 @@ public extension Payrails {
                 saveInstrument: saveInstrument,
                 presenter: presenter
             ),
-                  let paymentHandler else { return }
-            if type == .card {
-                DispatchQueue.main.async {
-                    self.cardSession?.collect()
-                }
-            } else {
-                paymentHandler.makePayment(
-                    total: Double(config.amount.value) ?? 0,
-                    currency: config.amount.currency,
-                    presenter: presenter
-                )
+                  let paymentHandler else {
+                print("no handler")
+                return
             }
+            
+            paymentHandler.makePayment(total: 99.0, currency: "USD", presenter: presenter)
+
+
         }
 
         public func cancelPayment() {
@@ -145,62 +154,21 @@ public extension Payrails {
             currentTask = nil
         }
 
-        public func buildCardView(
-            with config: CardFormConfig = CardFormConfig.defaultConfig
-        ) -> UIView? {
-            cardSession?.buildCardView(with: config)
-        }
-
-        public func buildCardFields(
-            with config: CardFormConfig = CardFormConfig.defaultConfig
-        ) -> [CardField]? {
-            cardSession?.buildCardFields(with: config)
-        }
-
-        public func buildDropInView(
-            with formConfig: CardFormConfig? = nil,
-            presenter: PaymentPresenter? = nil,
-            onResult: @escaping OnPayCallback
-        ) -> DropInView {
-            let view = DropInView(
-                with: config,
-                session: self,
-                formConfig: formConfig ?? CardFormConfig.dropInConfig
-            )
-            view.onPay = { [weak self] item in
-                guard let self else { return }
-                switch item {
-                case let .stored(element):
-                    self.executePayment(
-                        withStoredInstrument: element,
-                        presenter: presenter
-                    ) { [weak view] result in
-                        DispatchQueue.main.async {
-                            view?.hideLoading()
-                            onResult(result)
-                        }
-                    }
-                case let .new(type, saveInstrument):
-                    self.executePayment(
-                        with: type,
-                        saveInstrument: saveInstrument,
-                        presenter: presenter
-                    ) { [weak view] result in
-                        DispatchQueue.main.async {
-                            view?.hideLoading()
-                            onResult(result)
-                        }
-                    }
-                }
-            }
-            return view
-        }
-
         private func prepareHandler(
             for type: PaymentType,
             saveInstrument: Bool,
             presenter: PaymentPresenter?
         ) -> Bool {
+            print("step-1 prepareHandler")
+            
+            let cardPaymentHandler = CardPaymentHandler(
+                delegate: self,
+                saveInstrument: saveInstrument,
+                presenter: presenter
+            )
+            self.paymentHandler = cardPaymentHandler
+            return true
+            
             guard let paymentComposition = config.paymentOption(for: type) else {
                 isPaymentInProgress = false
                 onResult?(.error(.unsupportedPayment(type: type)))
@@ -254,8 +222,26 @@ private extension Payrails.Session {
         guard let data = Data(base64Encoded: config.initData.data) else {
             throw(PayrailsError.invalidDataFormat)
         }
+        print("Parsed init data: \(String(data: data, encoding: .utf8) ?? "Unable to parse")")
         let jsonDecoder = JSONDecoder.API()
-        return try jsonDecoder.decode(SDKConfig.self, from: data)
+        do {
+            return try jsonDecoder.decode(SDKConfig.self, from: data)
+        } catch let decodingError as DecodingError {
+            // Print more details about the decoding error
+            switch decodingError {
+            case .keyNotFound(let key, let context):
+                print("Missing key: \(key.stringValue), path: \(context.codingPath)")
+            case .typeMismatch(let type, let context):
+                print("Type mismatch: expected \(type), path: \(context.codingPath)")
+            case .valueNotFound(let type, let context):
+                print("Value not found: expected \(type), path: \(context.codingPath)")
+            case .dataCorrupted(let context):
+                print("Data corrupted: \(context.debugDescription)")
+            @unknown default:
+                print("Unknown decoding error: \(decodingError)")
+            }
+            throw decodingError
+        }
     }
 }
 
@@ -271,27 +257,88 @@ extension Payrails.Session: PaymentHandlerDelegate {
             isPaymentInProgress = false
             onResult?(.cancelledByUser)
         case .success:
-            currentTask = Task { [weak self] in
-                guard let strongSelf = self else { return }
-                var body: [String: Any] = [
-                    "integrationType": "api",
-                    "paymentMethodCode": type.rawValue
+            print("payment successfully completed")
+            print(self.config)
+            print("payload: \(String(describing: payload))")
+       
+            
+            if let payload = payload,
+               let paymentInstrumentData = payload["paymentInstrumentData"] as? [String: Any],
+               let cardData = paymentInstrumentData["card"] as? [String: Any],
+               let encryptedData = cardData["encryptedData"] as? String,
+               let vaultProviderConfigId = cardData["vaultProviderConfigId"] as? String,
+               let storeInstrument = payload["storeInstrument"] as? Bool {
+                
+                // Create the nested objects
+                let country = Country(code: "DE", fullName: "Germany", iso3: "DEU")
+                let billingAddress = BillingAddress(country: country)
+                
+                let instrumentData = PaymentInstrumentData(
+                    encryptedData: encryptedData,
+                    vaultProviderConfigId: vaultProviderConfigId,
+                    billingAddress: billingAddress
+                )
+                
+                // Get amount from config
+                let amount = Amount(value: self.config.amount.value, currency: self.config.amount.currency)
+                
+                // Create the PaymentComposition
+                let paymentComposition = PaymentComposition(
+                    paymentMethodCode: type.rawValue,
+                    integrationType: "api",
+                    amount: amount,
+                    storeInstrument: storeInstrument,
+                    paymentInstrumentData: instrumentData,
+                    enrollInstrumentToNetworkOffers: false
+                )
+                
+                // Now you can use paymentComposition for your API call or whatever you need
+                print("Created payment composition: \(paymentComposition)")
+                
+                let returnInfo: [String: String] = [
+                    "success": "https://assets.payrails.io/html/payrails-success.html",
+                    "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
+                    "error": "https://assets.payrails.io/html/payrails-error.html",
+                    "pending": "https://assets.payrails.io/html/payrails-pending.html"
                 ]
-                if let payload {
-                    payload.forEach { key, value in
-                        body[key] = value
+
+                // Create the meta dictionary with risk info
+                let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
+                let meta = ["risk": risk]
+
+                // Create the amount dictionary (assuming you're using the same amount as in paymentComposition)
+                let amountDict = [
+                    "value": paymentComposition.amount.value,
+                    "currency": paymentComposition.amount.currency
+                ]
+                
+                var body: [String: Any] = [
+                    "amount": amountDict,
+                    "paymentComposition": [paymentComposition], // Array containing the single paymentComposition
+                    "returnInfo": returnInfo,
+                    "meta": meta
+                ]
+
+                // Now you can use this body dictionary for your API request
+                print("Final body: \(body)")
+                
+                currentTask = Task { [weak self] in
+                    guard let strongSelf = self else { return }
+
+                    do {
+                        let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
+                            type: type,
+                            payload: body
+                        )
+                        strongSelf.handle(paymentStatus: paymentStatus)
+                    } catch {
+                        strongSelf.handle(error: error)
                     }
                 }
-                do {
-                    let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
-                        type: type,
-                        payload: body
-                    )
-                    strongSelf.handle(paymentStatus: paymentStatus)
-                } catch {
-                    strongSelf.handle(error: error)
-                }
             }
+            
+            
+
         case let .error(error):
             isPaymentInProgress = false
             onResult?(.error(PayrailsError.unknown(error: error ?? PayrailsError.invalidDataFormat)))
@@ -305,6 +352,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
         error: PayrailsError,
         type: Payrails.PaymentType
     ) {
+        print("payment handler failed here: \(error)")
         isPaymentInProgress = false
         onResult?(.error(error))
         paymentHandler = nil
@@ -321,6 +369,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
             return
         }
 
+        print("paymen handler failed")
         guard let link else {
             isPaymentInProgress = false
             onResult?(.error(.missingData("Link response is missing")))
@@ -342,6 +391,8 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
+        print("calling handle payment status")
+        print(paymentStatus)    
         switch paymentStatus {
         case .failed:
             onResult?(.failure)
@@ -380,6 +431,7 @@ public extension Payrails.Session {
         saveInstrument: Bool = false,
         presenter: PaymentPresenter?
     ) async -> OnPayResult {
+        print("executePayment called for payment type:", type)
         let result = await withCheckedContinuation({ continuation in
             executePayment(
                 with: type,
@@ -409,23 +461,17 @@ public extension Payrails.Session {
     }
 }
 
-extension Payrails.Session: CardSessionDelegate {
-    func cardSessionConfirmed(with response: Any) {
-        guard let cardPaymentHandler = paymentHandler as? CardPaymentHandler else {
-            return
-        }
-        cardPaymentHandler.set(response: response)
-        cardPaymentHandler.makePayment(
-            total: Double(config.amount.value) ?? 0,
-            currency: config.amount.currency,
-            presenter: nil
-        )
-    }
-
-    func cardSessionFailed(with error: Any) {
-        onResult?(.error(PayrailsError.invalidCardData))
-        isPaymentInProgress = false
-        onResult = nil
-        paymentHandler = nil
+public extension Payrails.Session {
+    func getCSEInstance() -> PayrailsCSE? {
+        return payrailsCSE
     }
 }
+
+public extension Payrails.Session {
+    func getSDKConfiguration() -> PublicSDKConfig? {
+        guard let config = self.config else { return nil }
+        return PublicSDKConfig(from: config)
+    }
+}
+
+

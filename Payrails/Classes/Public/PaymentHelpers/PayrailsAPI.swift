@@ -135,10 +135,13 @@ class PayrailsAPI {
             paymentComposition: [paymentComposition]
         )
         let jsonEncoder = JSONEncoder()
+        let jsonData = convertToJSON(body: payload ?? [:])
+
+        print(authorizeURL.url)
         let authorizeResponse = try await call(
             url: authorizeURL.url,
             method: authorizeURL.method,
-            body: try? jsonEncoder.encode(body),
+            body: jsonData,
             type: AuthorizeResponse.self
         )
         if let execution = authorizeResponse.links.execution,
@@ -238,13 +241,22 @@ fileprivate extension PayrailsAPI {
         type: T.Type?
     ) async throws -> T {
 
+        print("=== API CALL DEBUG ===")
+            print("URL: \(url.absoluteString)")
+            print("Method: \(method.rawValue)")
+        
         var request = URLRequest(
             url: url,
             cachePolicy: .reloadIgnoringLocalAndRemoteCacheData
         )
+        
         request.httpMethod = method.rawValue
+        method
         if let httpBody = body {
             request.httpBody = httpBody
+            print("Request body: \(String(data: httpBody, encoding: .utf8) ?? "Unable to decode body")")
+        } else {
+            print("Request body: nil")
         }
 
         request.addValue(
@@ -268,14 +280,50 @@ fileprivate extension PayrailsAPI {
         )
         request.addValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         request.timeoutInterval = TimeInterval(timeout)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let status = (response as? HTTPURLResponse)?.statusCode,
-           (status == 401 || status == 403) {
-            throw PayrailsError.authenticationError
+        
+        print("Request headers: \(request.allHTTPHeaderFields ?? [:])")
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            print("Response status code: \(statusCode)")
+            
+            // Log response headers
+            if let httpResponse = response as? HTTPURLResponse {
+                print("Response headers: \(httpResponse.allHeaderFields)")
+            }
+            
+            // Log response body
+            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
+            print("Response body: \(responseString)")
+            
+            if statusCode == 401 || statusCode == 403 {
+                print("Authentication error: status code \(statusCode)")
+                throw PayrailsError.authenticationError
+            }
+            
+            // If status code is not successful (outside 200-299 range)
+            if statusCode < 200 || statusCode >= 300 {
+                print("API error: status code \(statusCode)")
+                print("Error response: \(responseString)")
+            }
+            
+            let jsonDecoder = JSONDecoder.API()
+            do {
+                let result = try jsonDecoder.decode(T.self, from: data)
+                print("Response successfully decoded to \(T.self)")
+                return result
+            } catch {
+                print("ERROR: Failed to decode response: \(error)")
+                print("Decoding failed for type: \(T.self)")
+                print("Raw response data: \(responseString)")
+                throw error
+            }
+        } catch {
+            print("ERROR: Network or decoding error: \(error)")
+            throw error
         }
-        let jsonDecoder = JSONDecoder.API()
-        let result = try jsonDecoder.decode(T.self, from: data)
-        return result
     }
 }
 
@@ -317,3 +365,48 @@ private extension Status {
         }
     }
 }
+
+func convertToJSON(body: [String: Any]) -> Data? {
+    // Create a mutable copy of the body
+    var jsonBody = body
+    
+    // Check if paymentComposition exists and is an array
+    if let paymentCompositions = body["paymentComposition"] as? [PaymentComposition],
+       !paymentCompositions.isEmpty {
+        
+        // Convert each PaymentComposition object to a dictionary
+        var paymentCompositionDicts: [[String: Any]] = []
+        
+        for composition in paymentCompositions {
+            let compositionDict: [String: Any] = [
+                "paymentMethodCode": composition.paymentMethodCode,
+                "integrationType": composition.integrationType,
+                "amount": [
+                    "value": composition.amount.value,
+                    "currency": composition.amount.currency
+                ],
+                "storeInstrument": composition.storeInstrument,
+                "paymentInstrumentData": [
+                    "encryptedData": composition.paymentInstrumentData.encryptedData,
+                    "vaultProviderConfigId": composition.paymentInstrumentData.vaultProviderConfigId
+                ],
+                "enrollInstrumentToNetworkOffers": composition.enrollInstrumentToNetworkOffers
+            ]
+            
+            paymentCompositionDicts.append(compositionDict)
+        }
+        
+        // Replace the PaymentComposition objects with their dictionary representations
+        jsonBody["paymentComposition"] = paymentCompositionDicts
+    }
+    
+    // Convert to JSON data
+    do {
+        let jsonData = try JSONSerialization.data(withJSONObject: jsonBody, options: [.prettyPrinted])
+        return jsonData
+    } catch {
+        print("Error converting to JSON: \(error)")
+        return nil
+    }
+}
+

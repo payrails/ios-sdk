@@ -14,6 +14,7 @@ class CardPaymentHandler: NSObject {
         saveInstrument: Bool,
         presenter: PaymentPresenter?
     ) {
+        print("init card payment handler")
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
@@ -30,17 +31,23 @@ extension CardPaymentHandler: PaymentHandler {
         currency: String,
         presenter: PaymentPresenter?
     ) {
-        let dictionary = ((response as? [String: Any])?["records"] as? [Any])?.first as? [String: Any]
-        guard let fields = dictionary?["fields"] as? [String: Any] else {
-            delegate?.paymentHandlerDidFail(handler: self, error: .missingData("fields"), type: .card)
-            return
-        }
+        print("let's make a payment!")
+        var encryptedCardData = presenter?.encryptedCardData ?? ""
+        
+        print("encryptedCardData: \(encryptedCardData)")
+        
+        
+//        let dictionary = ((response as? [String: Any])?["records"] as? [Any])?.first as? [String: Any]
+//        guard let fields = dictionary?["fields"] as? [String: Any] else {
+//            delegate?.paymentHandlerDidFail(handler: self, error: .missingData("fields"), type: .card)
+//            return
+//        }
 
         var data: [String: Any] = [:]
-        data["vaultToken"] = fields["skyflow_id"]
         data["card"] = [
-            "numberToken": fields["card_number"],
-            "securityCodeToken": fields["security_code"]
+//            TODO: this should come from config
+            "vaultProviderConfigId": "0077318a-5dd2-47fb-b709-e475d2172d32",
+            "encryptedData": encryptedCardData
         ]
 
         delegate?.paymentHandlerDidFinish(

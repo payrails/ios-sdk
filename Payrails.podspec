@@ -28,6 +28,6 @@ Pod::Spec.new do |spec|
   	checkout.source_files  = "Payrails/Classes/Public/**/*.{swift}"
   	checkout.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
   	checkout.dependency 'PayPalCheckout'
-  	checkout.dependency 'Skyflow'
+    checkout.dependency 'PayrailsCSE'
   end
 end
