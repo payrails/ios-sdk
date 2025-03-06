@@ -3,7 +3,9 @@ import SwiftUICore
 import UIKit
 
 public class Payrails {
-    public static func configure(
+    private static var currentSession: Payrails.Session?
+
+    static func configure(
         with configuration: Payrails.Configuration,
         onInit: OnInitCallback
     ) {
@@ -11,6 +13,7 @@ public class Payrails {
             let payrailsSession = try Payrails.Session(
                 configuration
             )
+            currentSession = payrailsSession
             onInit(.success(payrailsSession))
         } catch {
             onInit(
@@ -19,6 +22,11 @@ public class Payrails {
                 )
             )
         }
+    }
+    
+    // Add a getter method in the main class
+    static func getCurrentSession() -> Payrails.Session? {
+        return currentSession
     }
 }
 
@@ -41,9 +49,11 @@ public extension Payrails {
     }
     
     static func createCardForm(
-        session: Payrails.Session,
         config: CardFormConfig = CardFormConfig(showNameField: false, fieldConfigs: [])
     ) -> Payrails.CardForm {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentForm")
+        let session = currentSession!
+        
         let defaultCardFormConfig = CardFormConfig(
             showNameField: false,
             fieldConfigs: [
@@ -100,10 +110,14 @@ public extension Payrails {
     }
     
     static func createCardPaymentForm(
-        session: Payrails.Session,
         config: CardFormConfig = CardFormConfig(showNameField: false, fieldConfigs: []),
         buttonTitle: String = "Pay Now"
     ) -> Payrails.CardPaymentForm {
+        
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentForm")
+        
+        let session = currentSession!
+        
         let defaultCardFormConfig = CardFormConfig(
             showNameField: false,
             fieldConfigs: [
@@ -113,7 +127,7 @@ public extension Payrails {
                     title: "Card Number",
                     style: CardFormStyle(
                         baseStyle: Style(
-                            borderColor: .blue.withAlphaComponent(0.5),
+                            borderColor: .red.withAlphaComponent(0.5),
                             cornerRadius: 10,
                             padding: UIEdgeInsets(top: 14, left: 16, bottom: 14, right: 16),
                             borderWidth: 1.5,

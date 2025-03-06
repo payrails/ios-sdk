@@ -42,8 +42,10 @@ public extension Payrails {
             holderReference: String,
             cseInstance: PayrailsCSE
         ) {
+            // this is a workaround just for skyflow to work, we don't need it
             self.containerClient = Client()
             self.config = config
+            // this is also skyflow leftover
             self.tableName = tableName
             self.holderReference = holderReference
             self.payrailsCSE = cseInstance
