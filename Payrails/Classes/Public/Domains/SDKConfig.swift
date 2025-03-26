@@ -98,7 +98,7 @@ struct Body: Decodable {
 struct BodyLinks: Decodable {
     let execution: String
     let authorize: Link
-    let startPaymentSession: Link
+    let startPaymentSession: Link?
 }
 
 struct PaymentData: Decodable {

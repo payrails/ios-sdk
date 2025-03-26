@@ -254,9 +254,9 @@ fileprivate extension PayrailsAPI {
         method
         if let httpBody = body {
             request.httpBody = httpBody
-            print("Request body: \(String(data: httpBody, encoding: .utf8) ?? "Unable to decode body")")
+//            print("Request body: \(String(data: httpBody, encoding: .utf8) ?? "Unable to decode body")")
         } else {
-            print("Request body: nil")
+//            print("Request body: nil")
         }
 
         request.addValue(
@@ -281,7 +281,7 @@ fileprivate extension PayrailsAPI {
         request.addValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         request.timeoutInterval = TimeInterval(timeout)
         
-        print("Request headers: \(request.allHTTPHeaderFields ?? [:])")
+//        print("Request headers: \(request.allHTTPHeaderFields ?? [:])")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -296,7 +296,7 @@ fileprivate extension PayrailsAPI {
             
             // Log response body
             let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
-            print("Response body: \(responseString)")
+//            print("Response body: \(responseString)")
             
             if statusCode == 401 || statusCode == 403 {
                 print("Authentication error: status code \(statusCode)")
@@ -317,7 +317,7 @@ fileprivate extension PayrailsAPI {
             } catch {
                 print("ERROR: Failed to decode response: \(error)")
                 print("Decoding failed for type: \(T.self)")
-                print("Raw response data: \(responseString)")
+//                print("Raw response data: \(responseString)")
                 throw error
             }
         } catch {
@@ -387,8 +387,8 @@ func convertToJSON(body: [String: Any]) -> Data? {
                 ],
                 "storeInstrument": composition.storeInstrument,
                 "paymentInstrumentData": [
-                    "encryptedData": composition.paymentInstrumentData.encryptedData,
-                    "vaultProviderConfigId": composition.paymentInstrumentData.vaultProviderConfigId
+                    "encryptedData": composition.paymentInstrumentData?.encryptedData,
+                    "vaultProviderConfigId": composition.paymentInstrumentData?.vaultProviderConfigId
                 ],
                 "enrollInstrumentToNetworkOffers": composition.enrollInstrumentToNetworkOffers
             ]
