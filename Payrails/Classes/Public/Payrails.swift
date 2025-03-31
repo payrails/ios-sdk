@@ -34,6 +34,48 @@ public class Payrails {
 // Keep existing extensions
 public extension Payrails {
     private static func getDefaultCardFormConfig() -> CardFormConfig {
+        
+
+        let customTranslations = CardTranslations(
+            placeholders: CardTranslations.Placeholders(values: [
+                .CARDHOLDER_NAME: "Enter full name",
+                .CARD_NUMBER: "XXXX XXXX XXXX XXXX",
+                .EXPIRATION_DATE: "MM/YY",
+                .CVV: "CVV",
+                .INPUT_FIELD: "Enter value",
+                .PIN: "••••",
+                .EXPIRATION_MONTH: "MM",
+                .EXPIRATION_YEAR: "YYYY"
+            ]),
+            labels: CardTranslations.Labels(
+                values: [
+                    .CARDHOLDER_NAME: "Name on Card",
+                    .CARD_NUMBER: "Card Number",
+                    .EXPIRATION_DATE: "Expiration Date",
+                    .CVV: "Security Code",
+                    .INPUT_FIELD: "Additional Information",
+                    .PIN: "PIN Code",
+                    .EXPIRATION_MONTH: "Expiry Month",
+                    .EXPIRATION_YEAR: "Expiry Year"
+                ],
+                saveInstrument: "Save this card for future payments",
+                storeInstrument: "Remember this card",
+                paymentInstallments: "Pay in installments"
+            ),
+            error: CardTranslations.ErrorMessages(
+                defaultErrors: CardTranslations.ErrorMessages.DefaultErrors(values: [
+                    .CARDHOLDER_NAME: "Please enter the name as shown on your card",
+                    .CARD_NUMBER: "Invalid card number. Please check and try again",
+                    .EXPIRATION_DATE: "Invalid date. Please use MM/YY format",
+                    .CVV: "Invalid security code. Usually 3-4 digits on the back of your card",
+                    .INPUT_FIELD: "This field is required",
+                    .PIN: "PIN must be 4-6 digits",
+                    .EXPIRATION_MONTH: "Please enter a valid month (01-12)",
+                    .EXPIRATION_YEAR: "Please enter a valid year"
+                ])
+            )
+        )
+        
         return CardFormConfig(
             showNameField: false,
             fieldConfigs: [
@@ -74,7 +116,8 @@ public extension Payrails {
                         )
                     )
                 )
-            ]
+            ],
+            translations: customTranslations
         )
     }
     

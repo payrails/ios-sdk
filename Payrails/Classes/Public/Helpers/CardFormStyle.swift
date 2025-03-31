@@ -5,15 +5,18 @@ public struct CardFormConfig {
     public let style: CardFormStyle
     public let showNameField: Bool
     public let fieldConfigs: [CardFieldConfig]
+    public let translations: CardTranslations?
 
     public init(
         style: CardFormStyle = .defaultStyle,
         showNameField: Bool = true,
-        fieldConfigs: [CardFieldConfig] = []
+        fieldConfigs: [CardFieldConfig] = [],
+        translations: CardTranslations? = nil
     ) {
         self.style = style
         self.showNameField = showNameField
         self.fieldConfigs = fieldConfigs
+        self.translations = translations
     }
 
     public static var defaultConfig: CardFormConfig {
@@ -138,6 +141,85 @@ public struct CardFormStyle {
             focus: errorTextStyle,
             invalid: errorTextStyle
         )
+    }
+}
+
+public struct CardTranslations {
+    public struct Placeholders {
+        private var values: [CardFieldType: String]
+        
+        public init(values: [CardFieldType: String] = [:]) {
+            self.values = values
+        }
+        
+        public subscript(type: CardFieldType) -> String? {
+            get { values[type] }
+            set { values[type] = newValue }
+        }
+    }
+    
+    public struct Labels {
+        private var values: [CardFieldType: String]
+        private var saveInstrument: String?
+        private var storeInstrument: String?
+        private var paymentInstallments: String?
+        
+        public init(
+            values: [CardFieldType: String] = [:],
+            saveInstrument: String? = nil,
+            storeInstrument: String? = nil,
+            paymentInstallments: String? = nil
+        ) {
+            self.values = values
+            self.saveInstrument = saveInstrument
+            self.storeInstrument = storeInstrument
+            self.paymentInstallments = paymentInstallments
+        }
+        
+        public subscript(type: CardFieldType) -> String? {
+            get { values[type] }
+            set { values[type] = newValue }
+        }
+        
+        public var saveCreditCard: String? {
+            get { values[.CARDHOLDER_NAME] }
+            set { values[.CARDHOLDER_NAME] = newValue }
+        }
+    }
+    
+    public struct ErrorMessages {
+        public struct DefaultErrors {
+            private var values: [CardFieldType: String]
+            
+            public init(values: [CardFieldType: String] = [:]) {
+                self.values = values
+            }
+            
+            public subscript(type: CardFieldType) -> String? {
+                get { values[type] }
+                set { values[type] = newValue }
+            }
+        }
+        
+        public let defaultErrors: DefaultErrors
+        
+        public init(defaultErrors: DefaultErrors = DefaultErrors()) {
+            self.defaultErrors = defaultErrors
+        }
+    }
+    
+    public let placeholders: Placeholders
+    public let labels: Labels
+    public let error: ErrorMessages
+    
+    public init(
+        placeholders: Placeholders = Placeholders(),
+        labels: Labels = Labels(),
+        error: ErrorMessages = ErrorMessages()
+    ) {
+        self.placeholders = placeholders
+        self.labels = labels
+        self.error = error
     }
 }
 
