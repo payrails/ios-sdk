@@ -43,7 +43,6 @@ public extension Payrails {
                 cseInstance: cseInstance
             )
             
-            // Initialize Payment Button
             self.payButton = UIButton(type: .system)
             self.payrails = session
             

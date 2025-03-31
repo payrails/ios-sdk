@@ -34,8 +34,6 @@ public class Payrails {
 // Keep existing extensions
 public extension Payrails {
     private static func getDefaultCardFormConfig() -> CardFormConfig {
-        
-
         let customTranslations = CardTranslations(
             placeholders: CardTranslations.Placeholders(values: [
                 .CARDHOLDER_NAME: "Enter full name",
@@ -77,7 +75,7 @@ public extension Payrails {
         )
         
         return CardFormConfig(
-            showNameField: false,
+            showNameField: true,
             fieldConfigs: [
                 CardFieldConfig(
                     type: .CARD_NUMBER,
@@ -144,7 +142,7 @@ public extension Payrails {
         let session = currentSession!
         
         let defaultCardFormConfig = CardFormConfig(
-            showNameField: false,
+            showNameField: true,
             fieldConfigs: [
                 CardFieldConfig(
                     type: .CARD_NUMBER,
