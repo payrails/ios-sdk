@@ -29,7 +29,6 @@ public extension Payrails {
             _ configuration: Payrails.Configuration
         ) throws {
             self.option = configuration.option
-            print("Payrails session initialized")
             self.config = try parse(config: configuration)
             self.payrailsAPI = PayrailsAPI(config: config)
             if isPaymentAvailable(type: .card),
@@ -96,11 +95,9 @@ public extension Payrails {
                 saveInstrument: false,
                 presenter: presenter
             ) else {
-                print("step 2: prepare handler failed")
                 return
             }
 
-            print("step 3: before make payment")
             currentTask = Task { [weak self] in
                 guard let strongSelf = self else { return }
                 let body = [
@@ -126,7 +123,6 @@ public extension Payrails {
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
         ) {
-            print("Payrails: Executing payment...")
             weak var presenter = presenter
             
             isPaymentInProgress = true
@@ -138,7 +134,6 @@ public extension Payrails {
                 presenter: presenter
             ),
                 let paymentHandler else {
-                print("no handler")
                 return
             }
             
@@ -158,23 +153,11 @@ public extension Payrails {
         ) -> Bool {
             print("step-1 prepareHandler for" + String(describing: type))
             
-//            let cardPaymentHandler = CardPaymentHandler(
-//                delegate: self,
-//                saveInstrument: saveInstrument,
-//                presenter: presenter
-//            )
-//            self.paymentHandler = cardPaymentHandler
-//            return true
-            
-            // TODO: config.paymentOption return empty for paypal, which is why pay return false, see the guard
             guard let paymentComposition = config.paymentOption(for: type) else {
                 isPaymentInProgress = false
                 onResult?(.error(.unsupportedPayment(type: type)))
-                print("paymentComposition is nil, returning false")
                 return false
             }
-
-            print("paymentComposition is not nil" + String(describing: paymentComposition))
             
             switch type {
             case .payPal:
@@ -223,8 +206,7 @@ private extension Payrails.Session {
         guard let data = Data(base64Encoded: config.initData.data) else {
             throw(PayrailsError.invalidDataFormat)
         }
-        print("Parsed init data: \(String(data: data, encoding: .utf8) ?? "Unable to parse")")
-        print("Data parsed successfully")
+
         let jsonDecoder = JSONDecoder.API()
         do {
             return try jsonDecoder.decode(SDKConfig.self, from: data)
@@ -254,30 +236,18 @@ extension Payrails.Session: PaymentHandlerDelegate {
         status: PaymentHandlerStatus,
         payload: [String: Any]?
     ) {
-        print("💚 Calling paymentHandlerDidFinish: \(status)")
-        print("💚 Calling paymentHandlerDidFinish for type \(type)")
-
         switch status {
         case .canceled:
             isPaymentInProgress = false
             onResult?(.cancelledByUser)
         case .success:
-            print("!!!!!!!started paymentHandlerDidFinish!!!!!!!!")
-            print("Raw Payload: \(String(describing: payload))")
-
-            // --- Check the payment type to handle the payload correctly ---
-
             if type == .card {
-                // --- Handle Card Payment Success (Original Logic) ---
-                // Use the existing if let chain, as it's correct for cards
                 if let payload = payload,
                    let paymentInstrumentData = payload["paymentInstrumentData"] as? [String: Any],
                    let cardData = paymentInstrumentData["card"] as? [String: Any],
                    let encryptedData = cardData["encryptedData"] as? String,
                    let vaultProviderConfigId = cardData["vaultProviderConfigId"] as? String,
                    let storeInstrument = payload["storeInstrument"] as? Bool {
-
-                    print("!!!!creating instrumentData for CARD") // Clarify log
 
                     // Construct the body specifically for Card
                     let country = Country(code: "DE", fullName: "Germany", iso3: "DEU") // TODO: Review hardcoded country
@@ -299,8 +269,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
                         paymentInstrumentData: instrumentData,
                         enrollInstrumentToNetworkOffers: false
                     )
-
-                    print("Created card payment composition: \(paymentComposition)")
 
                     // Prepare the final request body for Card
                     let returnInfo: [String: String] = [
@@ -343,9 +311,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
                 }
 
             } else if type == .payPal {
-                // --- Handle PayPal Payment Success ---
-                print("Handling PayPal success.")
-
                 // Extract necessary data from the PayPal payload
                 // *** VERIFY THIS PAYLOAD STRUCTURE AND REQUIRED FIELDS WITH PAYRAILS API DOCS FOR PAYPAL ***
                 guard let payload = payload,
@@ -373,8 +338,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
                     enrollInstrumentToNetworkOffers: false
                 )
 
-                print("Created PayPal payment composition: \(payPalComposition)")
-
                 // Prepare the final request body for PayPal
                 let returnInfo: [String: String] = [
                     "success": "https://assets.payrails.io/html/payrails-success.html",
@@ -393,8 +356,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
                     "meta": meta
                 ]
 
-                print("Final body for PayPal: \(payPalBody)")
-
                 // Make the API call for PayPal
                 currentTask = Task { [weak self] in
                     guard let strongSelf = self else { return }
@@ -410,16 +371,10 @@ extension Payrails.Session: PaymentHandlerDelegate {
                 }
 
             } else if type == .applePay {
-                 // --- Handle Apple Pay Success ---
-                 print("Handling Apple Pay success.")
-                 // TODO: Implement Apple Pay success handling similar to Card/PayPal.
-                 // Extract necessary token data from the payload provided by ApplePayHandler.
-                 // Construct the correct PaymentComposition and body for the makePayment API call.
                  print("❌ Apple Pay success handling not fully implemented yet.")
                  handle(error: PayrailsError.incorrectPaymentSetup(type: type)) // Placeholder
 
             } else {
-                // --- Handle other potential payment types or errors ---
                 print("❓ Unhandled payment type in success case: \(type)")
                 handle(error: PayrailsError.unsupportedPayment(type: type))
             }
@@ -439,7 +394,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
         error: PayrailsError,
         type: Payrails.PaymentType
     ) {
-        print("payment handler failed here: \(error)")
         isPaymentInProgress = false
         onResult?(.error(error))
         paymentHandler = nil
@@ -456,7 +410,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
             return
         }
 
-        print("paymen handler failed")
         guard let link else {
             isPaymentInProgress = false
             onResult?(.error(.missingData("Link response is missing")))
@@ -478,8 +431,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
-        print("calling handle payment status")
-        print(paymentStatus)    
+        print("Payment Status:", paymentStatus)    
         switch paymentStatus {
         case .failed:
             onResult?(.failure)
@@ -518,8 +470,6 @@ public extension Payrails.Session {
         saveInstrument: Bool = false,
         presenter: PaymentPresenter?
     ) async -> OnPayResult {
-        print("executePayment called for payment type:", type)
-        
         let result = await withCheckedContinuation({ continuation in
             executePayment(
                 with: type,
