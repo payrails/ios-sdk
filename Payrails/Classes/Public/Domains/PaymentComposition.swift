@@ -8,7 +8,7 @@ struct PaymentComposition {
     let integrationType: String
     let amount: Amount
     let storeInstrument: Bool
-    let paymentInstrumentData: PaymentInstrumentData
+    let paymentInstrumentData: PaymentInstrumentData?
     let enrollInstrumentToNetworkOffers: Bool
 }
 

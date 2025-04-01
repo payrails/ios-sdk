@@ -21,6 +21,7 @@ class PayPalHandler: NSObject {
             clientID: config.clientId,
             environment: environment == .dev ? .sandbox : .live
         )
+
         Checkout.set(config: config)
     }
 }
@@ -46,6 +47,7 @@ extension PayPalHandler: PaymentHandler {
         )
     }
 
+    // TODO: paypal or any other payment with pending must go into this
     func handlePendingState(
         with executionResult: GetExecutionResult
     ) {

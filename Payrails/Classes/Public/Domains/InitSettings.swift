@@ -22,7 +22,7 @@ public extension Payrails {
             self.workflowCode = workflowCode
             self.amount = .init(
                 value: amount,
-                currency: "EUR"
+                currency: "USD"
             )
             let address = DeliveryAddress(
                 city: "Berlin",
