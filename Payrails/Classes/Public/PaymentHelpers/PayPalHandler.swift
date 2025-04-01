@@ -21,8 +21,7 @@ class PayPalHandler: NSObject {
             clientID: config.clientId,
             environment: environment == .dev ? .sandbox : .live
         )
-        
-        print("paypal initized succesfully", String(describing: config))
+
         Checkout.set(config: config)
     }
 }
@@ -33,7 +32,6 @@ extension PayPalHandler: PaymentHandler {
         currency: String,
         presenter: PaymentPresenter?
     ) {
-        print("paypal make payment")
         delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .payPal,

@@ -137,7 +137,6 @@ class PayrailsAPI {
         let jsonEncoder = JSONEncoder()
         let jsonData = convertToJSON(body: payload ?? [:])
 
-        print(authorizeURL.url)
         let authorizeResponse = try await call(
             url: authorizeURL.url,
             method: authorizeURL.method,
@@ -240,10 +239,6 @@ fileprivate extension PayrailsAPI {
         timeout: Int = 120,
         type: T.Type?
     ) async throws -> T {
-
-        print("=== API CALL DEBUG ===")
-            print("URL: \(url.absoluteString)")
-            print("Method: \(method.rawValue)")
         
         var request = URLRequest(
             url: url,
@@ -254,11 +249,8 @@ fileprivate extension PayrailsAPI {
         method
         if let httpBody = body {
             request.httpBody = httpBody
-//            print("Request body: \(String(data: httpBody, encoding: .utf8) ?? "Unable to decode body")")
-        } else {
-//            print("Request body: nil")
         }
-
+        
         request.addValue(
             "application/json",
             forHTTPHeaderField: "Content-Type"
@@ -281,22 +273,15 @@ fileprivate extension PayrailsAPI {
         request.addValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         request.timeoutInterval = TimeInterval(timeout)
         
-//        print("Request headers: \(request.allHTTPHeaderFields ?? [:])")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            print("Response status code: \(statusCode)")
+
             
-            // Log response headers
-            if let httpResponse = response as? HTTPURLResponse {
-                print("Response headers: \(httpResponse.allHeaderFields)")
-            }
             
-            // Log response body
             let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
-//            print("Response body: \(responseString)")
             
             if statusCode == 401 || statusCode == 403 {
                 print("Authentication error: status code \(statusCode)")
@@ -312,12 +297,9 @@ fileprivate extension PayrailsAPI {
             let jsonDecoder = JSONDecoder.API()
             do {
                 let result = try jsonDecoder.decode(T.self, from: data)
-                print("Response successfully decoded to \(T.self)")
                 return result
             } catch {
                 print("ERROR: Failed to decode response: \(error)")
-                print("Decoding failed for type: \(T.self)")
-//                print("Raw response data: \(responseString)")
                 throw error
             }
         } catch {
