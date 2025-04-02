@@ -34,7 +34,7 @@ public extension Payrails {
             session: Payrails.Session? = nil,
             buttonTitle: String = "Pay Now"
         ) {
-            // Initialize CardForm
+            // Initialize CardForm (inputs onlty)
             self.cardForm = CardForm(
                 config: config,
                 tableName: tableName,

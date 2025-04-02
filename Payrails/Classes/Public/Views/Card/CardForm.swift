@@ -23,7 +23,7 @@ public extension Payrails {
             )
         }
     }
-    
+    //jo
     class CardForm: UIStackView {
         public weak var delegate: PayrailsCardFormDelegate?
 
@@ -105,7 +105,8 @@ public extension Payrails {
                 errorTextStyles: config.style.errorStyles,
                 label: cardNumberTranslation.label ?? config.fieldConfig(for: .CARD_NUMBER)?.title ?? "Card Number",
                 placeholder: cardNumberTranslation.placeholder ?? config.fieldConfig(for: .CARD_NUMBER)?.placeholder ?? "Card Number",
-                type: .CARD_NUMBER
+                type: .CARD_NUMBER,
+                customErrorMessage: cardNumberTranslation.errorText
             )
 
             // Get translations for CARDHOLDER_NAME
@@ -118,7 +119,8 @@ public extension Payrails {
                 errorTextStyles: config.style.errorStyles,
                 label: cardholderNameTranslation.label ?? config.fieldConfig(for: .CARDHOLDER_NAME)?.title ?? "Card Holder Name",
                 placeholder: cardholderNameTranslation.placeholder ?? config.fieldConfig(for: .CARDHOLDER_NAME)?.placeholder ?? "",
-                type: .CARDHOLDER_NAME
+                type: .CARDHOLDER_NAME,
+                customErrorMessage: cardholderNameTranslation.errorText
             )
             
             // Get translations for CVV
@@ -131,7 +133,8 @@ public extension Payrails {
                 errorTextStyles: config.style.errorStyles,
                 label: cvvTranslation.label ?? config.fieldConfig(for: .CVV)?.title ?? "CVV",
                 placeholder: cvvTranslation.placeholder ?? config.fieldConfig(for: .CVV)?.placeholder ?? "***",
-                type: .CVV
+                type: .CVV,
+                customErrorMessage: cvvTranslation.errorText
             )
             
             // Get translations for EXPIRATION_MONTH
@@ -144,7 +147,8 @@ public extension Payrails {
                 errorTextStyles: config.style.errorStyles,
                 label: expiryMonthTranslation.label ?? config.fieldConfig(for: .EXPIRATION_MONTH)?.title ?? "Expiration Month",
                 placeholder: expiryMonthTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_MONTH)?.placeholder ?? "MM",
-                type: .EXPIRATION_MONTH
+                type: .EXPIRATION_MONTH,
+                customErrorMessage: expiryMonthTranslation.errorText
             )
             
             // Get translations for EXPIRATION_YEAR
@@ -157,7 +161,8 @@ public extension Payrails {
                 errorTextStyles: config.style.errorStyles,
                 label: expiryYearTranslation.label ?? config.fieldConfig(for: .EXPIRATION_YEAR)?.title ?? "Expiration Year",
                 placeholder: expiryYearTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_YEAR)?.placeholder ?? "YYYY",
-                type: .EXPIRATION_YEAR
+                type: .EXPIRATION_YEAR,
+                customErrorMessage: expiryYearTranslation.errorText
             )
             
             // Get translations for EXPIRATION_DATE
@@ -170,7 +175,8 @@ public extension Payrails {
                 errorTextStyles: config.style.errorStyles,
                 label: expiryDateTranslation.label ?? config.fieldConfig(for: .EXPIRATION_DATE)?.title ?? "Expiration Date",
                 placeholder: expiryDateTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_DATE)?.placeholder ?? "MM/YY",
-                type: .EXPIRATION_DATE
+                type: .EXPIRATION_DATE,
+                customErrorMessage: expiryDateTranslation.errorText
             )
                 
             let requiredOption = CollectElementOptions(required: true)

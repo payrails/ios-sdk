@@ -93,67 +93,6 @@ public extension Payrails {
         return result
     }
     
-    static func createCardForm(
-        config: CardFormConfig = CardFormConfig(showNameField: false, fieldConfigs: [])
-    ) -> Payrails.CardForm {
-        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentForm")
-        let session = currentSession!
-        
-        let defaultCardFormConfig = CardFormConfig(
-            showNameField: true,
-            fieldConfigs: [
-                CardFieldConfig(
-                    type: .CARD_NUMBER,
-                    placeholder: "1234 5678 9012 3456",
-                    title: "Card Number",
-                    style: CardFormStyle(
-                        baseStyle: Style(
-                            borderColor: .blue.withAlphaComponent(0.5),
-                            cornerRadius: 10,
-                            padding: UIEdgeInsets(top: 14, left: 16, bottom: 14, right: 16),
-                            borderWidth: 1.5,
-                            font: .systemFont(ofSize: 18),
-                            textColor: .darkText,
-                            backgroundColor: .white.withAlphaComponent(0.95),
-                            minWidth: nil,
-                            maxWidth: nil,
-                            width: nil,
-                            placeholderColor: .gray.withAlphaComponent(0.4)
-                        ),
-                        focusStyle: Style(
-                            borderColor: .blue,
-                            borderWidth: 2,
-                            backgroundColor: .white
-                        ),
-                        labelStyle: Style(
-                            font: .systemFont(ofSize: 16, weight: .semibold),
-                            textColor: .black
-                        ),
-                        completedStyle: Style(
-                            borderColor: .green,
-                            backgroundColor: .green.withAlphaComponent(0.05)
-                        ),
-                        invalidStyle: Style(
-                            borderColor: .red,
-                            backgroundColor: .red.withAlphaComponent(0.05)
-                        )
-                    )
-                )
-            ]
-        )
-        
-        let cardForm = Payrails.CardForm(
-            // TODO if config is passed extend default config
-            config: defaultCardFormConfig,
-            tableName: "tableName",
-            cseConfig: (data: "", version: ""),
-            holderReference: session.getSDKConfiguration()!.holderRefecerence,
-            cseInstance: session.getCSEInstance()!
-        )
-        
-        return cardForm
-    }
-    
     static func createCardPaymentForm(
         config: CardFormConfig? = nil, // Accept optional custom config
         buttonTitle: String = "Pay Now"
