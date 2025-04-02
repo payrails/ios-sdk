@@ -891,15 +891,12 @@ extension TextField {
         }
     }
 
-    // Inside TextField.swift
 
     func updateErrorMessage() {
 
-        var isRequiredCheckFailed = false // <<< KEEP original flag declaration
+        var isRequiredCheckFailed = false
         let currentState = state.getState()
 
-        // --- Start: ORIGINAL logic for determining style and visibility ---
-        // --- This block remains UNCHANGED ---
         if self.errorTriggered {
             updateInputStyle(collectInput!.inputStyles.invalid)
             errorMessage.alpha = 1.0
@@ -911,33 +908,25 @@ extension TextField {
                 isRequiredCheckFailed = true // Set the original flag
                 updateInputStyle(collectInput!.inputStyles.empty)
                 errorMessage.alpha = 1.0 // Show error label
-            } else { // Empty but not required
+            } else {
                 updateInputStyle(collectInput!.inputStyles.complete)
                 errorMessage.alpha = 0.0 // Hide error label
             }
         } else if !(currentState["isValid"] as! Bool) { // Not empty, check validity
             updateInputStyle(collectInput!.inputStyles.invalid)
-            errorMessage.alpha = 1.0 // Show error label
+            errorMessage.alpha = 1.0
         } else { // Not empty and valid
             updateInputStyle(collectInput!.inputStyles.complete)
-            errorMessage.alpha = 0.0 // Hide error label
+            errorMessage.alpha = 0.0
         }
-        // --- End: ORIGINAL logic for determining style and visibility ---
-
-
-        // --- Start: Determine the error TEXT to display ---
 
         // First, check if we should display *any* error text (alpha == 1.0)
         // And also check if an external error wasn't already set (which takes precedence)
         if errorMessage.alpha == 1.0 && !self.errorTriggered {
-            // <<< NEW: Check for a custom error message >>>
             if let customError = self.customErrorMessage, !customError.isEmpty {
                 // <<< NEW: If custom message exists, use it >>>
                 self.errorMessage.text = customError
             } else {
-                // <<< NEW: NO custom message, proceed with the ORIGINAL default message logic >>>
-                // --- Start: ORIGINAL default message assignment logic ---
-                // --- This block remains UNCHANGED ---
                 let label = self.collectInput.label
                 if isRequiredCheckFailed { // Use the flag set earlier
                     errorMessage.text = (label != "" ? label : "Field") + " is required"
@@ -957,15 +946,13 @@ extension TextField {
                      // Fallback if alpha is 1.0 but no specific reason flagged (should be rare if state is accurate)
                      errorMessage.text = "Invalid Input" // Or keep the previous generic "Invalid value"
                 }
-                // --- End: ORIGINAL default message assignment logic ---
+
             }
         } else if errorMessage.alpha == 0.0 {
-            // <<< Ensure text is cleared if no error should be shown >>>
+
             errorMessage.text = ""
         }
-        // If self.errorTriggered is true, errorMessage.text was already set by setError()
-
-        // --- End: Determine the error TEXT to display ---
+        
 
         onEndEditing?() // Keep original call
     }
