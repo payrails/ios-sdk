@@ -79,10 +79,6 @@ public struct CardTranslations {
 
 // Add this extension to your CardTranslations definition file or nearby
 extension CardTranslations {
-
-    /// Merges the current translations with another, giving precedence to the other's values.
-    /// - Parameter other: The CardTranslations object to merge with. If nil, returns self.
-    /// - Returns: A new CardTranslations object containing the merged values.
     func merged(with other: CardTranslations?) -> CardTranslations {
         guard let other = other else {
             // If the other translations are nil, return the current ones.
@@ -139,11 +135,6 @@ extension CardTranslations.Labels {
     var saveInstrumentText: String? { return saveInstrument }
     var storeInstrumentText: String? { return storeInstrument }
     var paymentInstallmentsText: String? { return paymentInstallments }
-    
-    // We need to modify the subscript/saveCreditCard setters if `values` is private
-    // If `values` remains private, you might need an internal initializer or a mutating merge func
-    // Assuming 'values' is accessible within the module for the merge function above.
-    // If not, make 'values' `internal` or provide a public initializer taking a dictionary.
 }
 
 extension CardTranslations.ErrorMessages.DefaultErrors {
