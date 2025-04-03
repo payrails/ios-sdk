@@ -31,17 +31,17 @@ extension CardPaymentHandler: PaymentHandler {
         currency: String,
         presenter: PaymentPresenter?
     ) {
-        print("let's make a payment!")
-        var encryptedCardData = presenter?.encryptedCardData ?? ""
+        let effectivePresenter = presenter ?? self.presenter
         
-        print("encryptedCardData: \(encryptedCardData)")
-        
-        
-//        let dictionary = ((response as? [String: Any])?["records"] as? [Any])?.first as? [String: Any]
-//        guard let fields = dictionary?["fields"] as? [String: Any] else {
-//            delegate?.paymentHandlerDidFail(handler: self, error: .missingData("fields"), type: .card)
-//            return
-//        }
+        guard let encryptedCardData = effectivePresenter?.encryptedCardData, !encryptedCardData.isEmpty else {
+            print("Error: Missing or empty encrypted card data.")
+            delegate?.paymentHandlerDidFail(
+                handler: self,
+                error: .missingData("Encrypted card data is required but was missing or empty."),
+                type: .card
+            )
+            return
+        }
 
         var data: [String: Any] = [:]
         data["card"] = [
@@ -71,6 +71,7 @@ extension CardPaymentHandler: PaymentHandler {
             )
             return
         }
+
         DispatchQueue.main.async {
             let webViewController = PayWebViewController(
                 url: url,
@@ -85,47 +86,62 @@ extension CardPaymentHandler: PaymentHandler {
 extension CardPaymentHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        print(navigationAction)
-        if let url = navigationAction.request.mainDocumentURL?.absoluteString {
 
-            if url.hasPrefix("https://www.bootstrap.payrails.io/success") {
-                decisionHandler(.cancel)
-                delegate?.paymentHandlerDidHandlePending(
+        guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {
+            // If we can't get the URL string, allow navigation (or handle as error if needed)
+            decisionHandler(.allow)
+            return
+        }
+
+        let successPrefix = "https://assets.payrails.io/html/payrails-success.html"
+        let cancelPrefix = "https://assets.payrails.io/html/payrails-cancel.html"
+        let errorPrefix = "https://assets.payrails.io/html/payrails-error.html"
+
+        let finalAction: (() -> Void)?
+
+        if urlString.hasPrefix(successPrefix) {
+            finalAction = { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.paymentHandlerDidHandlePending(
                     handler: self,
                     type: .card,
                     link: nil,
                     payload: [:]
                 )
-                webViewController?.dismiss(animated: true)
-                webViewController = nil
-                return
-            } else if url.hasPrefix("https://www.bootstrap.payrails.io/cancel") {
-                decisionHandler(.cancel)
-                delegate?.paymentHandlerDidFinish(
+            }
+        } else if urlString.hasPrefix(cancelPrefix) {
+            finalAction = { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.paymentHandlerDidFinish(
                     handler: self,
                     type: .card,
                     status: .canceled,
                     payload: nil
                 )
-                webViewController?.dismiss(animated: true)
-                webViewController = nil
-                return
-            } else if url.hasPrefix("https://www.bootstrap.payrails.io/error") {
-                decisionHandler(.cancel)
-                delegate?.paymentHandlerDidFinish(
+            }
+        } else if urlString.hasPrefix(errorPrefix) {
+            finalAction = { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.paymentHandlerDidFinish(
                     handler: self,
                     type: .card,
                     status: .error(nil),
                     payload: nil
                 )
-                webViewController?.dismiss(animated: true)
-                webViewController = nil
-                return
             }
-
+        } else {
+            finalAction = nil
         }
 
-        decisionHandler(.allow)
+        // If we matched one of the final URLs, perform the common cleanup and specific action
+        if let action = finalAction {
+            decisionHandler(.cancel)
+            action()
+            webViewController?.dismiss(animated: true)
+            webViewController = nil
+        } else {
+            decisionHandler(.allow)
+        }
     }
 }
 
