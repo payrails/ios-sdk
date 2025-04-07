@@ -8,8 +8,9 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didStartLoading isLoading: Bool)
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didLogMessage message: String)
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didFailWithError error: Error)
-    func paymentButtonClicked(_ form: Payrails.CardPaymentForm)
-    func willPresentThreeDSecureChallenge()
+    func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm)
+    func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm)
+    func onThreeDSecureChallenge()
 }
 
 // Extension to Payrails for CardPaymentForm
@@ -99,7 +100,7 @@ public extension Payrails {
         
         // MARK: - Actions
         @objc private func payButtonTapped() {
-            delegate?.paymentButtonClicked(self)
+            delegate?.onPaymentButtonClicked(self)
             cardForm.collectFields()
         }
         
@@ -152,6 +153,7 @@ public extension Payrails {
             switch result {
             case .success:
                 logMessage("Payment was successful!")
+                delegate?.onAuthorizeSuccess(self)
             case .authorizationFailed:
                 logMessage("Payment failed due to authorization")
             case .failure:

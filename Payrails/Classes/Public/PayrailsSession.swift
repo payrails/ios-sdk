@@ -245,7 +245,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
 
         if let cardFormDelegate = presenter as? PayrailsCardPaymentFormDelegate {
             DispatchQueue.main.async {
-                cardFormDelegate.willPresentThreeDSecureChallenge()
+                cardFormDelegate.onThreeDSecureChallenge()
             }
         } else {
             print("Session Warning: CardPaymentHandler's presenter does not conform to PayrailsCardPaymentFormDelegate.")
