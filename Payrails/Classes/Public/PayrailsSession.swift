@@ -295,7 +295,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
                         guard let strongSelf = self else { return }
                         do {
                             let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
-                                type: type, // .card
+                                type: type,
                                 payload: body
                             )
                             strongSelf.handle(paymentStatus: paymentStatus)

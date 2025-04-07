@@ -8,6 +8,7 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didStartLoading isLoading: Bool)
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didLogMessage message: String)
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didFailWithError error: Error)
+    func paymentButtonClicked(_ form: Payrails.CardPaymentForm)
 }
 
 // Extension to Payrails for CardPaymentForm
@@ -97,7 +98,7 @@ public extension Payrails {
         
         // MARK: - Actions
         @objc private func payButtonTapped() {
-            logMessage("Collecting card data...")
+            delegate?.paymentButtonClicked(self)
             cardForm.collectFields()
         }
         

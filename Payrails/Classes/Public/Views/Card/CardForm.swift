@@ -151,7 +151,6 @@ public extension Payrails {
                 
             let requiredOption = CollectElementOptions(required: true)
             _ = container.create(input: collectCardNumberInput, options: requiredOption)
-    //        _ = container.create(input: collectExpDateInput, options: requiredOption)
             _ = container.create(input: collectCVVInput, options: requiredOption)
             if config.showNameField {
                 _ = container.create(input: collectNameInput, options: requiredOption)
@@ -191,7 +190,6 @@ public extension Payrails {
             callback.onSuccess = { [weak self] responseBody in
                 guard let self = self else { return }
 
-                print("Successfully collected card data:", responseBody)
                 if let response = responseBody as? [String: Any],
                    let records = response["records"] as? [[String: Any]],
                    let firstRecord = records.first,
@@ -214,7 +212,6 @@ public extension Payrails {
                     do {
                         if let payrailsCSE = self.payrailsCSE {
                             encryptedCardData = try payrailsCSE.encryptCardData(card: payrailsCard)
-                            print("Successfully encrypted card data is here:", encryptedCardData ?? "")
                             DispatchQueue.main.async {
                                 self.delegate?.cardForm(self, didCollectCardData: encryptedCardData ?? "")
                             }
