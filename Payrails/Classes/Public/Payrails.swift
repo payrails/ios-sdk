@@ -174,6 +174,14 @@ public extension Payrails {
         
         return cardPaymentForm
     }
+    
+    static func createPayPalButton() -> Payrails.PayPalButton {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a PayPalButton")
+        let session = currentSession!
+        // Calls the new internal initializer passing the session
+        let button = Payrails.PayPalButton(session: session)
+        return button
+    }
 }
 
 public extension Payrails {
