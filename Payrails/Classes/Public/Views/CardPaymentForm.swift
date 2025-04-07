@@ -9,6 +9,7 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didLogMessage message: String)
     func cardPaymentForm(_ form: Payrails.CardPaymentForm, didFailWithError error: Error)
     func paymentButtonClicked(_ form: Payrails.CardPaymentForm)
+    func willPresentThreeDSecureChallenge()
 }
 
 // Extension to Payrails for CardPaymentForm
@@ -180,7 +181,6 @@ public extension Payrails {
     }
 }
 
-// MARK: - PayrailsCardFormDelegate
 extension Payrails.CardPaymentForm: PayrailsCardFormDelegate {
     public func cardForm(_ view: Payrails.CardForm, didCollectCardData data: String) {
         DispatchQueue.main.async { [weak self] in

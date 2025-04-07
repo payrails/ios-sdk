@@ -18,7 +18,6 @@ public extension Payrails {
             return self.config
         }
      
-
         public private(set) var isPaymentInProgress = false {
             didSet {
                 payrailsAPI.isRunning = isPaymentInProgress
@@ -230,9 +229,32 @@ private extension Payrails.Session {
 }
 
 extension Payrails.Session: PaymentHandlerDelegate {
+    func paymentHandlerWillRequestChallengePresentation(_ handler: PaymentHandler) {
+        print("Session: Handler will request challenge presentation.")
+
+        guard let cardHandler = handler as? CardPaymentHandler else {
+            // If it's not a CardPaymentHandler, we don't proceed with this specific delegate call.
+            // This implicitly filters for card payments in this context.
+            return
+        }
+
+        guard let presenter = cardHandler.presenter else {
+            print("Session Warning: CardPaymentHandler's presenter is nil.")
+            return
+        }
+
+        if let cardFormDelegate = presenter as? PayrailsCardPaymentFormDelegate {
+            DispatchQueue.main.async {
+                cardFormDelegate.willPresentThreeDSecureChallenge()
+            }
+        } else {
+            print("Session Warning: CardPaymentHandler's presenter does not conform to PayrailsCardPaymentFormDelegate.")
+        }
+    }
+    
     func paymentHandlerDidFinish(
         handler: PaymentHandler,
-        type: Payrails.PaymentType, // <-- Use this parameter!
+        type: Payrails.PaymentType,
         status: PaymentHandlerStatus,
         payload: [String: Any]?
     ) {
