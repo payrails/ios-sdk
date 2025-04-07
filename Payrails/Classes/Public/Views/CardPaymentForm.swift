@@ -11,6 +11,7 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm)
     func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm)
     func onThreeDSecureChallenge()
+    func onAuthorizeFailed(_ form: Payrails.CardPaymentForm)
 }
 
 // Extension to Payrails for CardPaymentForm
@@ -156,6 +157,7 @@ public extension Payrails {
                 delegate?.onAuthorizeSuccess(self)
             case .authorizationFailed:
                 logMessage("Payment failed due to authorization")
+                delegate?.onAuthorizeFailed(self)
             case .failure:
                 logMessage("Payment failed (failure state)")
             case let .error(error):
