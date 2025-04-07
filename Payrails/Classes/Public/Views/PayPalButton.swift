@@ -13,15 +13,12 @@ public extension Payrails {
 
     final class PayPalButton: ActionButton { // Inherits from your ActionButton
 
-        // --- UI Properties ---
         private let prefixLabel = UILabel()
         private let paypalImageView = UIImageView( /* ... image setup ... */ )
 
-        // --- Dependencies (Set externally AFTER creation) ---
         public weak var delegate: PayrailsPayPalButtonDelegate?
         public weak var presenter: PaymentPresenter?
 
-        // --- Internal Properties ---
         private weak var session: Payrails.Session? // Set via internal init
         private var paymentTask: Task<Void, Error>?
         private var isProcessing: Bool = false {
@@ -32,34 +29,27 @@ public extension Payrails {
             }
         }
 
-        // --- Initialization (Internal - Called by Factory) ---
-        // Note: If ActionButton's required init() is public, this needs to be public.
-        // If ActionButton's required init() can be internal, this can be internal.
-        // Let's assume ActionButton's is public for now.
+
         public required init() {
             // This path might be problematic if session is required.
             // Relying on the factory method is safer.
              super.init()
              internalSetup()
              print("Warning: Payrails.PayPalButton initialized without a session via required init(). Use Payrails.createPayPalButton().")
-             // Button will be unusable until configured if created this way, which we want to avoid.
         }
 
         public required init?(coder: NSCoder) {
-            // Required by UIControl/UIButton via ActionButton
             super.init(coder: coder)
              internalSetup()
              print("Warning: Payrails.PayPalButton initialized via coder without a session. Use Payrails.createPayPalButton().")
         }
 
-        // Internal initializer used by the factory method
         internal init(session: Payrails.Session) {
             self.session = session
             super.init() // Call ActionButton's required init()
             internalSetup()
         }
 
-        // Common setup routine
         private func internalSetup() {
             setupViews()
             addTarget(self, action: #selector(handleTap), for: .touchUpInside)
@@ -68,8 +58,7 @@ public extension Payrails {
         deinit {
             paymentTask?.cancel()
         }
-
-        // --- Action ---
+        
         @objc private func handleTap() {
             guard !isProcessing else { return }
             // Use the internally stored session
@@ -113,8 +102,7 @@ public extension Payrails {
             }
         }
 
-        // --- Overrides for UI (setupViews, show(loading:), setTitle, etc.) ---
-        // (Keep the UI implementation details from the previous version)
+
         override public var titleLabel: UILabel? { return prefixLabel }
         override public func setTitle(_ title: String?, for state: UIControl.State) {
             super.setTitle(title, for: state) // Let ActionButton handle internal state if needed
