@@ -18,6 +18,8 @@ protocol PaymentHandlerDelegate: AnyObject {
         link: Link?,
         payload: [String: Any]?
     )
+    
+    func paymentHandlerWillRequestChallengePresentation(_ handler: PaymentHandler)
 }
 
 enum PaymentHandlerStatus {

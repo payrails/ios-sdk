@@ -2,12 +2,12 @@ import UIKit
 import Payrails
 import PayrailsCSE
 
-// Protocol for CardPaymentForm delegate
+// Protocol for CardPaymentForm delegates
 public protocol PayrailsCardPaymentFormDelegate: AnyObject {
-    func cardPaymentForm(_ form: Payrails.CardPaymentForm, didFinishPaymentWithResult result: OnPayResult?)
-    func cardPaymentForm(_ form: Payrails.CardPaymentForm, didStartLoading isLoading: Bool)
-    func cardPaymentForm(_ form: Payrails.CardPaymentForm, didLogMessage message: String)
-    func cardPaymentForm(_ form: Payrails.CardPaymentForm, didFailWithError error: Error)
+    func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm)
+    func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm)
+    func onThreeDSecureChallenge()
+    func onAuthorizeFailed(_ form: Payrails.CardPaymentForm)
 }
 
 // Extension to Payrails for CardPaymentForm
@@ -24,7 +24,6 @@ public extension Payrails {
         public weak var delegate: PayrailsCardPaymentFormDelegate?
         public var presenter: PaymentPresenter?
         
-        // MARK: - Initialization
         public init(
             config: CardFormConfig,
             tableName: String,
@@ -34,7 +33,10 @@ public extension Payrails {
             session: Payrails.Session? = nil,
             buttonTitle: String = "Pay Now"
         ) {
+<<<<<<< HEAD
+=======
             // Initialize CardForm (inputs onlty)
+>>>>>>> main
             self.cardForm = CardForm(
                 config: config,
                 tableName: tableName,
@@ -96,7 +98,7 @@ public extension Payrails {
         
         // MARK: - Actions
         @objc private func payButtonTapped() {
-            logMessage("Collecting card data...")
+            delegate?.onPaymentButtonClicked(self)
             cardForm.collectFields()
         }
         
@@ -149,8 +151,10 @@ public extension Payrails {
             switch result {
             case .success:
                 logMessage("Payment was successful!")
+                delegate?.onAuthorizeSuccess(self)
             case .authorizationFailed:
                 logMessage("Payment failed due to authorization")
+                delegate?.onAuthorizeFailed(self)
             case .failure:
                 logMessage("Payment failed (failure state)")
             case let .error(error):
@@ -160,25 +164,20 @@ public extension Payrails {
             default:
                 logMessage("Payment result: unknown state")
             }
-            
-            delegate?.cardPaymentForm(self, didFinishPaymentWithResult: result)
         }
         
         // MARK: - Helper Methods
         private func setLoading(_ isLoading: Bool) {
             payButton.isEnabled = !isLoading
             payButton.alpha = isLoading ? 0.7 : 1.0
-            delegate?.cardPaymentForm(self, didStartLoading: isLoading)
         }
         
         private func logMessage(_ message: String) {
             print(message)
-            delegate?.cardPaymentForm(self, didLogMessage: message)
         }
     }
 }
 
-// MARK: - PayrailsCardFormDelegate
 extension Payrails.CardPaymentForm: PayrailsCardFormDelegate {
     public func cardForm(_ view: Payrails.CardForm, didCollectCardData data: String) {
         DispatchQueue.main.async { [weak self] in
@@ -199,6 +198,5 @@ extension Payrails.CardPaymentForm: PayrailsCardFormDelegate {
     
     public func cardForm(_ view: Payrails.CardForm, didFailWithError error: Error) {
         logMessage("Card collection failed: \(error.localizedDescription)")
-        delegate?.cardPaymentForm(self, didFailWithError: error)
     }
 }

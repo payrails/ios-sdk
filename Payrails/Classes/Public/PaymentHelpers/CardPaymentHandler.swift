@@ -6,7 +6,7 @@ class CardPaymentHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
     private let saveInstrument: Bool
-    private weak var presenter: PaymentPresenter?
+    public weak var presenter: PaymentPresenter?
     private var webViewController: PayWebViewController?
 
     init(
@@ -71,6 +71,8 @@ extension CardPaymentHandler: PaymentHandler {
             )
             return
         }
+        
+        delegate?.paymentHandlerWillRequestChallengePresentation(self)
 
         DispatchQueue.main.async {
             let webViewController = PayWebViewController(
