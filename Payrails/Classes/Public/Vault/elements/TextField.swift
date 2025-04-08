@@ -31,6 +31,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var rightViewForIcons = UIView()
     internal var copyContainerView = UIView()
     internal var cardIconContainerView = UIView()
+    private var customErrorMessage: String?
     
     internal var textFieldDelegate: UITextFieldDelegate? = nil
     
@@ -87,6 +88,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     
     override init(input: CollectElementInput, options: CollectElementOptions, contextOptions: ContextOptions, elements: [TextField]? = nil) {
         super.init(input: input, options: options, contextOptions: contextOptions, elements: elements ?? [])
+        self.customErrorMessage = input.customErrorMessage
         self.userValidationRules.append(input.validations)
         self.textFieldDelegate = TextFieldValidationDelegate(collectField: self)
         self.textField.delegate = self.textFieldDelegate!
@@ -888,56 +890,71 @@ extension TextField {
             print("actual value", self.actualValue)
         }
     }
-    
+
+
     func updateErrorMessage() {
-        
+
         var isRequiredCheckFailed = false
-        
         let currentState = state.getState()
-        if self.errorTriggered == false {
-            if self.hasFocus {
-                updateInputStyle(collectInput!.inputStyles.focus)
-                errorMessage.alpha = 0.0
-            }
-            else if (currentState["isEmpty"] as! Bool || self.actualValue.isEmpty) {
-                if currentState["isRequired"] as! Bool{
-                    isRequiredCheckFailed = true
-                    updateInputStyle(collectInput!.inputStyles.empty)
-                    errorMessage.alpha = 1.0
-                }else {
-                    updateInputStyle(collectInput!.inputStyles.complete)
-                    errorMessage.alpha = 0.0
-                }
-            } else if !(currentState["isValid"] as! Bool) {
-                updateInputStyle(collectInput!.inputStyles.invalid)
-                errorMessage.alpha = 1.0
+
+        if self.errorTriggered {
+            updateInputStyle(collectInput!.inputStyles.invalid)
+            errorMessage.alpha = 1.0
+        } else if self.hasFocus {
+            updateInputStyle(collectInput!.inputStyles.focus)
+            errorMessage.alpha = 0.0
+        } else if (currentState["isEmpty"] as! Bool || self.actualValue.isEmpty) { // Check if empty
+            if currentState["isRequired"] as! Bool { // Check if required
+                isRequiredCheckFailed = true // Set the original flag
+                updateInputStyle(collectInput!.inputStyles.empty)
+                errorMessage.alpha = 1.0 // Show error label
             } else {
                 updateInputStyle(collectInput!.inputStyles.complete)
-                errorMessage.alpha = 0.0
+                errorMessage.alpha = 0.0 // Hide error label
             }
-            let label = self.collectInput.label
-            
-            // Error message
-            if isRequiredCheckFailed {
-                errorMessage.text =  (label != "" ? label : "Field") + " is required"
-            }
-            else if  currentState["isDefaultRuleFailed"] as! Bool{
-                errorMessage.text = "Invalid " + (label != "" ? label : "value")
-            }
-            else if currentState["isCustomRuleFailed"] as! Bool{
-                if SkyflowValidationErrorType(rawValue: currentState["validationError"] as! String) != nil {
-                    errorMessage.text = "Validation failed"
-                }
-                else {
-                    errorMessage.text = currentState["validationError"] as? String
+        } else if !(currentState["isValid"] as! Bool) { // Not empty, check validity
+            updateInputStyle(collectInput!.inputStyles.invalid)
+            errorMessage.alpha = 1.0
+        } else { // Not empty and valid
+            updateInputStyle(collectInput!.inputStyles.complete)
+            errorMessage.alpha = 0.0
+        }
+
+        // First, check if we should display *any* error text (alpha == 1.0)
+        // And also check if an external error wasn't already set (which takes precedence)
+        if errorMessage.alpha == 1.0 && !self.errorTriggered {
+            if let customError = self.customErrorMessage, !customError.isEmpty {
+                // <<< NEW: If custom message exists, use it >>>
+                self.errorMessage.text = customError
+            } else {
+                let label = self.collectInput.label
+                if isRequiredCheckFailed { // Use the flag set earlier
+                    errorMessage.text = (label != "" ? label : "Field") + " is required"
+                } else if currentState["isDefaultRuleFailed"] as! Bool { // Check if default rule failed
+                     // Generic message for default rule failure
+                     errorMessage.text = "Invalid " + (label != "" ? label : "value")
+                } else if currentState["isCustomRuleFailed"] as! Bool { // Check if custom rule failed
+                    let validationErrorFromState = currentState["validationError"] as? String
+                     // Check if the error from state is a custom string (not a known enum raw value)
+                    if validationErrorFromState != nil && SkyflowValidationErrorType(rawValue: validationErrorFromState!) == nil {
+                        errorMessage.text = validationErrorFromState! // Use the custom rule's message from state
+                    } else {
+                        // Fallback if custom rule failed but no specific message in state
+                        errorMessage.text = "Validation failed"
+                    }
+                } else {
+                     // Fallback if alpha is 1.0 but no specific reason flagged (should be rare if state is accurate)
+                     errorMessage.text = "Invalid Input" // Or keep the previous generic "Invalid value"
                 }
 
             }
-        } else {
-            updateInputStyle(collectInput!.inputStyles.invalid)
-            errorMessage.alpha = 1.0
+        } else if errorMessage.alpha == 0.0 {
+
+            errorMessage.text = ""
         }
-        onEndEditing?()
+        
+
+        onEndEditing?() // Keep original call
     }
 }
 

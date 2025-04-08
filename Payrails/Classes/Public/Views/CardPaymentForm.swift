@@ -33,6 +33,10 @@ public extension Payrails {
             session: Payrails.Session? = nil,
             buttonTitle: String = "Pay Now"
         ) {
+<<<<<<< HEAD
+=======
+            // Initialize CardForm (inputs onlty)
+>>>>>>> main
             self.cardForm = CardForm(
                 config: config,
                 tableName: tableName,
@@ -41,7 +45,6 @@ public extension Payrails {
                 cseInstance: cseInstance
             )
             
-            // Initialize Payment Button
             self.payButton = UIButton(type: .system)
             self.payrails = session
             

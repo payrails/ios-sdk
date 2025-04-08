@@ -5,15 +5,18 @@ public struct CardFormConfig {
     public let style: CardFormStyle
     public let showNameField: Bool
     public let fieldConfigs: [CardFieldConfig]
+    public let translations: CardTranslations?
 
     public init(
         style: CardFormStyle = .defaultStyle,
         showNameField: Bool = true,
-        fieldConfigs: [CardFieldConfig] = []
+        fieldConfigs: [CardFieldConfig] = [],
+        translations: CardTranslations? = nil
     ) {
         self.style = style
         self.showNameField = showNameField
         self.fieldConfigs = fieldConfigs
+        self.translations = translations
     }
 
     public static var defaultConfig: CardFormConfig {
