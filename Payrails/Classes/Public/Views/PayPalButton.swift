@@ -4,8 +4,10 @@ import PayPalCheckout
 
 // MARK: - Delegate Protocol (Remains the same)
 public protocol PayrailsPayPalButtonDelegate: AnyObject {
-    func payPalButton(_ button: Payrails.PayPalButton, didFinishPaymentWithResult result: OnPayResult?)
-    func payPalButton(_ button: Payrails.PayPalButton, didStartLoading isLoading: Bool)
+    func onPaymentButtonClicked(_ button: Payrails.PayPalButton)
+    func onAuthorizeSuccess(_ button: Payrails.PayPalButton)
+    func onAuthorizeFailed(_ button: Payrails.PayPalButton)
+    func onPaymentSessionExpired(_ button: Payrails.PayPalButton)
 }
 
 // MARK: - Payrails.PayPalButton
@@ -25,7 +27,6 @@ public extension Payrails {
             didSet {
                 self.isUserInteractionEnabled = !isProcessing
                 show(loading: isProcessing)
-                delegate?.payPalButton(self, didStartLoading: isProcessing)
             }
         }
 
@@ -74,7 +75,7 @@ public extension Payrails {
 
             isProcessing = true
             paymentTask?.cancel()
-
+            delegate?.onPaymentButtonClicked(self)
             paymentTask = Task { [weak self] in
                 // Capture session/presenter safely for async context
                 guard let self = self else { return }
@@ -87,7 +88,23 @@ public extension Payrails {
                     try Task.checkCancellation()
                     await MainActor.run {
                         guard self.isProcessing else { return }
-                        self.delegate?.payPalButton(self, didFinishPaymentWithResult: result)
+                        
+                        print("Paypapapapapap")
+                        print(result)
+                        switch result {
+                        case .success:
+                            self.delegate?.onAuthorizeSuccess(self)
+                        case .authorizationFailed:
+                            self.delegate?.onAuthorizeFailed(self)
+                        case .failure:
+                            self.delegate?.onAuthorizeFailed(self)
+                        case let .error(error):
+                            self.delegate?.onAuthorizeFailed(self)
+                        case .cancelledByUser:
+                            self.delegate?.onPaymentSessionExpired(self)
+                        default:
+                            print("PayPal payment result: \(String(describing: result))")
+                        }
                         self.isProcessing = false
                     }
                 } catch is CancellationError {
@@ -95,7 +112,7 @@ public extension Payrails {
                 } catch {
                     await MainActor.run {
                          let payrailsError = PayrailsError.unknown(error: error)
-                         self.delegate?.payPalButton(self, didFinishPaymentWithResult: .error(payrailsError))
+                        self.delegate?.onAuthorizeFailed(self)
                          self.isProcessing = false
                     }
                 }
