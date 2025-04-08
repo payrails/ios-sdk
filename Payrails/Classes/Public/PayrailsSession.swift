@@ -136,7 +136,7 @@ public extension Payrails {
                 return
             }
             
-            paymentHandler.makePayment(total: 99.0, currency: "USD", presenter: presenter)
+            paymentHandler.makePayment(total: Double(config.amount.value)!, currency: config.amount.currency, presenter: presenter)
         }
 
         public func cancelPayment() {
