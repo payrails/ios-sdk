@@ -91,7 +91,7 @@ public extension Payrails {
             func getTranslation(for fieldType: CardFieldType) -> (placeholder: String?, label: String?, errorText: String?) {
                 let placeholder = config.translations?.placeholders[fieldType]
                 let label = config.translations?.labels[fieldType]
-                let errorText = config.translations?.error.defaultErrors[fieldType]
+                let errorText = config.translations?.error[fieldType] 
                 return (placeholder, label, errorText)
             }
             
@@ -181,10 +181,7 @@ public extension Payrails {
                 
             let requiredOption = CollectElementOptions(required: true)
             _ = container.create(input: collectCardNumberInput, options: requiredOption)
-<<<<<<< HEAD
-=======
-            //  _ = container.create(input: collectExpDateInput, options: requiredOption)
->>>>>>> main
+
             _ = container.create(input: collectCVVInput, options: requiredOption)
             if config.showNameField {
                 _ = container.create(input: collectNameInput, options: requiredOption)

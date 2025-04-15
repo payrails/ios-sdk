@@ -9,7 +9,7 @@ public struct CardFormConfig {
 
     public init(
         style: CardFormStyle = .defaultStyle,
-        showNameField: Bool = true,
+        showNameField: Bool = false,
         fieldConfigs: [CardFieldConfig] = [],
         translations: CardTranslations? = nil
     ) {

@@ -34,6 +34,15 @@ public class Payrails {
 // Keep existing extensions
 public extension Payrails {
     private static func getDefaultCardFormConfig() -> CardFormConfig {
+        let defaultErrorValues: [CardFieldType: String] = [
+             .CARDHOLDER_NAME: "Enter name as it appears on card",
+             .CARD_NUMBER: "Enter a valid card number",
+             .EXPIRATION_DATE: "Enter a valid expiry date (MM/YY)",
+             .CVV: "Enter the 3 or 4 digit code",
+             .EXPIRATION_MONTH: "Enter a valid month",
+             .EXPIRATION_YEAR: "Enter a valid year"
+        ]
+        
         let defaultTranslations = CardTranslations(
             placeholders: CardTranslations.Placeholders(values: [
                 .CARDHOLDER_NAME: "Full Name",
@@ -57,23 +66,16 @@ public extension Payrails {
                 paymentInstallments: "Pay in installments"
             ),
             error: CardTranslations.ErrorMessages(
-                defaultErrors: CardTranslations.ErrorMessages.DefaultErrors(values: [
-                    .CARDHOLDER_NAME: "Enter name as it appears on card",
-                    .CARD_NUMBER: "Enter a valid card number",
-                    .EXPIRATION_DATE: "Enter a valid expiry date (MM/YY)",
-                    .CVV: "Enter the 3 or 4 digit code",
-                    .EXPIRATION_MONTH: "Enter a valid month",   // Add defaults if needed
-                    .EXPIRATION_YEAR: "Enter a valid year"     // Add defaults if needed
-                ])
+                values: defaultErrorValues
             )
         )
 
         // Using the default style here, adjust if needed
         return CardFormConfig(
             style: .defaultStyle,
-            showNameField: true,
+            showNameField: false,
             fieldConfigs: [ /* Add default field configs if any */ ],
-            translations: defaultTranslations // Provide the default translations
+            translations: defaultTranslations
         )
     }
     
@@ -103,29 +105,21 @@ public extension Payrails {
         let session = currentSession!
         let defaultConfig = getDefaultCardFormConfig() // Get the base default config
 
-        // --- Merging Logic ---
         let finalConfig: CardFormConfig
         if let customConfig = config {
-            // Merge provided config with default, focusing on translations for now
-            
-            // Merge translations: default merged with custom (custom takes priority)
-            // Handle cases where default or custom translations might be nil
             let defaultTranslations = defaultConfig.translations ?? CardTranslations() // Ensure we have a base
             let mergedTranslations = defaultTranslations.merged(with: customConfig.translations)
 
-            // For other properties, currently, we just take the custom ones if provided.
-            // You could expand this merging logic to style, showNameField etc. if needed later.
             finalConfig = CardFormConfig(
-                style: customConfig.style, // Takes custom style completely (or default if custom didn't set one)
-                showNameField: customConfig.showNameField, // Takes custom setting
-                fieldConfigs: customConfig.fieldConfigs, // Takes custom field configs
-                translations: mergedTranslations // Use the merged translations
+                style: customConfig.style,
+                showNameField: customConfig.showNameField,
+                fieldConfigs: customConfig.fieldConfigs,
+                translations: mergedTranslations
             )
         } else {
             // No custom config provided, use the default entirely
             finalConfig = defaultConfig
         }
-        // --- End Merging Logic ---
 
         // Create the combined CardPaymentForm using the finalConfig
         let cardPaymentForm = Payrails.CardPaymentForm(
