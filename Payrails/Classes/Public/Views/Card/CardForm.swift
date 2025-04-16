@@ -23,7 +23,7 @@ public extension Payrails {
             )
         }
     }
-    //jo
+
     class CardForm: UIStackView {
         public weak var delegate: PayrailsCardFormDelegate?
 
@@ -42,7 +42,6 @@ public extension Payrails {
             holderReference: String,
             cseInstance: PayrailsCSE
         ) {
-            // this is a workaround just for skyflow to work, we don't need it
             self.containerClient = Client()
             self.config = config
             // this is also skyflow leftover
@@ -73,11 +72,13 @@ public extension Payrails {
         }
 
         private func setupViews() {
+            let defaultStyleForContainerError = CardFormStyle.defaultStyle.errorTextStyle
+
             guard let container = self.containerClient.container(
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
                     layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2],
-                    errorTextStyles: Styles(base: config.style.errorTextStyle)
+                    errorTextStyles: Styles(base: CardFormStyle.defaultStyle.errorTextStyle)
                 )
             ) else {
                 return
@@ -85,109 +86,120 @@ public extension Payrails {
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
-            let styles: Styles = config.style.skyflowStyles
+            let stylesDict = config.styles ?? [:]
+            let fallbackStyle = CardFormStyle.defaultStyle
             
             // Helper function to get placeholder, label, and error from translations
             func getTranslation(for fieldType: CardFieldType) -> (placeholder: String?, label: String?, errorText: String?) {
                 let placeholder = config.translations?.placeholders[fieldType]
                 let label = config.translations?.labels[fieldType]
-                let errorText = config.translations?.error[fieldType] 
+                let errorText = config.translations?.error[fieldType]
                 return (placeholder, label, errorText)
             }
             
-            // Get translations for CARD_NUMBER
-            let cardNumberTranslation = getTranslation(for: .CARD_NUMBER)
-            let collectCardNumberInput = CollectElementInput(
-                table: tableName,
-                column: "card_number",
-                inputStyles: config.fieldConfig(for: .CARD_NUMBER)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: cardNumberTranslation.label ?? config.fieldConfig(for: .CARD_NUMBER)?.title ?? "Card Number",
-                placeholder: cardNumberTranslation.placeholder ?? config.fieldConfig(for: .CARD_NUMBER)?.placeholder ?? "Card Number",
-                type: .CARD_NUMBER,
-                customErrorMessage: cardNumberTranslation.errorText
-            )
-
-            // Get translations for CARDHOLDER_NAME
-            let cardholderNameTranslation = getTranslation(for: .CARDHOLDER_NAME)
-            let collectNameInput = CollectElementInput(
-                table: tableName,
-                column: "cardholder_name",
-                inputStyles: config.fieldConfig(for: .CARDHOLDER_NAME)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: cardholderNameTranslation.label ?? config.fieldConfig(for: .CARDHOLDER_NAME)?.title ?? "Card Holder Name",
-                placeholder: cardholderNameTranslation.placeholder ?? config.fieldConfig(for: .CARDHOLDER_NAME)?.placeholder ?? "",
-                type: .CARDHOLDER_NAME,
-                customErrorMessage: cardholderNameTranslation.errorText
-            )
-            
-            // Get translations for CVV
-            let cvvTranslation = getTranslation(for: .CVV)
-            let collectCVVInput = CollectElementInput(
-                table: tableName,
-                column: "security_code",
-                inputStyles: config.fieldConfig(for: .CVV)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: cvvTranslation.label ?? config.fieldConfig(for: .CVV)?.title ?? "CVV",
-                placeholder: cvvTranslation.placeholder ?? config.fieldConfig(for: .CVV)?.placeholder ?? "***",
-                type: .CVV,
-                customErrorMessage: cvvTranslation.errorText
-            )
-            
-            // Get translations for EXPIRATION_MONTH
-            let expiryMonthTranslation = getTranslation(for: .EXPIRATION_MONTH)
-            let collectExpMonthInput = CollectElementInput(
-                table: tableName,
-                column: "expiry_month",
-                inputStyles: config.fieldConfig(for: .EXPIRATION_MONTH)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: expiryMonthTranslation.label ?? config.fieldConfig(for: .EXPIRATION_MONTH)?.title ?? "Expiration Month",
-                placeholder: expiryMonthTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_MONTH)?.placeholder ?? "MM",
-                type: .EXPIRATION_MONTH,
-                customErrorMessage: expiryMonthTranslation.errorText
-            )
-            
-            // Get translations for EXPIRATION_YEAR
-            let expiryYearTranslation = getTranslation(for: .EXPIRATION_YEAR)
-            let collectExpYearInput = CollectElementInput(
-                table: tableName,
-                column: "expiry_year",
-                inputStyles: config.fieldConfig(for: .EXPIRATION_YEAR)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: expiryYearTranslation.label ?? config.fieldConfig(for: .EXPIRATION_YEAR)?.title ?? "Expiration Year",
-                placeholder: expiryYearTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_YEAR)?.placeholder ?? "YYYY",
-                type: .EXPIRATION_YEAR,
-                customErrorMessage: expiryYearTranslation.errorText
-            )
-            
-            // Get translations for EXPIRATION_DATE
-            let expiryDateTranslation = getTranslation(for: .EXPIRATION_DATE)
-            let collectExpDateInput = CollectElementInput(
-                table: tableName,
-                column: "expiry_date",
-                inputStyles: config.fieldConfig(for: .EXPIRATION_DATE)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: expiryDateTranslation.label ?? config.fieldConfig(for: .EXPIRATION_DATE)?.title ?? "Expiration Date",
-                placeholder: expiryDateTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_DATE)?.placeholder ?? "MM/YY",
-                type: .EXPIRATION_DATE,
-                customErrorMessage: expiryDateTranslation.errorText
-            )
-                
             let requiredOption = CollectElementOptions(required: true)
-            _ = container.create(input: collectCardNumberInput, options: requiredOption)
-
-            _ = container.create(input: collectCVVInput, options: requiredOption)
-            if config.showNameField {
-                _ = container.create(input: collectNameInput, options: requiredOption)
+            
+            do {
+                let fieldType = CardFieldType.CARD_NUMBER
+                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
+                let cardNumberTranslation = getTranslation(for: fieldType)
+                
+                let collectCardNumberInput = CollectElementInput(
+                    table: tableName,
+                    column: "card_number",
+                    inputStyles: fieldStyle.skyflowStyles,
+                    labelStyles: fieldStyle.labelStyles,
+                    errorTextStyles: fieldStyle.errorStyles,
+                    label: cardNumberTranslation.label ?? "Card Number",
+                    placeholder: cardNumberTranslation.placeholder ?? "Card Number",
+                    type: .CARD_NUMBER,
+                    customErrorMessage: cardNumberTranslation.errorText
+                )
+                
+                _ = container.create(input: collectCardNumberInput, options: requiredOption)
             }
-            _ = container.create(input: collectExpMonthInput, options: requiredOption)
-            _ = container.create(input: collectExpYearInput, options: requiredOption)
+
+            do {
+                let fieldType = CardFieldType.CARDHOLDER_NAME
+                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
+                let translation = getTranslation(for: fieldType)
+                
+                let collectNameInput = CollectElementInput(
+                    table: tableName,
+                    column: "cardholder_name",
+                    inputStyles: fieldStyle.skyflowStyles,
+                    labelStyles: fieldStyle.labelStyles,
+                    errorTextStyles: fieldStyle.errorStyles,
+                    label: translation.label ?? "Card Holder Name",
+                    placeholder: translation.placeholder ?? "",
+                    type: .CARDHOLDER_NAME,
+                    customErrorMessage: translation.errorText
+                )
+                
+                if config.showNameField {
+                    _ = container.create(input: collectNameInput, options: requiredOption)
+                }
+            }
+            
+            do {
+                let fieldType = CardFieldType.CVV
+                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
+                let translation = getTranslation(for: fieldType)
+                
+                let collectCVVInput = CollectElementInput(
+                    table: tableName,
+                    column: "security_code",
+                    inputStyles: fieldStyle.skyflowStyles,
+                    labelStyles: fieldStyle.labelStyles,
+                    errorTextStyles: fieldStyle.errorStyles,
+                    label: translation.label ?? "CVV",
+                    placeholder: translation.placeholder ??  "***",
+                    type: .CVV,
+                    customErrorMessage: translation.errorText
+                )
+                
+                _ = container.create(input: collectCVVInput, options: requiredOption)
+            }
+            
+            do {
+                let fieldType = CardFieldType.EXPIRATION_MONTH
+                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
+                let translation = getTranslation(for: fieldType)
+                
+                let collectExpMonthInput = CollectElementInput(
+                    table: tableName,
+                    column: "expiry_month",
+                    inputStyles: fieldStyle.skyflowStyles,
+                    labelStyles: fieldStyle.labelStyles,
+                    errorTextStyles: fieldStyle.errorStyles,
+                    label: translation.label ?? "Expiration Month",
+                    placeholder: translation.placeholder ?? "MM",
+                    type: .EXPIRATION_MONTH,
+                    customErrorMessage: translation.errorText
+                )
+                
+                _ = container.create(input: collectExpMonthInput, options: requiredOption)
+            }
+            
+            do{
+                let fieldType = CardFieldType.EXPIRATION_MONTH
+                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
+                let translation = getTranslation(for: fieldType)
+                
+                let collectExpYearInput = CollectElementInput(
+                    table: tableName,
+                    column: "expiry_year",
+                    inputStyles: fieldStyle.skyflowStyles,
+                    labelStyles: fieldStyle.labelStyles,
+                    errorTextStyles: fieldStyle.errorStyles,
+                    label: translation.label ?? "Expiration Year",
+                    placeholder: translation.placeholder ?? "YYYY",
+                    type: .EXPIRATION_YEAR,
+                    customErrorMessage: translation.errorText
+                )
+                
+                _ = container.create(input: collectExpYearInput, options: requiredOption)
+            }
 
             self.axis = .vertical
             self.spacing = 6

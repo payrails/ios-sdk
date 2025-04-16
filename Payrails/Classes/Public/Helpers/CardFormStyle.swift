@@ -2,58 +2,36 @@ public typealias CardStyle = Style
 public typealias CardFieldType = ElementType
 
 public struct CardFormConfig {
-    public let style: CardFormStyle
     public let showNameField: Bool
-    public let fieldConfigs: [CardFieldConfig]
     public let translations: CardTranslations?
+    public let styles: [CardFieldType: CardFormStyle]?
 
     public init(
-        style: CardFormStyle = .defaultStyle,
         showNameField: Bool = false,
-        fieldConfigs: [CardFieldConfig] = [],
+        styles: [CardFieldType: CardFormStyle]? = nil,
         translations: CardTranslations? = nil
     ) {
-        self.style = style
         self.showNameField = showNameField
-        self.fieldConfigs = fieldConfigs
         self.translations = translations
+        self.styles = styles
     }
 
     public static var defaultConfig: CardFormConfig {
-        .init(
-            style: .defaultStyle,
+        var defaultStyles: [CardFieldType: CardFormStyle] = [:]
+
+        defaultStyles[CardFieldType.CARD_NUMBER] = CardFormStyle.defaultStyle
+        defaultStyles[CardFieldType.CVV] = CardFormStyle.defaultStyle
+        defaultStyles[CardFieldType.EXPIRATION_DATE] = CardFormStyle.defaultStyle
+        defaultStyles[CardFieldType.EXPIRATION_MONTH] = CardFormStyle.defaultStyle
+        defaultStyles[CardFieldType.EXPIRATION_YEAR] = CardFormStyle.defaultStyle
+        defaultStyles[CardFieldType.CARDHOLDER_NAME] = CardFormStyle.defaultStyle
+        
+        return .init(
             showNameField: true,
-            fieldConfigs: []
+            styles: defaultStyles
         )
     }
 
-    static var dropInConfig: CardFormConfig {
-        .init(
-            style: .init(
-                baseStyle: .init(
-                    borderColor: .black.withAlphaComponent(0.81),
-                    cornerRadius: 6,
-                    padding: UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8),
-                    borderWidth: 1,
-                    font: .systemFont(ofSize: 12),
-                    textAlignment: .left,
-                    textColor: .black.withAlphaComponent(0.81)
-                ),
-                focusStyle: .init(borderColor: .black.withAlphaComponent(0.81)),
-                labelStyle: .init(
-                    font: .systemFont(ofSize: 12),
-                    textColor: .black.withAlphaComponent(0.81)
-                ),
-                completedStyle: .init(borderColor: .black.withAlphaComponent(0.81)),
-                invalidStyle: .init(borderColor: .red.withAlphaComponent(0.81)),
-                errorTextStyle: .init(
-                    font: .systemFont(ofSize: 10),
-                    textColor: .red
-                )
-            ),
-            showNameField: false
-        )
-    }
 }
 
 public struct CardFieldConfig {
@@ -99,7 +77,7 @@ public struct CardFormStyle {
     public let labelStyle: CardStyle?
     public let invalidStyle: CardStyle?
     public let errorTextStyle: CardStyle?
-
+    
     public init(
         baseStyle: CardStyle?,
         focusStyle: CardStyle? = nil,
@@ -142,10 +120,22 @@ public struct CardFormStyle {
             invalid: errorTextStyle
         )
     }
-}
-
-extension CardFormConfig {
-    func fieldConfig(for type: CardFieldType) -> CardFieldConfig? {
-        fieldConfigs.first(where: { $0.type == type })
+    
+    
+    public static var empty: CardFormStyle {
+        .init(baseStyle: nil, labelStyle: nil)
+    }
+    
+    public func merged(over base: CardFormStyle?) -> CardFormStyle {
+        let baseFormStyle = base ?? CardFormStyle.empty
+        return CardFormStyle(
+            baseStyle: self.baseStyle?.merged(over: baseFormStyle.baseStyle) ?? baseFormStyle.baseStyle,
+            focusStyle: self.focusStyle?.merged(over: baseFormStyle.focusStyle) ?? baseFormStyle.focusStyle,
+            labelStyle: self.labelStyle?.merged(over: baseFormStyle.labelStyle) ?? baseFormStyle.labelStyle,
+            completedStyle: self.completedStyle?.merged(over: baseFormStyle.completedStyle) ?? baseFormStyle.completedStyle,
+            invalidStyle: self.invalidStyle?.merged(over: baseFormStyle.invalidStyle) ?? baseFormStyle.invalidStyle,
+            errorTextStyle: self.errorTextStyle?.merged(over: baseFormStyle.errorTextStyle) ?? baseFormStyle.errorTextStyle
+        )
     }
 }
+
