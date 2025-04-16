@@ -28,7 +28,6 @@ public struct Style {
     var height: CGFloat?
     var placeholderColor: UIColor?
     var cardIconAlignment: CardIconAlignment?
-//    var margin: UIEdgeInsets?
 
     public init(borderColor: UIColor? = nil,
                 cornerRadius: CGFloat? = nil,
@@ -48,9 +47,7 @@ public struct Style {
                 height: CGFloat? = nil,
                 placeholderColor: UIColor? = nil,
                 cardIconAlignment: CardIconAlignment? = .left
-//                margin: UIEdgeInsets? = nil
     ) {
-        // Assign parametric values to struct members
         self.borderColor = borderColor
         self.cornerRadius = cornerRadius
         self.padding = padding
@@ -69,6 +66,29 @@ public struct Style {
         self.height = height
         self.placeholderColor = placeholderColor
         self.cardIconAlignment = cardIconAlignment
-//        self.margin = margin
+    }
+    
+    func merged(over base: Style?) -> Style {
+        let baseStyle = base ?? Style()
+        return Style(
+            borderColor: self.borderColor ?? baseStyle.borderColor,
+            cornerRadius: self.cornerRadius ?? baseStyle.cornerRadius,
+            padding: self.padding ?? baseStyle.padding,
+            borderWidth: self.borderWidth ?? baseStyle.borderWidth,
+            font: self.font ?? baseStyle.font,
+            textAlignment: self.textAlignment ?? baseStyle.textAlignment,
+            textColor: self.textColor ?? baseStyle.textColor,
+            boxShadow: self.boxShadow ?? baseStyle.boxShadow,
+            backgroundColor: self.backgroundColor ?? baseStyle.backgroundColor,
+            minWidth: self.minWidth ?? baseStyle.minWidth,
+            maxWidth: self.maxWidth ?? baseStyle.maxWidth,
+            minHeight: self.minHeight ?? baseStyle.minHeight,
+            maxHeight: self.maxHeight ?? baseStyle.maxHeight,
+            cursorColor: self.cursorColor ?? baseStyle.cursorColor,
+            width: self.width ?? baseStyle.width,
+            height: self.height ?? baseStyle.height,
+            placeholderColor: self.placeholderColor ?? baseStyle.placeholderColor,
+            cardIconAlignment: self.cardIconAlignment ?? baseStyle.cardIconAlignment
+        )
     }
 }

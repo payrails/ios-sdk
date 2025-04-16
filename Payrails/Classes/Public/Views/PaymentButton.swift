@@ -115,7 +115,7 @@ public extension Payrails {
             case .failure:
                 logMessage("Payment failed (failure state)")
             case let .error(error):
-                logMessage("Payment failed due to error: \(error.localizedDescription)")
+                logMessage("Payment failed due to error 222: \(error.localizedDescription)")
             case .cancelledByUser:
                 logMessage("Payment was cancelled by user")
             default:

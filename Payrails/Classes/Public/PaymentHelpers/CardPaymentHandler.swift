@@ -91,6 +91,7 @@ extension CardPaymentHandler: WKNavigationDelegate {
 
         guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {
             // If we can't get the URL string, allow navigation (or handle as error if needed)
+            print("everything is awesoem")
             decisionHandler(.allow)
             return
         }
