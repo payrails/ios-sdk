@@ -72,25 +72,32 @@ public extension Payrails {
         }
 
         private func setupViews() {
-            let defaultStyleForContainerError = CardFormStyle.defaultStyle.errorTextStyle
+            // Use the new styles config, falling back to its default
+            let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
+            let defaultInputStyle = CardFieldSpecificStyles.defaultStyle
+            let defaultLabelStyle = CardStyle(textColor: .darkGray) // Match default from CardFormStylesConfig
+            let defaultErrorStyle = CardStyle(textColor: .red) // Match default from CardFormStylesConfig
+
+            // Get the shared error text style
+            let containerErrorStyle = stylesConfig.errorTextStyle ?? defaultErrorStyle
 
             guard let container = self.containerClient.container(
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
-                    layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2],
-                    errorTextStyles: Styles(base: CardFormStyle.defaultStyle.errorTextStyle)
+                    layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2], // Layout depends on showing name field
+                    // Use the errorTextStyle from the new config for the container
+                    errorTextStyles: Styles(base: containerErrorStyle)
                 )
             ) else {
+                print("Failed to create Composable Container") // Added log
                 return
             }
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
-            let stylesDict = config.styles ?? [:]
-            let fallbackStyle = CardFormStyle.defaultStyle
-            
             // Helper function to get placeholder, label, and error from translations
             func getTranslation(for fieldType: CardFieldType) -> (placeholder: String?, label: String?, errorText: String?) {
+                // Use optional chaining for safety
                 let placeholder = config.translations?.placeholders[fieldType]
                 let label = config.translations?.labels[fieldType]
                 let errorText = config.translations?.error[fieldType]
@@ -99,61 +106,76 @@ public extension Payrails {
             
             let requiredOption = CollectElementOptions(required: true)
             
+            // --- Card Number Field ---
             do {
                 let fieldType = CardFieldType.CARD_NUMBER
-                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
-                let cardNumberTranslation = getTranslation(for: fieldType)
+                let translation = getTranslation(for: fieldType)
+                
+                // Get styles from the new config structure
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
+                // Error style is shared
                 
                 let collectCardNumberInput = CollectElementInput(
                     table: tableName,
                     column: "card_number",
-                    inputStyles: fieldStyle.skyflowStyles,
-                    labelStyles: fieldStyle.labelStyles,
-                    errorTextStyles: fieldStyle.errorStyles,
-                    label: cardNumberTranslation.label ?? "Card Number",
-                    placeholder: cardNumberTranslation.placeholder ?? "Card Number",
+                    inputStyles: inputStyle.skyflowStyles, // Use helper from CardFieldSpecificStyles
+                    labelStyles: Styles(base: labelStyle), // Wrap single style
+                    errorTextStyles: Styles(base: containerErrorStyle), // Use shared error style
+                    label: translation.label ?? "Card Number", // Default label
+                    placeholder: translation.placeholder ?? "•••• •••• •••• ••••", // Default placeholder
                     type: .CARD_NUMBER,
-                    customErrorMessage: cardNumberTranslation.errorText
+                    customErrorMessage: translation.errorText
                 )
                 
                 _ = container.create(input: collectCardNumberInput, options: requiredOption)
             }
 
-            do {
-                let fieldType = CardFieldType.CARDHOLDER_NAME
-                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
-                let translation = getTranslation(for: fieldType)
-                
-                let collectNameInput = CollectElementInput(
-                    table: tableName,
-                    column: "cardholder_name",
-                    inputStyles: fieldStyle.skyflowStyles,
-                    labelStyles: fieldStyle.labelStyles,
-                    errorTextStyles: fieldStyle.errorStyles,
-                    label: translation.label ?? "Card Holder Name",
-                    placeholder: translation.placeholder ?? "",
-                    type: .CARDHOLDER_NAME,
-                    customErrorMessage: translation.errorText
-                )
-                
-                if config.showNameField {
+            // --- Cardholder Name Field (Conditional) ---
+            if config.showNameField {
+                do {
+                    let fieldType = CardFieldType.CARDHOLDER_NAME
+                    let translation = getTranslation(for: fieldType)
+                    
+                    // Get styles from the new config structure
+                    let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                    let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
+                    // Error style is shared
+                    
+                    let collectNameInput = CollectElementInput(
+                        table: tableName,
+                        column: "cardholder_name",
+                        inputStyles: inputStyle.skyflowStyles,
+                        labelStyles: Styles(base: labelStyle),
+                        errorTextStyles: Styles(base: containerErrorStyle),
+                        label: translation.label ?? "Cardholder Name", // Default label
+                        placeholder: translation.placeholder ?? "Full Name", // Default placeholder
+                        type: .CARDHOLDER_NAME,
+                        customErrorMessage: translation.errorText
+                    )
+                    
                     _ = container.create(input: collectNameInput, options: requiredOption)
                 }
             }
             
+            // --- CVV Field ---
             do {
                 let fieldType = CardFieldType.CVV
-                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
                 let translation = getTranslation(for: fieldType)
-                
+
+                // Get styles from the new config structure
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
+                // Error style is shared
+
                 let collectCVVInput = CollectElementInput(
                     table: tableName,
                     column: "security_code",
-                    inputStyles: fieldStyle.skyflowStyles,
-                    labelStyles: fieldStyle.labelStyles,
-                    errorTextStyles: fieldStyle.errorStyles,
-                    label: translation.label ?? "CVV",
-                    placeholder: translation.placeholder ??  "***",
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "CVV", // Default label
+                    placeholder: translation.placeholder ?? "•••", // Default placeholder
                     type: .CVV,
                     customErrorMessage: translation.errorText
                 )
@@ -161,19 +183,27 @@ public extension Payrails {
                 _ = container.create(input: collectCVVInput, options: requiredOption)
             }
             
+            // --- Expiration Month Field ---
+            // Note: Skyflow often uses EXPIRATION_DATE for combined MM/YY or separate MM and YY.
+            // Assuming separate fields based on original code. Adjust if using combined field.
             do {
                 let fieldType = CardFieldType.EXPIRATION_MONTH
-                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
                 let translation = getTranslation(for: fieldType)
-                
+
+                // Get styles from the new config structure
+                // Often EXPIRATION_DATE style is used for both MM and YY if not specified separately
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? stylesConfig.inputFieldStyles?[.EXPIRATION_DATE] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? stylesConfig.labelStyles?[.EXPIRATION_DATE] ?? defaultLabelStyle
+                 // Error style is shared
+
                 let collectExpMonthInput = CollectElementInput(
                     table: tableName,
                     column: "expiry_month",
-                    inputStyles: fieldStyle.skyflowStyles,
-                    labelStyles: fieldStyle.labelStyles,
-                    errorTextStyles: fieldStyle.errorStyles,
-                    label: translation.label ?? "Expiration Month",
-                    placeholder: translation.placeholder ?? "MM",
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "Exp. Month", // Default label
+                    placeholder: translation.placeholder ?? "MM", // Default placeholder
                     type: .EXPIRATION_MONTH,
                     customErrorMessage: translation.errorText
                 )
@@ -181,19 +211,24 @@ public extension Payrails {
                 _ = container.create(input: collectExpMonthInput, options: requiredOption)
             }
             
-            do{
-                let fieldType = CardFieldType.EXPIRATION_MONTH
-                let fieldStyle = stylesDict[fieldType] ?? fallbackStyle
+            // --- Expiration Year Field ---
+            do {
+                let fieldType = CardFieldType.EXPIRATION_YEAR
                 let translation = getTranslation(for: fieldType)
-                
+
+                // Get styles from the new config structure
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? stylesConfig.inputFieldStyles?[.EXPIRATION_DATE] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? stylesConfig.labelStyles?[.EXPIRATION_DATE] ?? defaultLabelStyle
+                // Error style is shared
+
                 let collectExpYearInput = CollectElementInput(
                     table: tableName,
                     column: "expiry_year",
-                    inputStyles: fieldStyle.skyflowStyles,
-                    labelStyles: fieldStyle.labelStyles,
-                    errorTextStyles: fieldStyle.errorStyles,
-                    label: translation.label ?? "Expiration Year",
-                    placeholder: translation.placeholder ?? "YYYY",
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "Exp. Year", // Default label
+                    placeholder: translation.placeholder ?? "YYYY", // Default placeholder
                     type: .EXPIRATION_YEAR,
                     customErrorMessage: translation.errorText
                 )
@@ -201,15 +236,19 @@ public extension Payrails {
                 _ = container.create(input: collectExpYearInput, options: requiredOption)
             }
 
+            // --- StackView Configuration ---
             self.axis = .vertical
-            self.spacing = 6
+            self.spacing = 10 // Adjusted spacing slightly
 
+            // --- Add Composable View ---
             do {
-                let cardForm = try container.getComposableView()
-                self.addArrangedSubview(cardForm)
-            } catch {}
+                let composableView = try container.getComposableView()
+                self.addArrangedSubview(composableView)
+            } catch {
+                print("Error getting composable view: \(error)") // Added error handling
+            }
         }
-        
+
         public class CardCollectCallback: Callback {
             var onSuccess: ((Any) -> Void)?
             var onFailure: ((Any) -> Void)?

@@ -99,37 +99,41 @@ public extension Payrails {
 
         let session = currentSession!
         let defaultConfig = getDefaultCardFormConfig()
-        let defaultStyles = defaultConfig.styles ?? [:]
+        // Get the default styles config (it should have defaults set within CardFormConfig init)
+        let defaultStylesConfig = defaultConfig.styles ?? CardFormStylesConfig.defaultConfig
 
         let finalConfig: CardFormConfig
         if let customConfig = config {
-            var mergedStyles = defaultStyles
-            if let customStyles = customConfig.styles {
-                 for (fieldType, customFieldStyle) in customStyles {
-                     // Get the default style for this specific field type
-                     let baseFieldStyle = defaultStyles[fieldType] // Might be nil if type not in defaults
-                     // Merge the user's custom style over the default for that field
-                     mergedStyles[fieldType] = customFieldStyle.merged(over: baseFieldStyle)
-                 }
-            }
-            let defaultTranslations = defaultConfig.translations ?? CardTranslations()
-            let mergedTranslations = defaultTranslations.merged(with: customConfig.translations)
+            // Merge custom styles over default styles using the new structure's merge logic
+            let finalStylesConfig = customConfig.styles?.merged(over: defaultStylesConfig) ?? defaultStylesConfig
+            
+            // Merge translations
+            let defaultTranslations = defaultConfig.translations ?? CardTranslations() // Assuming CardTranslations() is a valid empty state
+            let finalTranslations = defaultTranslations.merged(with: customConfig.translations)
 
+            // Create final config with merged styles and translations
             finalConfig = CardFormConfig(
-                showNameField: customConfig.showNameField,
-                styles: mergedStyles,
-                translations: mergedTranslations
+                showNameField: customConfig.showNameField, // Use showNameField from custom config
+                styles: finalStylesConfig,
+                translations: finalTranslations
             )
         } else {
+            // No custom config provided, use the default one entirely
             finalConfig = defaultConfig
         }
 
+        // Ensure CSE instance and holder reference are available
+        guard let cseInstance = session.getCSEInstance(),
+              let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
+            fatalError("CSE instance or holder reference not available in session.") // Or handle more gracefully
+        }
+
         let cardPaymentForm = Payrails.CardPaymentForm(
-            config: finalConfig,
-            tableName: "tableName",
-            cseConfig: (data: "", version: ""),
-            holderReference: session.getSDKConfiguration()!.holderRefecerence,
-            cseInstance: session.getCSEInstance()!,
+            config: finalConfig, // Pass the correctly merged config
+            tableName: "tableName", // This seems like a placeholder, might need review
+            cseConfig: (data: "", version: ""), // Placeholder? Should come from session/config?
+            holderReference: holderReference,
+            cseInstance: cseInstance,
             session: session,
             buttonTitle: buttonTitle
         )
