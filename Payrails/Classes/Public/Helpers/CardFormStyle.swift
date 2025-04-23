@@ -1,80 +1,146 @@
+import UIKit // Ensure UIKit is imported for UIEdgeInsets etc.
+
 public typealias CardStyle = Style
 public typealias CardFieldType = ElementType
 
-public struct CardFormConfig {
-    public let style: CardFormStyle
-    public let showNameField: Bool
-    public let fieldConfigs: [CardFieldConfig]
-    public let translations: CardTranslations?
+// MARK: - New Style Structures (Proposed)
 
-    public init(
-        style: CardFormStyle = .defaultStyle,
-        showNameField: Bool = true,
-        fieldConfigs: [CardFieldConfig] = [],
-        translations: CardTranslations? = nil
-    ) {
-        self.style = style
-        self.showNameField = showNameField
-        self.fieldConfigs = fieldConfigs
-        self.translations = translations
+// New struct for input field specific styles
+public struct CardFieldSpecificStyles {
+    public let base: CardStyle?
+    public let focus: CardStyle?
+    public let completed: CardStyle?
+    public let invalid: CardStyle?
+
+    public init(base: CardStyle? = nil, focus: CardStyle? = nil, completed: CardStyle? = nil, invalid: CardStyle? = nil) {
+        self.base = base
+        self.focus = focus
+        self.completed = completed
+        self.invalid = invalid
     }
 
-    public static var defaultConfig: CardFormConfig {
-        .init(
-            style: .defaultStyle,
-            showNameField: true,
-            fieldConfigs: []
+    // Helper to convert to Skyflow's Styles object
+    var skyflowStyles: Styles {
+        Styles(
+            base: base,
+            complete: completed,
+            focus: focus,
+            invalid: invalid
         )
     }
 
-    static var dropInConfig: CardFormConfig {
+    // Merging logic might be needed here as well if defaults are used
+    // func merged(over base: CardFieldSpecificStyles?) -> CardFieldSpecificStyles { ... }
+
+    // Default instance (can be customized)
+    public static var defaultStyle: CardFieldSpecificStyles {
         .init(
-            style: .init(
-                baseStyle: .init(
-                    borderColor: .black.withAlphaComponent(0.81),
-                    cornerRadius: 6,
-                    padding: UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8),
-                    borderWidth: 1,
-                    font: .systemFont(ofSize: 12),
-                    textAlignment: .left,
-                    textColor: .black.withAlphaComponent(0.81)
-                ),
-                focusStyle: .init(borderColor: .black.withAlphaComponent(0.81)),
-                labelStyle: .init(
-                    font: .systemFont(ofSize: 12),
-                    textColor: .black.withAlphaComponent(0.81)
-                ),
-                completedStyle: .init(borderColor: .black.withAlphaComponent(0.81)),
-                invalidStyle: .init(borderColor: .red.withAlphaComponent(0.81)),
-                errorTextStyle: .init(
-                    font: .systemFont(ofSize: 10),
-                    textColor: .red
-                )
-            ),
-            showNameField: false
+            base: .init(cornerRadius: 2, padding: UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10), borderWidth: 1, textAlignment: .left, textColor: .black), // Changed default text color
+            focus: .init(borderColor: .blue),
+            completed: .init(borderColor: .green),
+            invalid: .init(borderColor: .red)
+        )
+    }
+    
+    public static var empty: CardFieldSpecificStyles {
+        .init()
+    }
+    
+    public func merged(over base: CardFieldSpecificStyles?) -> CardFieldSpecificStyles {
+        let baseStyle = base ?? CardFieldSpecificStyles.empty
+        return CardFieldSpecificStyles(
+            base: self.base?.merged(over: baseStyle.base) ?? baseStyle.base,
+            focus: self.focus?.merged(over: baseStyle.focus) ?? baseStyle.focus,
+            completed: self.completed?.merged(over: baseStyle.completed) ?? baseStyle.completed,
+            invalid: self.invalid?.merged(over: baseStyle.invalid) ?? baseStyle.invalid
         )
     }
 }
 
-public struct CardFieldConfig {
-    public let type: CardFieldType
-    public let placeholder: String?
-    public let title: String?
-    public let style: CardFormStyle?
+// New main configuration struct for styles
+public struct CardFormStylesConfig {
+    public let errorTextStyle: CardStyle? // Single style for all error texts
+    public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]? // Per-field input styles
+    public let labelStyles: [CardFieldType: CardStyle]? // Per-field label styles
 
     public init(
-        type: CardFieldType,
-        placeholder: String? = nil,
-        title: String? = nil,
-        style: CardFormStyle? = nil
+        errorTextStyle: CardStyle? = nil,
+        inputFieldStyles: [CardFieldType : CardFieldSpecificStyles]? = nil,
+        labelStyles: [CardFieldType : CardStyle]? = nil
     ) {
-        self.type = type
-        self.placeholder = placeholder
-        self.title = title
-        self.style = style
+        self.errorTextStyle = errorTextStyle
+        self.inputFieldStyles = inputFieldStyles
+        self.labelStyles = labelStyles
     }
+
+    // Default configuration
+    public static var defaultConfig: CardFormStylesConfig {
+        // Define default input styles using CardFieldSpecificStyles
+        let defaultInputStyle = CardFieldSpecificStyles.defaultStyle
+        // Define default label style
+        let defaultLabelStyle = CardStyle(textColor: .darkGray) // Changed default label color
+        // Define default error style
+        let defaultErrorStyle = CardStyle(textColor: UIColor.red)
+
+        // Apply defaults to all field types
+        var defaultInputStylesDict: [CardFieldType: CardFieldSpecificStyles] = [:]
+        var defaultLabelStylesDict: [CardFieldType: CardStyle] = [:]
+
+        // Ensure all relevant field types are covered
+        let allFieldTypes: [CardFieldType] = [
+            .CARD_NUMBER, .CVV, .EXPIRATION_DATE, .EXPIRATION_MONTH, .EXPIRATION_YEAR, .CARDHOLDER_NAME
+        ]
+        for fieldType in allFieldTypes {
+            defaultInputStylesDict[fieldType] = defaultInputStyle
+            defaultLabelStylesDict[fieldType] = defaultLabelStyle
+        }
+
+        return .init(
+            errorTextStyle: defaultErrorStyle,
+            inputFieldStyles: defaultInputStylesDict,
+            labelStyles: defaultLabelStylesDict
+        )
+    }
+    
+    public static var empty: CardFormStylesConfig {
+        .init()
+    }
+
+     // Merging logic
+     public func merged(over base: CardFormStylesConfig?) -> CardFormStylesConfig {
+         let baseConfig = base ?? CardFormStylesConfig.empty
+         
+         // Merge error text style
+         let finalErrorTextStyle = self.errorTextStyle?.merged(over: baseConfig.errorTextStyle) ?? baseConfig.errorTextStyle
+         
+         // Merge input field styles
+         var finalInputFieldStyles = baseConfig.inputFieldStyles ?? [:]
+         if let selfInputFieldStyles = self.inputFieldStyles {
+             for (key, value) in selfInputFieldStyles {
+                 finalInputFieldStyles[key] = value.merged(over: finalInputFieldStyles[key])
+             }
+         }
+         
+         // Merge label styles
+         var finalLabelStyles = baseConfig.labelStyles ?? [:]
+         if let selfLabelStyles = self.labelStyles {
+             for (key, value) in selfLabelStyles {
+                 finalLabelStyles[key] = value.merged(over: finalLabelStyles[key])
+             }
+         }
+
+         return .init(
+             errorTextStyle: finalErrorTextStyle,
+             inputFieldStyles: finalInputFieldStyles.isEmpty ? nil : finalInputFieldStyles,
+             labelStyles: finalLabelStyles.isEmpty ? nil : finalLabelStyles
+         )
+     }
 }
 
+
+// MARK: - Original Style Structure (Potentially Deprecated)
+
+// Consider making this internal or removing if CardFormStylesConfig fully replaces its public role.
 public struct CardFormStyle {
     public static var defaultStyle: CardFormStyle {
         .init(
@@ -99,7 +165,7 @@ public struct CardFormStyle {
     public let labelStyle: CardStyle?
     public let invalidStyle: CardStyle?
     public let errorTextStyle: CardStyle?
-
+    
     public init(
         baseStyle: CardStyle?,
         focusStyle: CardStyle? = nil,
@@ -142,10 +208,21 @@ public struct CardFormStyle {
             invalid: errorTextStyle
         )
     }
-}
-
-extension CardFormConfig {
-    func fieldConfig(for type: CardFieldType) -> CardFieldConfig? {
-        fieldConfigs.first(where: { $0.type == type })
+    
+    
+    public static var empty: CardFormStyle {
+        .init(baseStyle: nil, labelStyle: nil)
+    }
+    
+    public func merged(over base: CardFormStyle?) -> CardFormStyle {
+        let baseFormStyle = base ?? CardFormStyle.empty
+        return CardFormStyle(
+            baseStyle: self.baseStyle?.merged(over: baseFormStyle.baseStyle) ?? baseFormStyle.baseStyle,
+            focusStyle: self.focusStyle?.merged(over: baseFormStyle.focusStyle) ?? baseFormStyle.focusStyle,
+            labelStyle: self.labelStyle?.merged(over: baseFormStyle.labelStyle) ?? baseFormStyle.labelStyle,
+            completedStyle: self.completedStyle?.merged(over: baseFormStyle.completedStyle) ?? baseFormStyle.completedStyle,
+            invalidStyle: self.invalidStyle?.merged(over: baseFormStyle.invalidStyle) ?? baseFormStyle.invalidStyle,
+            errorTextStyle: self.errorTextStyle?.merged(over: baseFormStyle.errorTextStyle) ?? baseFormStyle.errorTextStyle
+        )
     }
 }

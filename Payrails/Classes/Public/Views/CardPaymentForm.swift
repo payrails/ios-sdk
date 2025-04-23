@@ -33,10 +33,7 @@ public extension Payrails {
             session: Payrails.Session? = nil,
             buttonTitle: String = "Pay Now"
         ) {
-<<<<<<< HEAD
-=======
-            // Initialize CardForm (inputs onlty)
->>>>>>> main
+
             self.cardForm = CardForm(
                 config: config,
                 tableName: tableName,
@@ -158,7 +155,7 @@ public extension Payrails {
             case .failure:
                 logMessage("Payment failed (failure state)")
             case let .error(error):
-                logMessage("Payment failed due to error: \(error.localizedDescription)")
+                logMessage("Payment failed due to error444: \(error.localizedDescription)")
             case .cancelledByUser:
                 logMessage("Payment was cancelled by user")
             default:

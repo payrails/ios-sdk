@@ -24,56 +24,45 @@ public class Payrails {
         }
     }
     
-    // Add a getter method in the main class
     static func getCurrentSession() -> Payrails.Session? {
         return currentSession
     }
 }
 
 
-// Keep existing extensions
 public extension Payrails {
     private static func getDefaultCardFormConfig() -> CardFormConfig {
+        let defaultErrorValues: [CardFieldType: String] = [
+             .CARDHOLDER_NAME: "Enter name as it appears on card",
+             .CARD_NUMBER: "Enter a valid card number",
+             .EXPIRATION_DATE: "Enter a valid expiry date (MM/YY)",
+             .CVV: "Enter the 3 or 4 digit code",
+             .EXPIRATION_MONTH: "Enter a valid month",
+             .EXPIRATION_YEAR: "Enter a valid year"
+        ]
+        
         let defaultTranslations = CardTranslations(
             placeholders: CardTranslations.Placeholders(values: [
                 .CARDHOLDER_NAME: "Full Name",
                 .CARD_NUMBER: "Card Number",
-                .EXPIRATION_DATE: "MM/YY", // Default uses MM/YY usually
+                .EXPIRATION_DATE: "MM/YY",
                 .CVV: "CVV",
-                .EXPIRATION_MONTH: "MM",   // Add defaults if needed
-                .EXPIRATION_YEAR: "YYYY"  // Add defaults if needed
+                .EXPIRATION_MONTH: "MM",
+                .EXPIRATION_YEAR: "YYYY"
             ]),
             labels: CardTranslations.Labels(
-                values: [
-                    .CARDHOLDER_NAME: "Name on Card",
-                    .CARD_NUMBER: "Card Number",
-                    .EXPIRATION_DATE: "Expiry Date",
-                    .CVV: "Security Code",
-                    .EXPIRATION_MONTH: "Expiry Month", // Add defaults if needed
-                    .EXPIRATION_YEAR: "Expiry Year"   // Add defaults if needed
-                ],
                 saveInstrument: "Save card",
                 storeInstrument: "Remember card",
                 paymentInstallments: "Pay in installments"
             ),
             error: CardTranslations.ErrorMessages(
-                defaultErrors: CardTranslations.ErrorMessages.DefaultErrors(values: [
-                    .CARDHOLDER_NAME: "Enter name as it appears on card",
-                    .CARD_NUMBER: "Enter a valid card number",
-                    .EXPIRATION_DATE: "Enter a valid expiry date (MM/YY)",
-                    .CVV: "Enter the 3 or 4 digit code",
-                    .EXPIRATION_MONTH: "Enter a valid month",   // Add defaults if needed
-                    .EXPIRATION_YEAR: "Enter a valid year"     // Add defaults if needed
-                ])
+                values: defaultErrorValues
             )
         )
 
-        // Using the default style here, adjust if needed
         return CardFormConfig(
-            style: .defaultStyle,
-            showNameField: true,
-            fieldConfigs: [ /* Add default field configs if any */ ],
-            translations: defaultTranslations // Provide the default translations
+            showNameField: false,
+            translations: defaultTranslations
         )
     }
     
@@ -94,46 +83,49 @@ public extension Payrails {
     }
     
     static func createCardPaymentForm(
-        config: CardFormConfig? = nil, // Accept optional custom config
+        config: CardFormConfig? = nil,
         buttonTitle: String = "Pay Now"
     ) -> Payrails.CardPaymentForm {
 
         precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentForm")
 
         let session = currentSession!
-        let defaultConfig = getDefaultCardFormConfig() // Get the base default config
+        let defaultConfig = getDefaultCardFormConfig()
+        // Get the default styles config (it should have defaults set within CardFormConfig init)
+        let defaultStylesConfig = defaultConfig.styles ?? CardFormStylesConfig.defaultConfig
 
-        // --- Merging Logic ---
         let finalConfig: CardFormConfig
         if let customConfig = config {
-            // Merge provided config with default, focusing on translations for now
+            // Merge custom styles over default styles using the new structure's merge logic
+            let finalStylesConfig = customConfig.styles?.merged(over: defaultStylesConfig) ?? defaultStylesConfig
             
-            // Merge translations: default merged with custom (custom takes priority)
-            // Handle cases where default or custom translations might be nil
-            let defaultTranslations = defaultConfig.translations ?? CardTranslations() // Ensure we have a base
-            let mergedTranslations = defaultTranslations.merged(with: customConfig.translations)
+            // Merge translations
+            let defaultTranslations = defaultConfig.translations ?? CardTranslations() // Assuming CardTranslations() is a valid empty state
+            let finalTranslations = defaultTranslations.merged(with: customConfig.translations)
 
-            // For other properties, currently, we just take the custom ones if provided.
-            // You could expand this merging logic to style, showNameField etc. if needed later.
+            // Create final config with merged styles and translations
             finalConfig = CardFormConfig(
-                style: customConfig.style, // Takes custom style completely (or default if custom didn't set one)
-                showNameField: customConfig.showNameField, // Takes custom setting
-                fieldConfigs: customConfig.fieldConfigs, // Takes custom field configs
-                translations: mergedTranslations // Use the merged translations
+                showNameField: customConfig.showNameField, // Use showNameField from custom config
+                styles: finalStylesConfig,
+                translations: finalTranslations
             )
         } else {
-            // No custom config provided, use the default entirely
+            // No custom config provided, use the default one entirely
             finalConfig = defaultConfig
         }
-        // --- End Merging Logic ---
 
-        // Create the combined CardPaymentForm using the finalConfig
+        // Ensure CSE instance and holder reference are available
+        guard let cseInstance = session.getCSEInstance(),
+              let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
+            fatalError("CSE instance or holder reference not available in session.") // Or handle more gracefully
+        }
+
         let cardPaymentForm = Payrails.CardPaymentForm(
-            config: finalConfig, // Use the potentially merged config
-            tableName: "tableName", // Keep as is for now
-            cseConfig: (data: "", version: ""), // Keep as is for now
-            holderReference: session.getSDKConfiguration()!.holderRefecerence,
-            cseInstance: session.getCSEInstance()!,
+            config: finalConfig, // Pass the correctly merged config
+            tableName: "tableName", // This seems like a placeholder, might need review
+            cseConfig: (data: "", version: ""), // Placeholder? Should come from session/config?
+            holderReference: holderReference,
+            cseInstance: cseInstance,
             session: session,
             buttonTitle: buttonTitle
         )
@@ -144,7 +136,7 @@ public extension Payrails {
     static func createPayPalButton() -> Payrails.PayPalButton {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a PayPalButton")
         let session = currentSession!
-        // Calls the new internal initializer passing the session
+
         let button = Payrails.PayPalButton(session: session)
         return button
     }

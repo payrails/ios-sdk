@@ -23,7 +23,7 @@ public extension Payrails {
             )
         }
     }
-    //jo
+
     class CardForm: UIStackView {
         public weak var delegate: PayrailsCardFormDelegate?
 
@@ -42,7 +42,6 @@ public extension Payrails {
             holderReference: String,
             cseInstance: PayrailsCSE
         ) {
-            // this is a workaround just for skyflow to work, we don't need it
             self.containerClient = Client()
             self.config = config
             // this is also skyflow leftover
@@ -73,134 +72,183 @@ public extension Payrails {
         }
 
         private func setupViews() {
+            // Use the new styles config, falling back to its default
+            let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
+            let defaultInputStyle = CardFieldSpecificStyles.defaultStyle
+            let defaultLabelStyle = CardStyle(textColor: .darkGray) // Match default from CardFormStylesConfig
+            let defaultErrorStyle = CardStyle(textColor: .red) // Match default from CardFormStylesConfig
+
+            // Get the shared error text style
+            let containerErrorStyle = stylesConfig.errorTextStyle ?? defaultErrorStyle
+
             guard let container = self.containerClient.container(
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
-                    layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2],
-                    errorTextStyles: Styles(base: config.style.errorTextStyle)
+                    layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2], // Layout depends on showing name field
+                    // Use the errorTextStyle from the new config for the container
+                    errorTextStyles: Styles(base: containerErrorStyle)
                 )
             ) else {
+                print("Failed to create Composable Container") // Added log
                 return
             }
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
-            let styles: Styles = config.style.skyflowStyles
-            
             // Helper function to get placeholder, label, and error from translations
             func getTranslation(for fieldType: CardFieldType) -> (placeholder: String?, label: String?, errorText: String?) {
+                // Use optional chaining for safety
                 let placeholder = config.translations?.placeholders[fieldType]
                 let label = config.translations?.labels[fieldType]
-                let errorText = config.translations?.error.defaultErrors[fieldType]
+                let errorText = config.translations?.error[fieldType]
                 return (placeholder, label, errorText)
             }
             
-            // Get translations for CARD_NUMBER
-            let cardNumberTranslation = getTranslation(for: .CARD_NUMBER)
-            let collectCardNumberInput = CollectElementInput(
-                table: tableName,
-                column: "card_number",
-                inputStyles: config.fieldConfig(for: .CARD_NUMBER)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: cardNumberTranslation.label ?? config.fieldConfig(for: .CARD_NUMBER)?.title ?? "Card Number",
-                placeholder: cardNumberTranslation.placeholder ?? config.fieldConfig(for: .CARD_NUMBER)?.placeholder ?? "Card Number",
-                type: .CARD_NUMBER,
-                customErrorMessage: cardNumberTranslation.errorText
-            )
-
-            // Get translations for CARDHOLDER_NAME
-            let cardholderNameTranslation = getTranslation(for: .CARDHOLDER_NAME)
-            let collectNameInput = CollectElementInput(
-                table: tableName,
-                column: "cardholder_name",
-                inputStyles: config.fieldConfig(for: .CARDHOLDER_NAME)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: cardholderNameTranslation.label ?? config.fieldConfig(for: .CARDHOLDER_NAME)?.title ?? "Card Holder Name",
-                placeholder: cardholderNameTranslation.placeholder ?? config.fieldConfig(for: .CARDHOLDER_NAME)?.placeholder ?? "",
-                type: .CARDHOLDER_NAME,
-                customErrorMessage: cardholderNameTranslation.errorText
-            )
-            
-            // Get translations for CVV
-            let cvvTranslation = getTranslation(for: .CVV)
-            let collectCVVInput = CollectElementInput(
-                table: tableName,
-                column: "security_code",
-                inputStyles: config.fieldConfig(for: .CVV)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: cvvTranslation.label ?? config.fieldConfig(for: .CVV)?.title ?? "CVV",
-                placeholder: cvvTranslation.placeholder ?? config.fieldConfig(for: .CVV)?.placeholder ?? "***",
-                type: .CVV,
-                customErrorMessage: cvvTranslation.errorText
-            )
-            
-            // Get translations for EXPIRATION_MONTH
-            let expiryMonthTranslation = getTranslation(for: .EXPIRATION_MONTH)
-            let collectExpMonthInput = CollectElementInput(
-                table: tableName,
-                column: "expiry_month",
-                inputStyles: config.fieldConfig(for: .EXPIRATION_MONTH)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: expiryMonthTranslation.label ?? config.fieldConfig(for: .EXPIRATION_MONTH)?.title ?? "Expiration Month",
-                placeholder: expiryMonthTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_MONTH)?.placeholder ?? "MM",
-                type: .EXPIRATION_MONTH,
-                customErrorMessage: expiryMonthTranslation.errorText
-            )
-            
-            // Get translations for EXPIRATION_YEAR
-            let expiryYearTranslation = getTranslation(for: .EXPIRATION_YEAR)
-            let collectExpYearInput = CollectElementInput(
-                table: tableName,
-                column: "expiry_year",
-                inputStyles: config.fieldConfig(for: .EXPIRATION_YEAR)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: expiryYearTranslation.label ?? config.fieldConfig(for: .EXPIRATION_YEAR)?.title ?? "Expiration Year",
-                placeholder: expiryYearTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_YEAR)?.placeholder ?? "YYYY",
-                type: .EXPIRATION_YEAR,
-                customErrorMessage: expiryYearTranslation.errorText
-            )
-            
-            // Get translations for EXPIRATION_DATE
-            let expiryDateTranslation = getTranslation(for: .EXPIRATION_DATE)
-            let collectExpDateInput = CollectElementInput(
-                table: tableName,
-                column: "expiry_date",
-                inputStyles: config.fieldConfig(for: .EXPIRATION_DATE)?.style?.skyflowStyles ?? styles,
-                labelStyles: config.style.labelStyles,
-                errorTextStyles: config.style.errorStyles,
-                label: expiryDateTranslation.label ?? config.fieldConfig(for: .EXPIRATION_DATE)?.title ?? "Expiration Date",
-                placeholder: expiryDateTranslation.placeholder ?? config.fieldConfig(for: .EXPIRATION_DATE)?.placeholder ?? "MM/YY",
-                type: .EXPIRATION_DATE,
-                customErrorMessage: expiryDateTranslation.errorText
-            )
-                
             let requiredOption = CollectElementOptions(required: true)
-            _ = container.create(input: collectCardNumberInput, options: requiredOption)
-<<<<<<< HEAD
-=======
-            //  _ = container.create(input: collectExpDateInput, options: requiredOption)
->>>>>>> main
-            _ = container.create(input: collectCVVInput, options: requiredOption)
-            if config.showNameField {
-                _ = container.create(input: collectNameInput, options: requiredOption)
-            }
-            _ = container.create(input: collectExpMonthInput, options: requiredOption)
-            _ = container.create(input: collectExpYearInput, options: requiredOption)
-
-            self.axis = .vertical
-            self.spacing = 6
-
+            
+            // --- Card Number Field ---
             do {
-                let cardForm = try container.getComposableView()
-                self.addArrangedSubview(cardForm)
-            } catch {}
+                let fieldType = CardFieldType.CARD_NUMBER
+                let translation = getTranslation(for: fieldType)
+                
+                // Get styles from the new config structure
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
+                // Error style is shared
+                
+                let collectCardNumberInput = CollectElementInput(
+                    table: tableName,
+                    column: "card_number",
+                    inputStyles: inputStyle.skyflowStyles, // Use helper from CardFieldSpecificStyles
+                    labelStyles: Styles(base: labelStyle), // Wrap single style
+                    errorTextStyles: Styles(base: containerErrorStyle), // Use shared error style
+                    label: translation.label ?? "", // Use provided label or empty string
+                    placeholder: translation.placeholder ?? "•••• •••• •••• ••••", // Default placeholder
+                    type: .CARD_NUMBER,
+                    customErrorMessage: translation.errorText
+                )
+                
+                _ = container.create(input: collectCardNumberInput, options: requiredOption)
+            }
+
+            // --- Cardholder Name Field (Conditional) ---
+            if config.showNameField {
+                do {
+                    let fieldType = CardFieldType.CARDHOLDER_NAME
+                    let translation = getTranslation(for: fieldType)
+                    
+                    // Get styles from the new config structure
+                    let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                    let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
+                    // Error style is shared
+                    
+                    let collectNameInput = CollectElementInput(
+                        table: tableName,
+                        column: "cardholder_name",
+                        inputStyles: inputStyle.skyflowStyles,
+                        labelStyles: Styles(base: labelStyle),
+                        errorTextStyles: Styles(base: containerErrorStyle),
+                        label: translation.label ?? "", // Use provided label or empty string
+                        placeholder: translation.placeholder ?? "Full Name", // Default placeholder
+                        type: .CARDHOLDER_NAME,
+                        customErrorMessage: translation.errorText
+                    )
+                    
+                    _ = container.create(input: collectNameInput, options: requiredOption)
+                }
+            }
+            
+            // --- CVV Field ---
+            do {
+                let fieldType = CardFieldType.CVV
+                let translation = getTranslation(for: fieldType)
+
+                // Get styles from the new config structure
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
+                // Error style is shared
+
+                let collectCVVInput = CollectElementInput(
+                    table: tableName,
+                    column: "security_code",
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "", // Use provided label or empty string
+                    placeholder: translation.placeholder ?? "•••", // Default placeholder
+                    type: .CVV,
+                    customErrorMessage: translation.errorText
+                )
+                
+                _ = container.create(input: collectCVVInput, options: requiredOption)
+            }
+            
+            // --- Expiration Month Field ---
+            // Note: Skyflow often uses EXPIRATION_DATE for combined MM/YY or separate MM and YY.
+            // Assuming separate fields based on original code. Adjust if using combined field.
+            do {
+                let fieldType = CardFieldType.EXPIRATION_MONTH
+                let translation = getTranslation(for: fieldType)
+
+                // Get styles from the new config structure
+                // Often EXPIRATION_DATE style is used for both MM and YY if not specified separately
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? stylesConfig.inputFieldStyles?[.EXPIRATION_DATE] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? stylesConfig.labelStyles?[.EXPIRATION_DATE] ?? defaultLabelStyle
+                 // Error style is shared
+
+                let collectExpMonthInput = CollectElementInput(
+                    table: tableName,
+                    column: "expiry_month",
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "", // Use provided label or empty string
+                    placeholder: translation.placeholder ?? "MM", // Default placeholder
+                    type: .EXPIRATION_MONTH,
+                    customErrorMessage: translation.errorText
+                )
+                
+                _ = container.create(input: collectExpMonthInput, options: requiredOption)
+            }
+            
+            // --- Expiration Year Field ---
+            do {
+                let fieldType = CardFieldType.EXPIRATION_YEAR
+                let translation = getTranslation(for: fieldType)
+
+                // Get styles from the new config structure
+                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? stylesConfig.inputFieldStyles?[.EXPIRATION_DATE] ?? defaultInputStyle
+                let labelStyle = stylesConfig.labelStyles?[fieldType] ?? stylesConfig.labelStyles?[.EXPIRATION_DATE] ?? defaultLabelStyle
+                // Error style is shared
+
+                let collectExpYearInput = CollectElementInput(
+                    table: tableName,
+                    column: "expiry_year",
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "", // Use provided label or empty string
+                    placeholder: translation.placeholder ?? "YYYY", // Default placeholder
+                    type: .EXPIRATION_YEAR,
+                    customErrorMessage: translation.errorText
+                )
+                
+                _ = container.create(input: collectExpYearInput, options: requiredOption)
+            }
+
+            // --- StackView Configuration ---
+            self.axis = .vertical
+            self.spacing = 10 // Adjusted spacing slightly
+
+            // --- Add Composable View ---
+            do {
+                let composableView = try container.getComposableView()
+                self.addArrangedSubview(composableView)
+            } catch {
+                print("Error getting composable view: \(error)") // Added error handling
+            }
         }
-        
+
         public class CardCollectCallback: Callback {
             var onSuccess: ((Any) -> Void)?
             var onFailure: ((Any) -> Void)?

@@ -1,23 +1,27 @@
 public struct CardTranslations {
     public struct Placeholders {
         private var values: [CardFieldType: String]
-        
+
         public init(values: [CardFieldType: String] = [:]) {
             self.values = values
         }
-        
+
         public subscript(type: CardFieldType) -> String? {
             get { values[type] }
             set { values[type] = newValue }
         }
+
+        var allValues: [CardFieldType: String] {
+            return values
+        }
     }
-    
+
     public struct Labels {
         private var values: [CardFieldType: String]
         private var saveInstrument: String?
         private var storeInstrument: String?
         private var paymentInstallments: String?
-        
+
         public init(
             values: [CardFieldType: String] = [:],
             saveInstrument: String? = nil,
@@ -29,43 +33,47 @@ public struct CardTranslations {
             self.storeInstrument = storeInstrument
             self.paymentInstallments = paymentInstallments
         }
-        
+
         public subscript(type: CardFieldType) -> String? {
             get { values[type] }
             set { values[type] = newValue }
         }
-        
+
         public var saveCreditCard: String? {
             get { values[.CARDHOLDER_NAME] }
             set { values[.CARDHOLDER_NAME] = newValue }
         }
+
+        var allValues: [CardFieldType: String] {
+            return values
+        }
+
+        var saveInstrumentText: String? { return saveInstrument }
+        var storeInstrumentText: String? { return storeInstrument }
+        var paymentInstallmentsText: String? { return paymentInstallments }
     }
-    
+
     public struct ErrorMessages {
-        public struct DefaultErrors {
-            private var values: [CardFieldType: String]
-            
-            public init(values: [CardFieldType: String] = [:]) {
-                self.values = values
-            }
-            
-            public subscript(type: CardFieldType) -> String? {
-                get { values[type] }
-                set { values[type] = newValue }
-            }
+        private var values: [CardFieldType: String] // Holds the dictionary directly
+
+        public init(values: [CardFieldType: String] = [:]) { // Updated Initializer
+            self.values = values
         }
-        
-        public let defaultErrors: DefaultErrors
-        
-        public init(defaultErrors: DefaultErrors = DefaultErrors()) {
-            self.defaultErrors = defaultErrors
+
+        public subscript(type: CardFieldType) -> String? {
+            get { values[type] }
+            set { values[type] = newValue }
+        }
+
+        var allValues: [CardFieldType: String] {
+            return values
         }
     }
-    
+
     public let placeholders: Placeholders
     public let labels: Labels
     public let error: ErrorMessages
-    
+
     public init(
         placeholders: Placeholders = Placeholders(),
         labels: Labels = Labels(),
@@ -77,37 +85,29 @@ public struct CardTranslations {
     }
 }
 
-// Add this extension to your CardTranslations definition file or nearby
 extension CardTranslations {
     func merged(with other: CardTranslations?) -> CardTranslations {
         guard let other = other else {
-            // If the other translations are nil, return the current ones.
             return self
         }
 
-        // Merge Placeholders
-        var mergedPlaceholders = self.placeholders.allValues // Start with default
-        other.placeholders.allValues.forEach { key, value in mergedPlaceholders[key] = value } // Override/add custom
+        var mergedPlaceholders = self.placeholders.allValues
+        other.placeholders.allValues.forEach { key, value in mergedPlaceholders[key] = value }
         let finalPlaceholders = Placeholders(values: mergedPlaceholders)
 
-        // Merge Labels
-        var mergedLabelValues = self.labels.allValues // Start with default values
-        other.labels.allValues.forEach { key, value in mergedLabelValues[key] = value } // Override/add custom values
+        var mergedLabelValues = self.labels.allValues
+        other.labels.allValues.forEach { key, value in mergedLabelValues[key] = value }
         let finalLabels = Labels(
             values: mergedLabelValues,
-            // Use 'other' value if present, otherwise fallback to 'self' value
             saveInstrument: other.labels.saveInstrumentText ?? self.labels.saveInstrumentText,
             storeInstrument: other.labels.storeInstrumentText ?? self.labels.storeInstrumentText,
             paymentInstallments: other.labels.paymentInstallmentsText ?? self.labels.paymentInstallmentsText
         )
 
-        // Merge Error Messages
-        var mergedErrorValues = self.error.defaultErrors.allValues // Start with default
-        other.error.defaultErrors.allValues.forEach { key, value in mergedErrorValues[key] = value } // Override/add custom
-        let finalDefaultErrors = ErrorMessages.DefaultErrors(values: mergedErrorValues)
-        let finalErrorMessages = ErrorMessages(defaultErrors: finalDefaultErrors)
+        var mergedErrorValues = self.error.allValues
+        other.error.allValues.forEach { key, value in mergedErrorValues[key] = value }
+        let finalErrorMessages = ErrorMessages(values: mergedErrorValues)
 
-        // Return the fully merged translations
         return CardTranslations(
             placeholders: finalPlaceholders,
             labels: finalLabels,
@@ -116,30 +116,3 @@ extension CardTranslations {
     }
 }
 
-// Helper properties/methods to access underlying dictionaries easily for merging
-// Add these inside the respective struct definitions
-
-extension CardTranslations.Placeholders {
-    // Expose all values for easier merging
-    var allValues: [CardFieldType: String] {
-        return values
-    }
-}
-
-extension CardTranslations.Labels {
-    // Expose all values for easier merging
-    var allValues: [CardFieldType: String] {
-        return values
-    }
-    // Provide accessors to the specific label texts
-    var saveInstrumentText: String? { return saveInstrument }
-    var storeInstrumentText: String? { return storeInstrument }
-    var paymentInstallmentsText: String? { return paymentInstallments }
-}
-
-extension CardTranslations.ErrorMessages.DefaultErrors {
-    // Expose all values for easier merging
-    var allValues: [CardFieldType: String] {
-        return values
-    }
-}
