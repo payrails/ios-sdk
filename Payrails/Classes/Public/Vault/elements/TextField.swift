@@ -1004,7 +1004,8 @@ internal extension TextField {
                 leftAstriskPadding-=1
             }
             
-            if(self.isRequired)
+            // Only add asterisk if required AND label text is not empty
+            if self.isRequired && !text.isEmpty
             {
                 
                 attributedString.append(asterisk)

@@ -51,14 +51,6 @@ public extension Payrails {
                 .EXPIRATION_YEAR: "YYYY"
             ]),
             labels: CardTranslations.Labels(
-                values: [
-                    .CARDHOLDER_NAME: "Name on Card",
-                    .CARD_NUMBER: "Card Number",
-                    .EXPIRATION_DATE: "Expiry Date",
-                    .CVV: "Security Code",
-                    .EXPIRATION_MONTH: "Expiry Month",
-                    .EXPIRATION_YEAR: "Expiry Year"
-                ],
                 saveInstrument: "Save card",
                 storeInstrument: "Remember card",
                 paymentInstallments: "Pay in installments"

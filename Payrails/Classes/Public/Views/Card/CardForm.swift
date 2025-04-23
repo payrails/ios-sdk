@@ -122,7 +122,7 @@ public extension Payrails {
                     inputStyles: inputStyle.skyflowStyles, // Use helper from CardFieldSpecificStyles
                     labelStyles: Styles(base: labelStyle), // Wrap single style
                     errorTextStyles: Styles(base: containerErrorStyle), // Use shared error style
-                    label: translation.label ?? "Card Number", // Default label
+                    label: translation.label ?? "", // Use provided label or empty string
                     placeholder: translation.placeholder ?? "•••• •••• •••• ••••", // Default placeholder
                     type: .CARD_NUMBER,
                     customErrorMessage: translation.errorText
@@ -148,7 +148,7 @@ public extension Payrails {
                         inputStyles: inputStyle.skyflowStyles,
                         labelStyles: Styles(base: labelStyle),
                         errorTextStyles: Styles(base: containerErrorStyle),
-                        label: translation.label ?? "Cardholder Name", // Default label
+                        label: translation.label ?? "", // Use provided label or empty string
                         placeholder: translation.placeholder ?? "Full Name", // Default placeholder
                         type: .CARDHOLDER_NAME,
                         customErrorMessage: translation.errorText
@@ -174,7 +174,7 @@ public extension Payrails {
                     inputStyles: inputStyle.skyflowStyles,
                     labelStyles: Styles(base: labelStyle),
                     errorTextStyles: Styles(base: containerErrorStyle),
-                    label: translation.label ?? "CVV", // Default label
+                    label: translation.label ?? "", // Use provided label or empty string
                     placeholder: translation.placeholder ?? "•••", // Default placeholder
                     type: .CVV,
                     customErrorMessage: translation.errorText
@@ -202,7 +202,7 @@ public extension Payrails {
                     inputStyles: inputStyle.skyflowStyles,
                     labelStyles: Styles(base: labelStyle),
                     errorTextStyles: Styles(base: containerErrorStyle),
-                    label: translation.label ?? "Exp. Month", // Default label
+                    label: translation.label ?? "", // Use provided label or empty string
                     placeholder: translation.placeholder ?? "MM", // Default placeholder
                     type: .EXPIRATION_MONTH,
                     customErrorMessage: translation.errorText
@@ -227,7 +227,7 @@ public extension Payrails {
                     inputStyles: inputStyle.skyflowStyles,
                     labelStyles: Styles(base: labelStyle),
                     errorTextStyles: Styles(base: containerErrorStyle),
-                    label: translation.label ?? "Exp. Year", // Default label
+                    label: translation.label ?? "", // Use provided label or empty string
                     placeholder: translation.placeholder ?? "YYYY", // Default placeholder
                     type: .EXPIRATION_YEAR,
                     customErrorMessage: translation.errorText
