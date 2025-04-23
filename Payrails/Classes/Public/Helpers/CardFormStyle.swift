@@ -1,58 +1,6 @@
 public typealias CardStyle = Style
 public typealias CardFieldType = ElementType
 
-public struct CardFormConfig {
-    public let showNameField: Bool
-    public let translations: CardTranslations?
-    public let styles: [CardFieldType: CardFormStyle]?
-
-    public init(
-        showNameField: Bool = false,
-        styles: [CardFieldType: CardFormStyle]? = nil,
-        translations: CardTranslations? = nil
-    ) {
-        self.showNameField = showNameField
-        self.translations = translations
-        self.styles = styles
-    }
-
-    public static var defaultConfig: CardFormConfig {
-        var defaultStyles: [CardFieldType: CardFormStyle] = [:]
-
-        defaultStyles[CardFieldType.CARD_NUMBER] = CardFormStyle.defaultStyle
-        defaultStyles[CardFieldType.CVV] = CardFormStyle.defaultStyle
-        defaultStyles[CardFieldType.EXPIRATION_DATE] = CardFormStyle.defaultStyle
-        defaultStyles[CardFieldType.EXPIRATION_MONTH] = CardFormStyle.defaultStyle
-        defaultStyles[CardFieldType.EXPIRATION_YEAR] = CardFormStyle.defaultStyle
-        defaultStyles[CardFieldType.CARDHOLDER_NAME] = CardFormStyle.defaultStyle
-        
-        return .init(
-            showNameField: true,
-            styles: defaultStyles
-        )
-    }
-
-}
-
-public struct CardFieldConfig {
-    public let type: CardFieldType
-    public let placeholder: String?
-    public let title: String?
-    public let style: CardFormStyle?
-
-    public init(
-        type: CardFieldType,
-        placeholder: String? = nil,
-        title: String? = nil,
-        style: CardFormStyle? = nil
-    ) {
-        self.type = type
-        self.placeholder = placeholder
-        self.title = title
-        self.style = style
-    }
-}
-
 public struct CardFormStyle {
     public static var defaultStyle: CardFormStyle {
         .init(
