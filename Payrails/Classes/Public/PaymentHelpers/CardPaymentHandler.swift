@@ -14,7 +14,6 @@ class CardPaymentHandler: NSObject {
         saveInstrument: Bool,
         presenter: PaymentPresenter?
     ) {
-        print("init card payment handler")
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
@@ -89,10 +88,7 @@ extension CardPaymentHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
 
-        guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {
-            // If we can't get the URL string, allow navigation (or handle as error if needed)
-            print("everything is awesoem")
-            decisionHandler(.allow)
+        guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {            decisionHandler(.allow)
             return
         }
 

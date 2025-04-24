@@ -240,28 +240,12 @@ public extension Container {
         var currentRecord: [String: Any] = [:]
         var fields: [String: Any] = [:]
         
-        print("DEBUG: ---- Starting Collection ----")
-        print("DEBUG: Number of elements:", self.elements.count)
-        
         for (index, element) in self.elements.enumerated() {
-            print("\nDEBUG: Processing Element \(index + 1):")
-            print("DEBUG: Column Name:", element.columnName ?? "nil")
-            print("DEBUG: Field Type:", element.fieldType)
-            
             let state = element.getState()
-            print("DEBUG: Raw State:", state)
-            
-            // Print each state property
-            print("DEBUG: State Properties:")
-            print("- isRequired:", state["isRequired"] as? Bool ?? "nil")
-            print("- isEmpty:", state["isEmpty"] as? Bool ?? "nil")
-            print("- isDirty:", state["isDirty"] as? Bool ?? "nil")
-            print("- isValid:", state["isValid"] as? Bool ?? "nil")
-            print("- value:", state["value"] ?? "nil")
+        
             
             // Try to get value
             if let value = state["value"] as? String {
-                print("DEBUG: Found value:", value)
                 fields[element.columnName] = value
             } else {
                 print("DEBUG: No value found in state")
@@ -272,10 +256,6 @@ public extension Container {
                 print("DEBUG: Get Value:", element.getValue())
             }
         }
-        
-        print("\nDEBUG: ---- Collection Results ----")
-        print("DEBUG: Table:", self.elements.first?.collectInput.table ?? "nil")
-        print("DEBUG: Fields:", fields)
         
         currentRecord["table"] = self.elements.first?.collectInput.table
         currentRecord["fields"] = fields

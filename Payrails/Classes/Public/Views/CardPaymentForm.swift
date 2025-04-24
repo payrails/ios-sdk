@@ -10,11 +10,9 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func onAuthorizeFailed(_ form: Payrails.CardPaymentForm)
 }
 
-// Extension to Payrails for CardPaymentForm
 public extension Payrails {
     
     class CardPaymentForm: UIStackView {
-        // MARK: - Properties
         private let cardForm: Payrails.CardForm
         private let payButton: UIButton
         private var payrails: Payrails.Session?
@@ -64,18 +62,14 @@ public extension Payrails {
             }
         }
         
-        // MARK: - Setup
         private func setupUI(buttonTitle: String) {
-            // Configure StackView
             self.axis = .vertical
             self.spacing = 16
             self.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 16, right: 0)
             self.isLayoutMarginsRelativeArrangement = true
             
-            // Configure CardForm
             cardForm.delegate = self
-            
-            // Configure Pay Button
+
             payButton.setTitle(buttonTitle, for: .normal)
             payButton.backgroundColor = .systemBlue
             payButton.setTitleColor(.white, for: .normal)
@@ -93,13 +87,11 @@ public extension Payrails {
             self.payrails = session
         }
         
-        // MARK: - Actions
         @objc private func payButtonTapped() {
             delegate?.onPaymentButtonClicked(self)
             cardForm.collectFields()
         }
         
-        // MARK: - Payment
         public func pay(with type: Payrails.PaymentType? = nil,
                         storedInstrument: StoredInstrument? = nil) {
             guard let presenter = self.presenter else {
@@ -110,9 +102,6 @@ public extension Payrails {
             // Use type if provided, otherwise default to .card
             let paymentType = type ?? .card
             
-            logMessage("Starting payment")
-            logMessage("Card data on pay method: " + (encryptedCardData ?? "nil"))
-            
             payrailsTask = Task { [weak self, weak payrails] in
                 self?.setLoading(true)
                 
@@ -122,7 +111,6 @@ public extension Payrails {
                     if var cardPaymentPresenter = paymentPresenter as? (any PaymentPresenter) {
                         cardPaymentPresenter.encryptedCardData = encryptedCardData
                         
-                        self?.logMessage("Executing payment...")
                         result = await payrails.executePayment(
                             with: paymentType,
                             saveInstrument: false,
@@ -147,15 +135,13 @@ public extension Payrails {
         private func handlePaymentResult(_ result: OnPayResult?) {
             switch result {
             case .success:
-                logMessage("Payment was successful!")
                 delegate?.onAuthorizeSuccess(self)
             case .authorizationFailed:
-                logMessage("Payment failed due to authorization")
                 delegate?.onAuthorizeFailed(self)
             case .failure:
-                logMessage("Payment failed (failure state)")
+                delegate?.onAuthorizeFailed(self)
             case let .error(error):
-                logMessage("Payment failed due to error444: \(error.localizedDescription)")
+                delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 logMessage("Payment was cancelled by user")
             default:
@@ -180,7 +166,6 @@ extension Payrails.CardPaymentForm: PayrailsCardFormDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            self.logMessage("Collected encrypted card data: \(data)")
             self.encryptedCardData = data
             
             // Update the encryptedCardData on the presenter if it implements the property
