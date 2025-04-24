@@ -149,9 +149,7 @@ public extension Payrails {
             for type: PaymentType,
             saveInstrument: Bool,
             presenter: PaymentPresenter?
-        ) -> Bool {
-            print("step-1 prepareHandler for" + String(describing: type))
-            
+        ) -> Bool {            
             guard let paymentComposition = config.paymentOption(for: type) else {
                 isPaymentInProgress = false
                 onResult?(.error(.unsupportedPayment(type: type)))
@@ -230,8 +228,6 @@ private extension Payrails.Session {
 
 extension Payrails.Session: PaymentHandlerDelegate {
     func paymentHandlerWillRequestChallengePresentation(_ handler: PaymentHandler) {
-        print("Session: Handler will request challenge presentation.")
-
         guard let cardHandler = handler as? CardPaymentHandler else {
             // If it's not a CardPaymentHandler, we don't proceed with this specific delegate call.
             // This implicitly filters for card payments in this context.
@@ -309,8 +305,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
                         "returnInfo": returnInfo,
                         "meta": meta
                     ]
-
-                    print("Final body for Card: \(body)")
 
                     // Make the API call for Card
                     currentTask = Task { [weak self] in
@@ -453,7 +447,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
-        print("Payment Status:", paymentStatus)    
         switch paymentStatus {
         case .failed:
             onResult?(.failure)

@@ -76,23 +76,16 @@ public extension Payrails {
             // Use type if provided, otherwise default to .card
             let paymentType = type ?? .card
             
-            logMessage("Starting payment")
-            logMessage("Card data on pay method: " + (encryptedCardData ?? "nil"))
-            
             payrailsTask = Task { [weak self, weak payrails] in
                 self?.setLoading(true)
                 
                 var result: OnPayResult?
                 if let payrails = payrails {
-                    logMessage("Trying to pay...")
-                    
                     result = await payrails.executePayment(
                         with: paymentType,
                         saveInstrument: false,
                         presenter: presenter
                     )
-                    
-                    logMessage("After payment attempt")
                 } else if let storedInstrument = storedInstrument, let payrails = payrails {
                     result = await payrails.executePayment(
                         withStoredInstrument: storedInstrument
