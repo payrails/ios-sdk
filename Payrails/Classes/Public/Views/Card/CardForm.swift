@@ -50,17 +50,33 @@ public extension Payrails {
             self.payrailsCSE = cseInstance
             
             super.init(frame: .zero)
+
+            // Apply wrapper styles from config, falling back to defaults
+            let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
+            let wrapperStyle = stylesConfig.wrapperStyle ?? CardWrapperStyle.defaultStyle
+
+            // Apply styles to the view's layer and layout margins
+            if let bgColor = wrapperStyle.backgroundColor {
+                self.backgroundColor = bgColor // Apply background color to the view itself
+            }
+            if let borderColor = wrapperStyle.borderColor {
+                self.layer.borderColor = borderColor.cgColor
+            }
+            if let borderWidth = wrapperStyle.borderWidth {
+                self.layer.borderWidth = borderWidth
+            }
+            if let cornerRadius = wrapperStyle.cornerRadius {
+                self.layer.cornerRadius = cornerRadius
+                self.clipsToBounds = true // Ensure content is clipped if corner radius is set
+            } else {
+                self.clipsToBounds = false // No corner radius, no need to clip
+            }
             
-            // Add border to the view
-            self.layer.borderWidth = 1.0
-            self.layer.borderColor = UIColor.gray.cgColor
-            self.layer.cornerRadius = 8.0
-            self.clipsToBounds = true
-            
-            // Add padding
-            self.layoutMargins = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-            self.isLayoutMarginsRelativeArrangement = true
-            
+            // Apply padding (layout margins)
+            if let padding = wrapperStyle.padding {
+                self.layoutMargins = padding
+            }
+            self.isLayoutMarginsRelativeArrangement = true // Always true if using layoutMargins
             
             setupViews()
         }
