@@ -74,7 +74,7 @@ public extension Payrails {
         private func setupViews() {
             // Use the new styles config, falling back to its default
             let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
-            let defaultInputStyle = CardFieldSpecificStyles.defaultStyle
+            // let defaultInputStyle = CardFieldSpecificStyles.defaultStyle // No longer needed directly here
             let defaultLabelStyle = CardStyle(textColor: .darkGray) // Match default from CardFormStylesConfig
             let defaultErrorStyle = CardStyle(textColor: .red) // Match default from CardFormStylesConfig
 
@@ -111,8 +111,8 @@ public extension Payrails {
                 let fieldType = CardFieldType.CARD_NUMBER
                 let translation = getTranslation(for: fieldType)
                 
-                // Get styles from the new config structure
-                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                // Get effective styles using the helper method
+                let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
                 let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
                 // Error style is shared
                 
@@ -137,8 +137,8 @@ public extension Payrails {
                     let fieldType = CardFieldType.CARDHOLDER_NAME
                     let translation = getTranslation(for: fieldType)
                     
-                    // Get styles from the new config structure
-                    let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                    // Get effective styles using the helper method
+                    let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
                     let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
                     // Error style is shared
                     
@@ -163,8 +163,8 @@ public extension Payrails {
                 let fieldType = CardFieldType.CVV
                 let translation = getTranslation(for: fieldType)
 
-                // Get styles from the new config structure
-                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? defaultInputStyle
+                // Get effective styles using the helper method
+                let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
                 let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
                 // Error style is shared
 
@@ -190,9 +190,9 @@ public extension Payrails {
                 let fieldType = CardFieldType.EXPIRATION_MONTH
                 let translation = getTranslation(for: fieldType)
 
-                // Get styles from the new config structure
-                // Often EXPIRATION_DATE style is used for both MM and YY if not specified separately
-                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? stylesConfig.inputFieldStyles?[.EXPIRATION_DATE] ?? defaultInputStyle
+                // Get effective styles using the helper method
+                // Note: Label fallback logic remains the same
+                let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType) // Use helper
                 let labelStyle = stylesConfig.labelStyles?[fieldType] ?? stylesConfig.labelStyles?[.EXPIRATION_DATE] ?? defaultLabelStyle
                  // Error style is shared
 
@@ -216,8 +216,9 @@ public extension Payrails {
                 let fieldType = CardFieldType.EXPIRATION_YEAR
                 let translation = getTranslation(for: fieldType)
 
-                // Get styles from the new config structure
-                let inputStyle = stylesConfig.inputFieldStyles?[fieldType] ?? stylesConfig.inputFieldStyles?[.EXPIRATION_DATE] ?? defaultInputStyle
+                // Get effective styles using the helper method
+                // Note: Label fallback logic remains the same
+                let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType) // Use helper
                 let labelStyle = stylesConfig.labelStyles?[fieldType] ?? stylesConfig.labelStyles?[.EXPIRATION_DATE] ?? defaultLabelStyle
                 // Error style is shared
 

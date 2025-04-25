@@ -60,44 +60,44 @@ public struct CardFieldSpecificStyles {
 // New main configuration struct for styles
 public struct CardFormStylesConfig {
     public let errorTextStyle: CardStyle? // Single style for all error texts
-    public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]? // Per-field input styles
+    public let allInputFieldStyles: CardFieldSpecificStyles? // Base style for all input fields
+    public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]? // Per-field specific overrides
     public let labelStyles: [CardFieldType: CardStyle]? // Per-field label styles
 
     public init(
         errorTextStyle: CardStyle? = nil,
+        allInputFieldStyles: CardFieldSpecificStyles? = nil, // Added
         inputFieldStyles: [CardFieldType : CardFieldSpecificStyles]? = nil,
         labelStyles: [CardFieldType : CardStyle]? = nil
     ) {
         self.errorTextStyle = errorTextStyle
+        self.allInputFieldStyles = allInputFieldStyles // Added
         self.inputFieldStyles = inputFieldStyles
         self.labelStyles = labelStyles
     }
 
     // Default configuration
     public static var defaultConfig: CardFormStylesConfig {
-        // Define default input styles using CardFieldSpecificStyles
-        let defaultInputStyle = CardFieldSpecificStyles.defaultStyle
+        // Define default base input styles using CardFieldSpecificStyles
+        let defaultAllInputStyle = CardFieldSpecificStyles.defaultStyle
         // Define default label style
         let defaultLabelStyle = CardStyle(textColor: .darkGray) // Changed default label color
         // Define default error style
         let defaultErrorStyle = CardStyle(textColor: UIColor.red)
 
-        // Apply defaults to all field types
-        var defaultInputStylesDict: [CardFieldType: CardFieldSpecificStyles] = [:]
+        // Apply default label style to all field types
         var defaultLabelStylesDict: [CardFieldType: CardStyle] = [:]
-
-        // Ensure all relevant field types are covered
         let allFieldTypes: [CardFieldType] = [
             .CARD_NUMBER, .CVV, .EXPIRATION_DATE, .EXPIRATION_MONTH, .EXPIRATION_YEAR, .CARDHOLDER_NAME
         ]
         for fieldType in allFieldTypes {
-            defaultInputStylesDict[fieldType] = defaultInputStyle
             defaultLabelStylesDict[fieldType] = defaultLabelStyle
         }
 
         return .init(
             errorTextStyle: defaultErrorStyle,
-            inputFieldStyles: defaultInputStylesDict,
+            allInputFieldStyles: defaultAllInputStyle, // Use the default for all fields
+            inputFieldStyles: nil, // No specific overrides by default
             labelStyles: defaultLabelStylesDict
         )
     }
@@ -113,10 +113,16 @@ public struct CardFormStylesConfig {
          // Merge error text style
          let finalErrorTextStyle = self.errorTextStyle?.merged(over: baseConfig.errorTextStyle) ?? baseConfig.errorTextStyle
          
-         // Merge input field styles
+         // Merge all input field styles (self takes priority over base)
+         let finalAllInputFieldStyles = self.allInputFieldStyles?.merged(over: baseConfig.allInputFieldStyles) ?? baseConfig.allInputFieldStyles
+         
+         // Merge specific input field styles
+         // Start with base specific styles, then merge self specific styles over them
          var finalInputFieldStyles = baseConfig.inputFieldStyles ?? [:]
          if let selfInputFieldStyles = self.inputFieldStyles {
              for (key, value) in selfInputFieldStyles {
+                 // If a style for this key already exists in the merged dict, merge over it
+                 // Otherwise, just add the new style
                  finalInputFieldStyles[key] = value.merged(over: finalInputFieldStyles[key])
              }
          }
@@ -131,10 +137,26 @@ public struct CardFormStylesConfig {
 
          return .init(
              errorTextStyle: finalErrorTextStyle,
+             allInputFieldStyles: finalAllInputFieldStyles, // Added
              inputFieldStyles: finalInputFieldStyles.isEmpty ? nil : finalInputFieldStyles,
              labelStyles: finalLabelStyles.isEmpty ? nil : finalLabelStyles
          )
      }
+    
+    // Helper to get the effective input style for a specific field type
+    public func effectiveInputStyles(for fieldType: CardFieldType) -> CardFieldSpecificStyles {
+        // Start with the base 'all' style, or the default if 'all' is not set
+        let baseStyle = self.allInputFieldStyles ?? CardFieldSpecificStyles.defaultStyle
+        
+        // Check if there's a specific override for this field type
+        if let specificStyle = self.inputFieldStyles?[fieldType] {
+            // Merge the specific style over the base 'all' style
+            return specificStyle.merged(over: baseStyle)
+        } else {
+            // No specific override, just use the base 'all' style
+            return baseStyle
+        }
+    }
 }
 
 
