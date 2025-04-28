@@ -96,7 +96,6 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
         }
 
         if let dynamicMaxLength = collectField.maxLength {
-             // For CVV, we usually only care about digit count
              let digitsOnly = text.filter { "0"..."9" ~= $0 }
              if digitsOnly.count > dynamicMaxLength {
                  // Prevent the change if it exceeds the max length
@@ -122,14 +121,11 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
                  }
             }
 
-            // ***** CHANGE 2 START *****
-            // Check the STATIC maxLength ONLY IF dynamic one wasn't set/checked
-            if collectField.maxLength == nil, // Apply only if dynamic wasn't set
+            if collectField.maxLength == nil,
                let staticMaxLength = elementType.maxLength,
                count > staticMaxLength {
                 return false
             }
-            // ***** CHANGE 2 END *****
 
 
             if !elementType.formatPattern.isEmpty {
