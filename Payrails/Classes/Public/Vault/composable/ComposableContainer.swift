@@ -301,4 +301,38 @@ public extension Container {
         }
         return nil
     }
+    
+    func setupDynamicCVVLengthHandling() {
+        guard let cardNumberField = self.elements.first(where: { $0.fieldType == .CARD_NUMBER }),
+              let cvvField = self.elements.first(where: { $0.fieldType == .CVV }) else {
+            return
+        }
+
+        cardNumberField.onChangeHandler = { [weak cvvField, weak cardNumberField] stateDict in
+            guard let cvv = cvvField, let cnField = cardNumberField else { return }
+
+            let currentCardNumber = cnField.getValue()
+            let cardType = CardType.forCardNumber(cardNumber: currentCardNumber)
+
+            let requiredLength = cardType.instance.securityCodeLength
+
+            if cvv.maxLength != requiredLength {
+                cvv.maxLength = requiredLength
+                cvv.setValue(value: "")
+                
+                let currentCvvValue = cvv.getValue()
+                if currentCvvValue.count > requiredLength {
+                    cvv.resetError()
+                    _ = cvv.validate()
+                    cvv.updateErrorMessage()
+                } else {
+                    if cvv.isErrorMessageShowing && cvv.errorMessage.text?.contains("length") ?? false {
+                       cvv.resetError()
+                       cvv.updateErrorMessage()
+                    }
+                }
+            }
+        }
+        cardNumberField.onChangeHandler?([:])
+    }
 }
