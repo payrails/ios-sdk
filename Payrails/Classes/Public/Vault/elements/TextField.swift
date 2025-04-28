@@ -86,6 +86,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
         return StateforText(tf: self)
     }
     
+    var maxLength: Int?
+    
     override init(input: CollectElementInput, options: CollectElementOptions, contextOptions: ContextOptions, elements: [TextField]? = nil) {
         super.init(input: input, options: options, contextOptions: contextOptions, elements: elements ?? [])
         self.customErrorMessage = input.customErrorMessage

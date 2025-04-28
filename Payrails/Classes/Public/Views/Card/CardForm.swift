@@ -253,6 +253,8 @@ public extension Payrails {
                 _ = container.create(input: collectExpYearInput, options: requiredOption)
             }
 
+            container.setupDynamicCVVLengthHandling()
+            
             // --- StackView Configuration ---
             self.axis = .vertical
             self.spacing = 10 // Adjusted spacing slightly
