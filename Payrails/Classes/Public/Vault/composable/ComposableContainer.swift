@@ -313,7 +313,7 @@ public extension Container {
 
             let currentCardNumber = cnField.getValue()
             let cardType = CardType.forCardNumber(cardNumber: currentCardNumber)
-            print(cardType)
+
             let requiredLength = cardType.instance.securityCodeLength
 
             if cvv.maxLength != requiredLength {
