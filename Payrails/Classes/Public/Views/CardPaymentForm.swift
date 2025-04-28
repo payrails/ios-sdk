@@ -18,6 +18,7 @@ public extension Payrails {
         private var payrails: Payrails.Session?
         private var payrailsTask: Task<Void, Error>?
         private var encryptedCardData: String?
+        private let stylesConfig: CardFormStylesConfig // Store the styles config
         
         public weak var delegate: PayrailsCardPaymentFormDelegate?
         public var presenter: PaymentPresenter?
@@ -31,9 +32,12 @@ public extension Payrails {
             session: Payrails.Session? = nil,
             buttonTitle: String = "Pay Now"
         ) {
+            // Use the styles config directly from CardFormConfig, as it's already merged with defaults there.
+            // Ensure we have a non-nil stylesConfig, falling back to default if config.styles was nil.
+            self.stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
 
             self.cardForm = CardForm(
-                config: config,
+                config: config, // Pass original config down
                 tableName: tableName,
                 cseConfig: cseConfig,
                 holderReference: holderReference,
@@ -67,14 +71,38 @@ public extension Payrails {
             self.spacing = 16
             self.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 16, right: 0)
             self.isLayoutMarginsRelativeArrangement = true
-            
             cardForm.delegate = self
 
+            // Apply button styles from config
+            let buttonStyle = self.stylesConfig.buttonStyle ?? CardButtonStyle.defaultStyle
+            
             payButton.setTitle(buttonTitle, for: .normal)
-            payButton.backgroundColor = .systemBlue
-            payButton.setTitleColor(.white, for: .normal)
-            payButton.layer.cornerRadius = 8
-            payButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+            
+            if let bgColor = buttonStyle.backgroundColor {
+                payButton.backgroundColor = bgColor
+            }
+            if let textColor = buttonStyle.textColor {
+                payButton.setTitleColor(textColor, for: .normal)
+            }
+            if let font = buttonStyle.font {
+                payButton.titleLabel?.font = font
+            }
+            if let cornerRadius = buttonStyle.cornerRadius {
+                payButton.layer.cornerRadius = cornerRadius
+                payButton.layer.masksToBounds = cornerRadius > 0 // Clip if corner radius is set
+            }
+            if let borderWidth = buttonStyle.borderWidth {
+                payButton.layer.borderWidth = borderWidth
+            }
+            if let borderColor = buttonStyle.borderColor {
+                payButton.layer.borderColor = borderColor.cgColor
+            }
+            if let insets = buttonStyle.contentEdgeInsets {
+                payButton.contentEdgeInsets = insets
+            }
+            
+            // Keep height constraint and target
+            payButton.heightAnchor.constraint(equalToConstant: 44).isActive = true // Keep default height or make configurable? For now, keep.
             payButton.addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
             
             // Add subviews
