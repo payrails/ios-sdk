@@ -4,6 +4,7 @@ struct AuthorizeResponse: Decodable {
     let name: String
     let actionId: String
     let links: AuthorizeLinks
+    let executedAt: Date
 }
 
 struct AuthorizeLinks: Decodable {
