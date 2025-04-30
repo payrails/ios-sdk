@@ -4,6 +4,8 @@ class PayrailsAPI {
     let config: SDKConfig
 
     var isRunning = false
+    
+    var authorizeRequestDate  = Date()
 
     enum PaymentStatus {
         case success, failed, pending(GetExecutionResult)
@@ -20,7 +22,7 @@ class PayrailsAPI {
     ]
 
     private let statusesAfterPending: [PaymentAuthorizeStatus] = [
-        .authorizeSuccessful,
+        .authorizeSuccessful, 
         .authorizeFailed
     ]
 
@@ -69,6 +71,7 @@ class PayrailsAPI {
         payload: [String: Any]?
     ) async throws -> PayrailsAPI.PaymentStatus {
         isRunning = true
+        // authorization request
         let executionUrl = try await authorizePayment(type: type, payload: payload)
         guard isRunning else { throw PayrailsError.unknown(error: nil) }
         let status = try await checkExecutionStatus(url: executionUrl, targetStatuses: statusesAfterAuthorize)
@@ -143,6 +146,9 @@ class PayrailsAPI {
             body: jsonData,
             type: AuthorizeResponse.self
         )
+        
+        authorizeRequestDate = authorizeResponse.executedAt
+        
         if let execution = authorizeResponse.links.execution,
            let executionURL = URL(string: execution) {
             return executionURL
@@ -159,6 +165,7 @@ class PayrailsAPI {
         var executionResult: GetExecutionResult!
         var authorizeRequestedStatus: Status!
 
+        
         var attempt = 0
         while !authorizeRequestedFound && isRunning && attempt < 10 {
             executionResult = try await getExecution(url: url)
@@ -175,9 +182,10 @@ class PayrailsAPI {
               authorizeRequestedStatus != nil else {
             throw PayrailsError.unknown(error: nil)
         }
+        
 
         if let finalState = executionResult.sortedStatus.first(where: { status in
-            targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestedStatus.time
+            targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestDate
         }) {
             if let paymentStatus = finalState.paymentStatus(with: executionResult) {
                 return paymentStatus
@@ -193,7 +201,7 @@ class PayrailsAPI {
                 timeout: 300
             )
             let finalState = longPollingExecutionResult.sortedStatus.first(where: { status in
-                targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestedStatus.time
+                targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestDate
             })
 
             if let paymentStatus = finalState?.paymentStatus(with: longPollingExecutionResult) {
@@ -246,7 +254,7 @@ fileprivate extension PayrailsAPI {
         )
         
         request.httpMethod = method.rawValue
-        method
+        
         if let httpBody = body {
             request.httpBody = httpBody
         }
@@ -261,6 +269,10 @@ fileprivate extension PayrailsAPI {
             forHTTPHeaderField: "x-idempotency-key"
         )
 
+        request.addValue("no-cache, no-store, must-revalidate", forHTTPHeaderField: "Cache-Control")
+              request.addValue("no-cache", forHTTPHeaderField: "Pragma")
+              request.addValue("0", forHTTPHeaderField: "Expires")
+        
         request.addValue(
             (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "0",
             forHTTPHeaderField: "x-client-version"
@@ -276,12 +288,9 @@ fileprivate extension PayrailsAPI {
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
+            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
             
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-
-            
-            
-            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
             
             if statusCode == 401 || statusCode == 403 {
                 print("Authentication error: status code \(statusCode)")

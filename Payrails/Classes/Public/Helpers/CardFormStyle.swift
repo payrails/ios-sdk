@@ -1,11 +1,8 @@
-import UIKit // Ensure UIKit is imported for UIEdgeInsets etc.
+import UIKit
 
 public typealias CardStyle = Style
 public typealias CardFieldType = ElementType
 
-// MARK: - New Style Structures (Proposed)
-
-// New struct for input field specific styles
 public struct CardFieldSpecificStyles {
     public let base: CardStyle?
     public let focus: CardStyle?
@@ -29,10 +26,6 @@ public struct CardFieldSpecificStyles {
         )
     }
 
-    // Merging logic might be needed here as well if defaults are used
-    // func merged(over base: CardFieldSpecificStyles?) -> CardFieldSpecificStyles { ... }
-
-    // Default instance (can be customized)
     public static var defaultStyle: CardFieldSpecificStyles {
         .init(
             base: .init(cornerRadius: 2, padding: UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10), borderWidth: 1, textAlignment: .left, textColor: .black), // Changed default text color
@@ -57,48 +50,155 @@ public struct CardFieldSpecificStyles {
     }
 }
 
-// New main configuration struct for styles
-public struct CardFormStylesConfig {
-    public let errorTextStyle: CardStyle? // Single style for all error texts
-    public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]? // Per-field input styles
-    public let labelStyles: [CardFieldType: CardStyle]? // Per-field label styles
+public struct CardButtonStyle {
+    public let backgroundColor: UIColor?
+    public let textColor: UIColor?
+    public let font: UIFont?
+    public let cornerRadius: CGFloat?
+    public let borderWidth: CGFloat?
+    public let borderColor: UIColor?
+    public let contentEdgeInsets: UIEdgeInsets?
 
     public init(
-        errorTextStyle: CardStyle? = nil,
-        inputFieldStyles: [CardFieldType : CardFieldSpecificStyles]? = nil,
-        labelStyles: [CardFieldType : CardStyle]? = nil
+        backgroundColor: UIColor? = nil,
+        textColor: UIColor? = nil,
+        font: UIFont? = nil,
+        cornerRadius: CGFloat? = nil,
+        borderWidth: CGFloat? = nil,
+        borderColor: UIColor? = nil,
+        contentEdgeInsets: UIEdgeInsets? = nil
     ) {
-        self.errorTextStyle = errorTextStyle
-        self.inputFieldStyles = inputFieldStyles
-        self.labelStyles = labelStyles
+        self.backgroundColor = backgroundColor
+        self.textColor = textColor
+        self.font = font
+        self.cornerRadius = cornerRadius
+        self.borderWidth = borderWidth
+        self.borderColor = borderColor
+        self.contentEdgeInsets = contentEdgeInsets
     }
 
-    // Default configuration
+    public static var defaultStyle: CardButtonStyle {
+        .init(
+            backgroundColor: .systemBlue,
+            textColor: .white,
+            cornerRadius: 8.0,
+            contentEdgeInsets: nil
+        )
+    }
+
+    public static var empty: CardButtonStyle {
+        .init()
+    }
+
+    public func merged(over base: CardButtonStyle?) -> CardButtonStyle {
+        let baseStyle = base ?? CardButtonStyle.empty
+        return CardButtonStyle(
+            backgroundColor: self.backgroundColor ?? baseStyle.backgroundColor,
+            textColor: self.textColor ?? baseStyle.textColor,
+            font: self.font ?? baseStyle.font,
+            cornerRadius: self.cornerRadius ?? baseStyle.cornerRadius,
+            borderWidth: self.borderWidth ?? baseStyle.borderWidth,
+            borderColor: self.borderColor ?? baseStyle.borderColor,
+            contentEdgeInsets: self.contentEdgeInsets ?? baseStyle.contentEdgeInsets
+        )
+    }
+}
+
+
+public struct CardWrapperStyle {
+    public let backgroundColor: UIColor?
+    public let borderColor: UIColor?
+    public let borderWidth: CGFloat?
+    public let cornerRadius: CGFloat?
+    public let padding: UIEdgeInsets?
+
+    public init(
+        backgroundColor: UIColor? = nil,
+        borderColor: UIColor? = nil,
+        borderWidth: CGFloat? = nil,
+        cornerRadius: CGFloat? = nil,
+        padding: UIEdgeInsets? = nil
+    ) {
+        self.backgroundColor = backgroundColor
+        self.borderColor = borderColor
+        self.borderWidth = borderWidth
+        self.cornerRadius = cornerRadius
+        self.padding = padding
+    }
+
+    public static var defaultStyle: CardWrapperStyle {
+        .init(
+            borderColor: UIColor.gray,
+            borderWidth: 1.0,
+            cornerRadius: 8.0,
+            padding: UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        )
+    }
+
+    public static var empty: CardWrapperStyle {
+        .init()
+    }
+
+    public func merged(over base: CardWrapperStyle?) -> CardWrapperStyle {
+        let baseStyle = base ?? CardWrapperStyle.empty
+        return CardWrapperStyle(
+            backgroundColor: self.backgroundColor ?? baseStyle.backgroundColor,
+            borderColor: self.borderColor ?? baseStyle.borderColor,
+            borderWidth: self.borderWidth ?? baseStyle.borderWidth,
+            cornerRadius: self.cornerRadius ?? baseStyle.cornerRadius,
+            padding: self.padding ?? baseStyle.padding
+        )
+    }
+}
+
+
+public struct CardFormStylesConfig {
+    public let wrapperStyle: CardWrapperStyle?
+    public let errorTextStyle: CardStyle?
+    public let allInputFieldStyles: CardFieldSpecificStyles?
+    public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]?
+    public let labelStyles: [CardFieldType: CardStyle]?
+    public let buttonStyle: CardButtonStyle?
+
+    public init(
+        wrapperStyle: CardWrapperStyle? = nil,
+        errorTextStyle: CardStyle? = nil,
+        allInputFieldStyles: CardFieldSpecificStyles? = nil,
+        inputFieldStyles: [CardFieldType : CardFieldSpecificStyles]? = nil,
+        labelStyles: [CardFieldType : CardStyle]? = nil,
+        buttonStyle: CardButtonStyle? = nil
+    ) {
+        self.wrapperStyle = wrapperStyle
+        self.errorTextStyle = errorTextStyle
+        self.allInputFieldStyles = allInputFieldStyles
+        self.inputFieldStyles = inputFieldStyles
+        self.labelStyles = labelStyles
+        self.buttonStyle = buttonStyle
+    }
+
+
     public static var defaultConfig: CardFormStylesConfig {
-        // Define default input styles using CardFieldSpecificStyles
-        let defaultInputStyle = CardFieldSpecificStyles.defaultStyle
-        // Define default label style
-        let defaultLabelStyle = CardStyle(textColor: .darkGray) // Changed default label color
-        // Define default error style
+        let defaultAllInputStyle = CardFieldSpecificStyles.defaultStyle
+        let defaultLabelStyle = CardStyle(textColor: .darkGray)
         let defaultErrorStyle = CardStyle(textColor: UIColor.red)
+        let defaultWrapperStyle = CardWrapperStyle.defaultStyle
+        let defaultButtonStyle = CardButtonStyle.defaultStyle // Added
 
-        // Apply defaults to all field types
-        var defaultInputStylesDict: [CardFieldType: CardFieldSpecificStyles] = [:]
         var defaultLabelStylesDict: [CardFieldType: CardStyle] = [:]
-
-        // Ensure all relevant field types are covered
         let allFieldTypes: [CardFieldType] = [
             .CARD_NUMBER, .CVV, .EXPIRATION_DATE, .EXPIRATION_MONTH, .EXPIRATION_YEAR, .CARDHOLDER_NAME
         ]
         for fieldType in allFieldTypes {
-            defaultInputStylesDict[fieldType] = defaultInputStyle
             defaultLabelStylesDict[fieldType] = defaultLabelStyle
         }
 
         return .init(
+            wrapperStyle: defaultWrapperStyle,
             errorTextStyle: defaultErrorStyle,
-            inputFieldStyles: defaultInputStylesDict,
-            labelStyles: defaultLabelStylesDict
+            allInputFieldStyles: defaultAllInputStyle,
+            inputFieldStyles: nil,
+            labelStyles: defaultLabelStylesDict,
+            buttonStyle: defaultButtonStyle
         )
     }
     
@@ -106,14 +206,15 @@ public struct CardFormStylesConfig {
         .init()
     }
 
-     // Merging logic
      public func merged(over base: CardFormStylesConfig?) -> CardFormStylesConfig {
          let baseConfig = base ?? CardFormStylesConfig.empty
-         
-         // Merge error text style
+
+         let finalWrapperStyle = self.wrapperStyle?.merged(over: baseConfig.wrapperStyle) ?? baseConfig.wrapperStyle
+
          let finalErrorTextStyle = self.errorTextStyle?.merged(over: baseConfig.errorTextStyle) ?? baseConfig.errorTextStyle
          
-         // Merge input field styles
+         let finalAllInputFieldStyles = self.allInputFieldStyles?.merged(over: baseConfig.allInputFieldStyles) ?? baseConfig.allInputFieldStyles
+         
          var finalInputFieldStyles = baseConfig.inputFieldStyles ?? [:]
          if let selfInputFieldStyles = self.inputFieldStyles {
              for (key, value) in selfInputFieldStyles {
@@ -121,7 +222,6 @@ public struct CardFormStylesConfig {
              }
          }
          
-         // Merge label styles
          var finalLabelStyles = baseConfig.labelStyles ?? [:]
          if let selfLabelStyles = self.labelStyles {
              for (key, value) in selfLabelStyles {
@@ -130,17 +230,27 @@ public struct CardFormStylesConfig {
          }
 
          return .init(
+             wrapperStyle: finalWrapperStyle,
              errorTextStyle: finalErrorTextStyle,
+             allInputFieldStyles: finalAllInputFieldStyles,
              inputFieldStyles: finalInputFieldStyles.isEmpty ? nil : finalInputFieldStyles,
-             labelStyles: finalLabelStyles.isEmpty ? nil : finalLabelStyles
+             labelStyles: finalLabelStyles.isEmpty ? nil : finalLabelStyles,
+             buttonStyle: self.buttonStyle?.merged(over: baseConfig.buttonStyle) ?? baseConfig.buttonStyle // Added
          )
      }
+    
+    public func effectiveInputStyles(for fieldType: CardFieldType) -> CardFieldSpecificStyles {
+        let baseStyle = self.allInputFieldStyles ?? CardFieldSpecificStyles.defaultStyle
+        
+        if let specificStyle = self.inputFieldStyles?[fieldType] {
+            return specificStyle.merged(over: baseStyle)
+        } else {
+            return baseStyle
+        }
+    }
 }
 
 
-// MARK: - Original Style Structure (Potentially Deprecated)
-
-// Consider making this internal or removing if CardFormStylesConfig fully replaces its public role.
 public struct CardFormStyle {
     public static var defaultStyle: CardFormStyle {
         .init(

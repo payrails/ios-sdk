@@ -89,7 +89,6 @@ public extension Payrails {
                     await MainActor.run {
                         guard self.isProcessing else { return }
                         
-                        print("Paypapapapapap")
                         print(result)
                         switch result {
                         case .success:

@@ -5,46 +5,32 @@
 //  Created by Mustafa Dikici on 23.04.25.
 //
 //
-//  CardFormConfig.swift
-//  Pods
-//
-//  Created by Mustafa Dikici on 23.04.25.
-//
 public struct CardFormConfig {
     public let showNameField: Bool
     public let translations: CardTranslations?
-    // Use the new styles config struct
-    public let styles: CardFormStylesConfig? // Changed from [CardFieldType: CardFormStyle]?
+    
+    public let styles: CardFormStylesConfig?
 
     public init(
         showNameField: Bool = false,
-        // Update initializer parameter
-        styles: CardFormStylesConfig? = nil, // Changed type
+        styles: CardFormStylesConfig? = nil,
         translations: CardTranslations? = nil
     ) {
         self.showNameField = showNameField
-        // Merge provided translations over defaults if needed, or handle defaults elsewhere
-        self.translations = translations // Assuming defaults are handled at usage or within CardTranslations
-        // Merge provided styles over defaults
+        self.translations = translations
         self.styles = styles?.merged(over: CardFormStylesConfig.defaultConfig) ?? CardFormStylesConfig.defaultConfig
     }
 
-    // Default config now uses the new styles default and potentially default translations
     public static var defaultConfig: CardFormConfig {
-        // Use the default from the new styles config struct
         let defaultStyles = CardFormStylesConfig.defaultConfig
-        // Consider adding default translations here if desired
-        // let defaultTranslations = CardTranslations(...)
 
         return .init(
             showNameField: true,
-            styles: defaultStyles, // Use the new default styles
-            translations: nil // Or use defaultTranslations
+            styles: defaultStyles,
+            translations: nil
         )
     }
     
-    // Convenience initializer to maintain backward compatibility or ease of use with old style format (optional)
-    // This would convert the old format to the new one internally.
     /*
     public init(
         showNameField: Bool = false,
