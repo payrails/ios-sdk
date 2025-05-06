@@ -29,6 +29,22 @@ public class Payrails {
     static func getCurrentSession() -> Payrails.Session? {
         return currentSession
     }
+
+    // MARK: - SDK Logging
+    public static func log(_ items: Any..., separator: String = " ", terminator: String = "\n", file: String = #file, function: String = #function, line: UInt = #line) {
+        #if DEBUG // Only active in DEBUG builds
+        let output = items.map { "\($0)" }.joined(separator: separator)
+        let fileName = (file as NSString).lastPathComponent
+        let logMessage = "[\(fileName):\(line)] \(function) -> \(output)"
+        
+        // 1. Print to console (for Xcode debugging)
+        Swift.print(logMessage, terminator: terminator)
+        
+        // 2. Add to our on-screen LogStore
+        // Ensure this is thread-safe if called from various parts of the SDK
+        LogStore.shared.addLog(logMessage)
+        #endif
+    }
 }
 
 
@@ -138,9 +154,11 @@ public extension Payrails {
     }
     
     static func createApplePayButton(type: PKPaymentButtonType, style: PKPaymentButtonStyle) -> Payrails.ApplePayButton {
+        Payrails.log("Creating apple pay button")
         precondition(currentSession != nil, "Payrails session must be initialized before creating an ApplePayButton")
         let session = currentSession!
-
+        
+        //TODO:
         let button = Payrails.ApplePayButton(session: session, type: type, style: style)
         return button
     }

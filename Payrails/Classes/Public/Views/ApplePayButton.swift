@@ -6,7 +6,7 @@ public protocol PayrailsApplePayButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.ApplePayButton)
     func onAuthorizeSuccess(_ button: Payrails.ApplePayButton)
     func onAuthorizeFailed(_ button: Payrails.ApplePayButton)
-    func onPaymentSessionExpired(_ button: Payrails.ApplePayButton) // Or cancelled
+    func onPaymentSessionExpired(_ button: Payrails.ApplePayButton)
 }
 
 public extension Payrails {
@@ -56,6 +56,8 @@ public extension Payrails {
         
         @objc private func handleTap() {
             guard !isProcessing else { return }
+            
+            Payrails.log("ApplePy button initializong")
             
             guard let currentSession = session else {
                 print("Payrails.ApplePayButton Error: Internal Session is missing. Button was likely not created via Payrails.createApplePayButton().")
