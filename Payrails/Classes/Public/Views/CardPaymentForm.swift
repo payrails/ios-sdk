@@ -32,8 +32,6 @@ public extension Payrails {
             session: Payrails.Session? = nil,
             buttonTitle: String = "Pay Now"
         ) {
-            // Use the styles config directly from CardFormConfig, as it's already merged with defaults there.
-            // Ensure we have a non-nil stylesConfig, falling back to default if config.styles was nil.
             self.stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
 
             self.cardForm = CardForm(
@@ -71,6 +69,14 @@ public extension Payrails {
             self.spacing = 16
             self.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 16, right: 0)
             self.isLayoutMarginsRelativeArrangement = true
+            
+            // --- Add Border to the StackView (self) ---
+            self.layer.borderWidth = 1.0 // Set the thickness of the border
+            self.layer.borderColor = UIColor.lightGray.cgColor // Set the color (use .cgColor)
+            self.layer.cornerRadius = 8.0 // Optional: Add rounded corners
+            self.clipsToBounds = true   // Optional: Needed if using cornerRadius to clip content
+            
+            self.layoutMargins = UIEdgeInsets(top: 15, left: 15, bottom:15, right: 15)
             cardForm.delegate = self
 
             // Apply button styles from config

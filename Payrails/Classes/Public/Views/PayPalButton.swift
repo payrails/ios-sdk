@@ -2,7 +2,6 @@ import UIKit
 
 import PayPalCheckout
 
-// MARK: - Delegate Protocol (Remains the same)
 public protocol PayrailsPayPalButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.PayPalButton)
     func onAuthorizeSuccess(_ button: Payrails.PayPalButton)
@@ -10,10 +9,9 @@ public protocol PayrailsPayPalButtonDelegate: AnyObject {
     func onPaymentSessionExpired(_ button: Payrails.PayPalButton)
 }
 
-// MARK: - Payrails.PayPalButton
 public extension Payrails {
 
-    final class PayPalButton: ActionButton { // Inherits from your ActionButton
+    final class PayPalButton: ActionButton {
 
         private let prefixLabel = UILabel()
         private let paypalImageView = UIImageView( /* ... image setup ... */ )
@@ -21,7 +19,7 @@ public extension Payrails {
         public weak var delegate: PayrailsPayPalButtonDelegate?
         public weak var presenter: PaymentPresenter?
 
-        private weak var session: Payrails.Session? // Set via internal init
+        private weak var session: Payrails.Session?
         private var paymentTask: Task<Void, Error>?
         private var isProcessing: Bool = false {
             didSet {
@@ -32,8 +30,6 @@ public extension Payrails {
 
 
         public required init() {
-            // This path might be problematic if session is required.
-            // Relying on the factory method is safer.
              super.init()
              internalSetup()
              print("Warning: Payrails.PayPalButton initialized without a session via required init(). Use Payrails.createPayPalButton().")
@@ -47,7 +43,7 @@ public extension Payrails {
 
         internal init(session: Payrails.Session) {
             self.session = session
-            super.init() // Call ActionButton's required init()
+            super.init()
             internalSetup()
         }
 
@@ -89,7 +85,6 @@ public extension Payrails {
                     await MainActor.run {
                         guard self.isProcessing else { return }
                         
-                        print(result)
                         switch result {
                         case .success:
                             self.delegate?.onAuthorizeSuccess(self)
@@ -137,7 +132,7 @@ public extension Payrails {
              stackView.spacing = 8
              stackView.alignment = .center
              prefixLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
-             prefixLabel.textColor = UIColor(red: 0/255, green: 50/255, blue: 100/255, alpha: 1)
+             prefixLabel.textColor = UIColor(red: 0/255, green: 150/255, blue: 100/255, alpha: 1)
              prefixLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
              prefixLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
              paypalImageView.image = UIImage(named: "PayPal", in: Bundle(for: PayPalButton.self), compatibleWith: nil) // Ensure image setup is here
@@ -145,10 +140,23 @@ public extension Payrails {
              paypalImageView.translatesAutoresizingMaskIntoConstraints = false
              paypalImageView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
              paypalImageView.setContentHuggingPriority(.defaultLow, for: .horizontal)
-             stackView.addArrangedSubview(prefixLabel)
+            
+                let desiredLogoHeight: CGFloat = 24.0
+               paypalImageView.heightAnchor.constraint(equalToConstant: desiredLogoHeight).isActive = true
+            
              stackView.addArrangedSubview(paypalImageView)
              addSubview(stackView)
-             NSLayoutConstraint.activate([ /* ... constraints ... */ ])
+            
+            NSLayoutConstraint.activate([
+               stackView.centerXAnchor.constraint(equalTo: self.centerXAnchor),
+               stackView.centerYAnchor.constraint(equalTo: self.centerYAnchor),
+
+               // Optional: Add padding if needed (adjust constants)
+               stackView.leadingAnchor.constraint(greaterThanOrEqualTo: self.layoutMarginsGuide.leadingAnchor, constant: 8),
+               stackView.trailingAnchor.constraint(lessThanOrEqualTo: self.layoutMarginsGuide.trailingAnchor, constant: -8),
+               stackView.topAnchor.constraint(greaterThanOrEqualTo: self.layoutMarginsGuide.topAnchor, constant: 4),
+               stackView.bottomAnchor.constraint(lessThanOrEqualTo: self.layoutMarginsGuide.bottomAnchor, constant: -4)
+            ])
         }
          override func show(loading: Bool) {
              super.show(loading: loading)

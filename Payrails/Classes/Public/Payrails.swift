@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUICore
 import UIKit
+import PassKit
+
 
 public class Payrails {
     private static var currentSession: Payrails.Session?
@@ -132,6 +134,14 @@ public extension Payrails {
         let session = currentSession!
 
         let button = Payrails.PayPalButton(session: session)
+        return button
+    }
+    
+    static func createApplePayButton(type: PKPaymentButtonType, style: PKPaymentButtonStyle) -> Payrails.ApplePayButton {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating an ApplePayButton")
+        let session = currentSession!
+
+        let button = Payrails.ApplePayButton(session: session, type: type, style: style)
         return button
     }
 }

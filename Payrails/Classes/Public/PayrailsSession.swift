@@ -29,6 +29,10 @@ public extension Payrails {
         ) throws {
             self.option = configuration.option
             self.config = try parse(config: configuration)
+            print(self.config);
+            print("isapplepayabaial")
+            print(isApplePayAvailable)
+            print("isapplepayabaial")
             self.payrailsAPI = PayrailsAPI(config: config)
             if isPaymentAvailable(type: .card),
                   let vaultId = config.vaultConfiguration?.vaultId,

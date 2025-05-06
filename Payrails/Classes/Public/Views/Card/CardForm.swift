@@ -26,7 +26,6 @@ public extension Payrails {
 
     class CardForm: UIStackView {
         public weak var delegate: PayrailsCardFormDelegate?
-
         private let config: CardFormConfig
         private let containerClient: Client
         private var container: Container<ComposableContainer>?
@@ -51,11 +50,9 @@ public extension Payrails {
             
             super.init(frame: .zero)
 
-            // Apply wrapper styles from config, falling back to defaults
             let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
             let wrapperStyle = stylesConfig.wrapperStyle ?? CardWrapperStyle.defaultStyle
 
-            // Apply styles to the view's layer and layout margins
             if let bgColor = wrapperStyle.backgroundColor {
                 self.backgroundColor = bgColor // Apply background color to the view itself
             }
@@ -67,12 +64,11 @@ public extension Payrails {
             }
             if let cornerRadius = wrapperStyle.cornerRadius {
                 self.layer.cornerRadius = cornerRadius
-                self.clipsToBounds = true // Ensure content is clipped if corner radius is set
+                self.clipsToBounds = true
             } else {
-                self.clipsToBounds = false // No corner radius, no need to clip
+                self.clipsToBounds = false
             }
             
-            // Apply padding (layout margins)
             if let padding = wrapperStyle.padding {
                 self.layoutMargins = padding
             }
@@ -100,7 +96,7 @@ public extension Payrails {
             guard let container = self.containerClient.container(
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
-                    layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2], // Layout depends on showing name field
+                    layout: config.showNameField ? [1, 1, 3] : [1, 3], // Layout depends on showing name field
                     // Use the errorTextStyle from the new config for the container
                     errorTextStyles: Styles(base: containerErrorStyle)
                 )
@@ -120,25 +116,26 @@ public extension Payrails {
                 return (placeholder, label, errorText)
             }
             
-            let requiredOption = CollectElementOptions(required: true)
+            let requiredOption = CollectElementOptions(required: true, enableCardIcon: false, enableCopy: true)
             
-            // --- Card Number Field ---
             do {
                 let fieldType = CardFieldType.CARD_NUMBER
                 let translation = getTranslation(for: fieldType)
                 
-                // Get effective styles using the helper method
                 let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
                 let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
-                // Error style is shared
+                
+                print("input style")
+                print(inputStyle)
+                print("input style")
                 
                 let collectCardNumberInput = CollectElementInput(
                     table: tableName,
                     column: "card_number",
-                    inputStyles: inputStyle.skyflowStyles, // Use helper from CardFieldSpecificStyles
-                    labelStyles: Styles(base: labelStyle), // Wrap single style
-                    errorTextStyles: Styles(base: containerErrorStyle), // Use shared error style
-                    label: translation.label ?? "", // Use provided label or empty string
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "",
                     placeholder: translation.placeholder ?? "•••• •••• •••• ••••", // Default placeholder
                     type: .CARD_NUMBER,
                     customErrorMessage: translation.errorText
@@ -147,7 +144,6 @@ public extension Payrails {
                 _ = container.create(input: collectCardNumberInput, options: requiredOption)
             }
 
-            // --- Cardholder Name Field (Conditional) ---
             if config.showNameField {
                 do {
                     let fieldType = CardFieldType.CARDHOLDER_NAME
@@ -257,7 +253,7 @@ public extension Payrails {
             
             // --- StackView Configuration ---
             self.axis = .vertical
-            self.spacing = 10 // Adjusted spacing slightly
+            self.spacing = 10
 
             // --- Add Composable View ---
             do {
