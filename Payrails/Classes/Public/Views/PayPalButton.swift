@@ -73,7 +73,6 @@ public extension Payrails {
             paymentTask?.cancel()
             delegate?.onPaymentButtonClicked(self)
             paymentTask = Task { [weak self] in
-                // Capture session/presenter safely for async context
                 guard let self = self else { return }
                 do {
                     let result: OnPayResult? = await currentSession.executePayment(

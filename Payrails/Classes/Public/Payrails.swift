@@ -32,7 +32,7 @@ public class Payrails {
 
     // MARK: - SDK Logging
     public static func log(_ items: Any..., separator: String = " ", terminator: String = "\n", file: String = #file, function: String = #function, line: UInt = #line) {
-        #if DEBUG // Only active in DEBUG builds
+        
         let output = items.map { "\($0)" }.joined(separator: separator)
         let fileName = (file as NSString).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) -> \(output)"
@@ -43,7 +43,7 @@ public class Payrails {
         // 2. Add to our on-screen LogStore
         // Ensure this is thread-safe if called from various parts of the SDK
         LogStore.shared.addLog(logMessage)
-        #endif
+        
     }
 }
 

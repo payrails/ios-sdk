@@ -64,7 +64,6 @@ public extension Payrails {
             DispatchQueue.main.async {
                 self.logView?.isHidden = true // Hide it first
                 self.logView?.removeFromSuperview()
-                // self.logView = nil // Optionally nil out to recreate frame on next show, or keep instance
             }
         }
     }

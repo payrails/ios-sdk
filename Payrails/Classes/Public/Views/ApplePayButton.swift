@@ -60,6 +60,7 @@ public extension Payrails {
             Payrails.log("ApplePy button initializong")
             
             guard let currentSession = session else {
+                Payrails.log("Payrails.ApplePayButton Error: Internal Session is missing. Button was likely not created via Payrails.createApplePayButton().")
                 print("Payrails.ApplePayButton Error: Internal Session is missing. Button was likely not created via Payrails.createApplePayButton().")
                 // Optionally, call a delegate method for this specific error
                 // delegate?.onConfigurationError(self, error: .missingSession)
@@ -67,6 +68,7 @@ public extension Payrails {
             }
             
             guard let currentPresenter = presenter else {
+                Payrails.log("Payrails.ApplePayButton Error: Payment Presenter is not configured.")
                 print("Payrails.ApplePayButton Error: Payment Presenter is not configured.")
                 // Optionally, call a delegate method for this specific error
                 // delegate?.onConfigurationError(self, error: .missingPresenter)
@@ -77,6 +79,7 @@ public extension Payrails {
             paymentTask?.cancel()
             delegate?.onPaymentButtonClicked(self)
             
+            Payrails.log("Start payment task ")
             paymentTask = Task { [weak self] in
                 guard let self = self else { return }
                 do {
