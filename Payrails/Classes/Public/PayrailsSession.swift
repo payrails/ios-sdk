@@ -140,6 +140,8 @@ public extension Payrails {
                 return
             }
             
+            Payrails.log("Payment handler is ready")
+            
             paymentHandler.makePayment(total: Double(config.amount.value)!, currency: config.amount.currency, presenter: presenter)
         }
 
@@ -346,19 +348,17 @@ extension Payrails.Session: PaymentHandlerDelegate {
 
                 let amount = Amount(value: self.config.amount.value, currency: self.config.amount.currency)
 
-                // Construct a PaymentComposition suitable for PayPal post-approval
-                // This might not need 'paymentInstrumentData' or might need different fields (e.g., providerData).
-                // Assuming paymentInstrumentData is not needed or should be constructed differently. VERIFY!
+                // TODO: VERIFY!
                 let payPalComposition = PaymentComposition(
-                    paymentMethodCode: type.rawValue, // .payPal
-                    integrationType: "api", // Or maybe "sdk" / "redirect"? Check Payrails docs.
+                    paymentMethodCode: type.rawValue,
+                    integrationType: "api",
                     amount: amount,
                     storeInstrument: storeInstrument,
-                    paymentInstrumentData: nil, // <-- Assuming nil, VERIFY!
+                    paymentInstrumentData: nil,
                     enrollInstrumentToNetworkOffers: false
                 )
 
-                // Prepare the final request body for PayPal
+                
                 let returnInfo: [String: String] = [
                     "success": "https://assets.payrails.io/html/payrails-success.html",
                     "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
@@ -381,8 +381,8 @@ extension Payrails.Session: PaymentHandlerDelegate {
                     guard let strongSelf = self else { return }
                     do {
                         let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
-                            type: type, // .payPal
-                            payload: payPalBody // Use the PayPal-specific body
+                            type: type,
+                            payload: payPalBody
                         )
                         strongSelf.handle(paymentStatus: paymentStatus)
                     } catch {
@@ -391,9 +391,50 @@ extension Payrails.Session: PaymentHandlerDelegate {
                 }
 
             } else if type == .applePay {
-                 print("❌ Apple Pay success handling not fully implemented yet.")
-                 handle(error: PayrailsError.incorrectPaymentSetup(type: type)) // Placeholder
+                Payrails.log("apple pay is not reaady")
+                let paymentInstrumentData = payload!["paymentInstrumentData"]
+                let amount = Amount(value: self.config.amount.value, currency: self.config.amount.currency)
+                Payrails.log(paymentInstrumentData)
+                let paymentComposition =  PaymentComposition(
+                    paymentMethodCode: type.rawValue,
+                    integrationType: "api",
+                    amount: amount,
+                    storeInstrument: false,
+                    paymentInstrumentData: paymentInstrumentData,
+                    enrollInstrumentToNetworkOffers: false
+                )
 
+                let returnInfo: [String: String] = [
+                    "success": "https://assets.payrails.io/html/payrails-success.html",
+                    "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
+                    "error": "https://assets.payrails.io/html/payrails-error.html",
+                    "pending": "https://assets.payrails.io/html/payrails-pending.html"
+                ]
+                let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
+                let meta = ["risk": risk]
+                let amountDict = ["value": amount.value, "currency": amount.currency]
+
+                let body: [String: Any] = [
+                    "amount": amountDict,
+                    "paymentComposition": [paymentComposition],
+                    "returnInfo": returnInfo,
+                    "meta": meta
+                ]
+                
+                
+                currentTask = Task { [weak self] in
+                    guard let strongSelf = self else { return }
+                    do {
+                        let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
+                            type: type,
+                            payload: body
+                        )
+                        strongSelf.handle(paymentStatus: paymentStatus)
+                    } catch {
+                        strongSelf.handle(error: error)
+                    }
+                }
+//                handle(error: PayrailsError.incorrectPaymentSetup(type: type))
             } else {
                 print("❓ Unhandled payment type in success case: \(type)")
                 handle(error: PayrailsError.unsupportedPayment(type: type))
@@ -451,6 +492,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
+        Payrails.log("Call handle payment withn status")
         switch paymentStatus {
         case .failed:
             onResult?(.failure)
@@ -469,6 +511,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(error: Error) {
+        Payrails.log("Call handle payment withn error")
         if let payrailsError = error as? PayrailsError {
             switch payrailsError {
             case .authenticationError:

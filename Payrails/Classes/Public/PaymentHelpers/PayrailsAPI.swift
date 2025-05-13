@@ -369,7 +369,7 @@ func convertToJSON(body: [String: Any]) -> Data? {
         var paymentCompositionDicts: [[String: Any]] = []
         
         for composition in paymentCompositions {
-            let compositionDict: [String: Any] = [
+            var compositionDict: [String: Any] = [
                 "paymentMethodCode": composition.paymentMethodCode,
                 "integrationType": composition.integrationType,
                 "amount": [
@@ -377,12 +377,20 @@ func convertToJSON(body: [String: Any]) -> Data? {
                     "currency": composition.amount.currency
                 ],
                 "storeInstrument": composition.storeInstrument,
-                "paymentInstrumentData": [
-                    "encryptedData": composition.paymentInstrumentData?.encryptedData,
-                    "vaultProviderConfigId": composition.paymentInstrumentData?.vaultProviderConfigId
-                ],
                 "enrollInstrumentToNetworkOffers": composition.enrollInstrumentToNetworkOffers
             ]
+            
+            // Special handling for Apple Pay
+            if composition.paymentMethodCode == "applePay" {
+                // For Apple Pay, use the paymentInstrumentData directly
+                compositionDict["paymentInstrumentData"] = composition.paymentInstrumentData
+            } else {
+                // For other payment methods, use the standard structure
+                compositionDict["paymentInstrumentData"] = [
+                    "encryptedData": (composition.paymentInstrumentData as? PaymentInstrumentData)?.encryptedData,
+                    "vaultProviderConfigId": (composition.paymentInstrumentData as? PaymentInstrumentData)?.vaultProviderConfigId
+                ]
+            }
             
             paymentCompositionDicts.append(compositionDict)
         }
@@ -400,4 +408,5 @@ func convertToJSON(body: [String: Any]) -> Data? {
         return nil
     }
 }
+
 

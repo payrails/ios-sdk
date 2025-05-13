@@ -20,7 +20,7 @@ public extension Payrails {
         private var isProcessing: Bool = false {
             didSet {
                 self.isUserInteractionEnabled = !isProcessing
-                // PKPaymentButton does not have a built-in loading indicator like a custom UIButton.
+                // PKPaymentButton does not have a built-in loading indicator like a custom UIButton. ss
                 // The visual feedback of processing is usually handled by the Apple Pay sheet itself.
                 // If custom loading UI on the button is needed, it would require more complex view additions.
             }
@@ -79,28 +79,27 @@ public extension Payrails {
             paymentTask?.cancel()
             delegate?.onPaymentButtonClicked(self)
             
-            Payrails.log("Start payment task ")
             paymentTask = Task { [weak self] in
                 guard let self = self else { return }
                 do {
                     let result: OnPayResult? = await currentSession.executePayment(
-                        with: .applePay, // Use .applePay
-                        saveInstrument: false, // Typically false for Apple Pay button, confirm if configurable
+                        with: .applePay,
+                        saveInstrument: false,
                         presenter: currentPresenter
                     )
                     try Task.checkCancellation()
                     
                     await MainActor.run {
-                        guard self.isProcessing else { return } // Check if still relevant
+                        guard self.isProcessing else { return }
                         
                         switch result {
                         case .success:
                             self.delegate?.onAuthorizeSuccess(self)
                         case .authorizationFailed:
                             self.delegate?.onAuthorizeFailed(self)
-                        case .failure: // Consider mapping generic failure to a specific delegate call
+                        case .failure:
                             self.delegate?.onAuthorizeFailed(self)
-                        case .error(_): // Consider mapping error to a specific delegate call
+                        case .error(_):
                             self.delegate?.onAuthorizeFailed(self)
                         case .cancelledByUser:
                             self.delegate?.onPaymentSessionExpired(self) // Or a more specific "cancelled"

@@ -61,17 +61,22 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         didAuthorizePayment payment: PKPayment,
         handler paymentCompletion: @escaping (PKPaymentAuthorizationResult) -> Void
     ) {
-
         guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
             paymentCompletion(.init(status: .failure, errors: nil))
             return
         }
 
+        // Create the restructured payload with paymentMethod object
         let payload: [String: Any] = [
             "paymentData": paymentData,
-            "paymentInstrumentName": payment.token.paymentMethod.displayName ?? "",
+            "paymentMethod": [
+                "displayName": payment.token.paymentMethod.displayName ?? "",
+                "network": payment.token.paymentMethod.network?.rawValue ?? "",
+                "type": "credit"
+            ],
+            "transactionIdentifier": payment.token.transactionIdentifier,
             "paymentNetwork": payment.token.paymentMethod.network?.rawValue ?? "",
-            "transactionIdentifier": payment.token.transactionIdentifier
+            "paymentInstrumentName": payment.token.paymentMethod.displayName ?? ""
         ]
 
         guard let payloadData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
@@ -90,10 +95,9 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
             type: .applePay,
             status: .success,
             payload: [
-                "paymentInstrumentData":
-                    [
-                        "paymentToken": String(data: payloadData, encoding: String.Encoding.utf8)
-                    ]
+                "paymentInstrumentData": [
+                    "paymentToken": String(data: payloadData, encoding: String.Encoding.utf8)
+                ]
             ]
         )
 

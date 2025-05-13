@@ -158,7 +158,7 @@ public extension Payrails {
         precondition(currentSession != nil, "Payrails session must be initialized before creating an ApplePayButton")
         let session = currentSession!
         
-        //TODO:
+        
         let button = Payrails.ApplePayButton(session: session, type: type, style: style)
         return button
     }
