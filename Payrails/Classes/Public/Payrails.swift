@@ -149,6 +149,7 @@ public extension Payrails {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a PayPalButton")
         let session = currentSession!
 
+        Payrails.log("Creating paypal button")
         let button = Payrails.PayPalButton(session: session)
         return button
     }

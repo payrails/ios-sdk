@@ -44,7 +44,6 @@ extension CardPaymentHandler: PaymentHandler {
 
         var data: [String: Any] = [:]
         data["card"] = [
-//            TODO: this should come from config
             "vaultProviderConfigId": "0077318a-5dd2-47fb-b709-e475d2172d32",
             "encryptedData": encryptedCardData
         ]
@@ -62,7 +61,7 @@ extension CardPaymentHandler: PaymentHandler {
 
     func handlePendingState(with executionResult: GetExecutionResult) {
         guard let link = executionResult.links.threeDS,
-              let url = URL(string: link) else {
+            let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
                 handler: self,
                 error: .missingData("Pending state failed due to missing 3ds link"),
@@ -82,6 +81,62 @@ extension CardPaymentHandler: PaymentHandler {
             self.webViewController = webViewController
         }
     }
+    
+    // Add this method to the CardPaymentHandler class
+    func processSuccessPayload(
+        payload: [String: Any]?,
+        amount: Amount,
+        completion: @escaping (Result<[String: Any], Error>) -> Void
+    ) {
+        guard let payload = payload,
+              let paymentInstrumentData = payload["paymentInstrumentData"] as? [String: Any],
+              let cardData = paymentInstrumentData["card"] as? [String: Any],
+              let encryptedData = cardData["encryptedData"] as? String,
+              let vaultProviderConfigId = cardData["vaultProviderConfigId"] as? String,
+              let storeInstrument = payload["storeInstrument"] as? Bool else {
+
+            completion(.failure(PayrailsError.invalidDataFormat))
+            return
+        }
+
+        let country = Country(code: "DE", fullName: "Germany", iso3: "DEU") // TODO: Review hardcoded country
+        let billingAddress = BillingAddress(country: country)
+
+        let instrumentData = PaymentInstrumentData(
+            encryptedData: encryptedData,
+            vaultProviderConfigId: vaultProviderConfigId,
+            billingAddress: billingAddress
+        )
+
+        let paymentComposition = PaymentComposition(
+            paymentMethodCode: Payrails.PaymentType.card.rawValue,
+            integrationType: "api",
+            amount: amount,
+            storeInstrument: storeInstrument,
+            paymentInstrumentData: instrumentData,
+            enrollInstrumentToNetworkOffers: false
+        )
+
+        let returnInfo: [String: String] = [
+             "success": "https://assets.payrails.io/html/payrails-success.html",
+             "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
+             "error": "https://assets.payrails.io/html/payrails-error.html",
+             "pending": "https://assets.payrails.io/html/payrails-pending.html"
+        ]
+        let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
+        let meta = ["risk": risk]
+        let amountDict = ["value": amount.value, "currency": amount.currency]
+
+        let body: [String: Any] = [
+            "amount": amountDict,
+            "paymentComposition": [paymentComposition],
+            "returnInfo": returnInfo,
+            "meta": meta
+        ]
+        
+        completion(.success(body))
+    }
+
 }
 
 extension CardPaymentHandler: WKNavigationDelegate {

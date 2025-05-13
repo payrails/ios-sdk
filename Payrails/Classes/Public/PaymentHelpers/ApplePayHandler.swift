@@ -46,6 +46,50 @@ extension ApplePayHandler: PaymentHandler {
     }
 
     func handlePendingState(with: GetExecutionResult) {}
+    
+    func processSuccessPayload(
+        payload: [String: Any]?,
+        amount: Amount,
+        completion: @escaping (Result<[String: Any], Error>) -> Void
+    ) {
+        guard let payload = payload,
+              let paymentInstrumentData = payload["paymentInstrumentData"] else {
+            Payrails.log("❌ Apple Pay payload missing required keys")
+            completion(.failure(PayrailsError.invalidDataFormat))
+            return
+        }
+        
+        // Create Apple Pay-specific payment composition
+        let paymentComposition = PaymentComposition(
+            paymentMethodCode: Payrails.PaymentType.applePay.rawValue,
+            integrationType: "api",
+            amount: amount,
+            storeInstrument: false,
+            paymentInstrumentData: paymentInstrumentData,
+            enrollInstrumentToNetworkOffers: false
+        )
+        
+        // Prepare the request body
+        let returnInfo: [String: String] = [
+            "success": "https://assets.payrails.io/html/payrails-success.html",
+            "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
+            "error": "https://assets.payrails.io/html/payrails-error.html",
+            "pending": "https://assets.payrails.io/html/payrails-pending.html"
+        ]
+        let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
+        let meta = ["risk": risk]
+        let amountDict = ["value": amount.value, "currency": amount.currency]
+        
+        let body: [String: Any] = [
+            "amount": amountDict,
+            "paymentComposition": [paymentComposition],
+            "returnInfo": returnInfo,
+            "meta": meta
+        ]
+        
+        completion(.success(body))
+    }
+
 }
 
 extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
