@@ -69,7 +69,7 @@ extension ApplePayHandler: PaymentHandler {
             enrollInstrumentToNetworkOffers: false
         )
         
-        // Prepare the request body
+        // TODO: this should be shared and place accordingly
         let returnInfo: [String: String] = [
             "success": "https://assets.payrails.io/html/payrails-success.html",
             "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
