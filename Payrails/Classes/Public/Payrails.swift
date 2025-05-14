@@ -163,6 +163,92 @@ public extension Payrails {
         let button = Payrails.ApplePayButton(session: session, type: type, style: style)
         return button
     }
+    
+    
+    static func createCardPaymentButton(
+        cardForm: Payrails.CardForm,
+        buttonTitle: String = "Pay Now",
+        buttonStyle: CardButtonStyle? = nil
+    ) -> Payrails.CardPaymentButton {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentButton")
+        let session = currentSession!
+        
+        let button = Payrails.CardPaymentButton(
+            cardForm: cardForm,
+            session: session,
+            buttonTitle: buttonTitle
+        )
+        
+        // Apply button styles if provided
+        if let style = buttonStyle {
+            if let bgColor = style.backgroundColor {
+                button.backgroundColor = bgColor
+            }
+            if let textColor = style.textColor {
+                button.setTitleColor(textColor, for: .normal)
+            }
+            if let font = style.font {
+                button.titleLabel?.font = font
+            }
+            if let cornerRadius = style.cornerRadius {
+                button.layer.cornerRadius = cornerRadius
+                button.layer.masksToBounds = cornerRadius > 0
+            }
+            if let borderWidth = style.borderWidth {
+                button.layer.borderWidth = borderWidth
+            }
+            if let borderColor = style.borderColor {
+                button.layer.borderColor = borderColor.cgColor
+            }
+            if let insets = style.contentEdgeInsets {
+                button.contentEdgeInsets = insets
+            }
+        }
+        
+        return button
+    }
+    
+    
+    static func createCardForm(
+        config: CardFormConfig? = nil
+    ) -> Payrails.CardForm {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardForm")
+        
+        let session = currentSession!
+        let defaultConfig = getDefaultCardFormConfig()
+        let defaultStylesConfig = defaultConfig.styles ?? CardFormStylesConfig.defaultConfig
+        
+        let finalConfig: CardFormConfig
+        if let customConfig = config {
+            let finalStylesConfig = customConfig.styles?.merged(over: defaultStylesConfig) ?? defaultStylesConfig
+            
+            let defaultTranslations = defaultConfig.translations ?? CardTranslations()
+            let finalTranslations = defaultTranslations.merged(with: customConfig.translations)
+            
+            finalConfig = CardFormConfig(
+                showNameField: customConfig.showNameField,
+                styles: finalStylesConfig,
+                translations: finalTranslations
+            )
+        } else {
+            finalConfig = defaultConfig
+        }
+        
+        guard let cseInstance = session.getCSEInstance(),
+              let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
+            fatalError("CSE instance or holder reference not available in session.")
+        }
+        
+        let cardForm = Payrails.CardForm(
+            config: finalConfig,
+            tableName: "tableName",
+            cseConfig: (data: "", version: ""),
+            holderReference: holderReference,
+            cseInstance: cseInstance
+        )
+        
+        return cardForm
+    }
 }
 
 public extension Payrails {
