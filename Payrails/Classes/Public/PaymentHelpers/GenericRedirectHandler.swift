@@ -1,7 +1,14 @@
+//
+//  GenericRedirectHandler.swift
+//  Pods
+//
+//  Created by Mustafa Dikici on 15.05.25.
+//
+
 import Foundation
 import WebKit
 
-class CardPaymentHandler: NSObject {
+class GenericRedirectHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
     private let saveInstrument: Bool
@@ -19,7 +26,7 @@ class CardPaymentHandler: NSObject {
     }
 }
 
-extension CardPaymentHandler: PaymentHandler {
+extension GenericRedirectHandler: PaymentHandler {
     func set(response: Any) {
         self.response = response
     }
@@ -31,49 +38,38 @@ extension CardPaymentHandler: PaymentHandler {
     ) {
         let effectivePresenter = presenter ?? self.presenter
         
-        guard let encryptedCardData = effectivePresenter?.encryptedCardData, !encryptedCardData.isEmpty else {
-            print("Error: Missing or empty encrypted card data.")
-            delegate?.paymentHandlerDidFail(
-                handler: self,
-                error: .missingData("Encrypted card data is required but was missing or empty."),
-                type: .card
-            )
-            return
-        }
-
-        var data: [String: Any] = [:]
-        data["card"] = [
-            "vaultProviderConfigId": "0077318a-5dd2-47fb-b709-e475d2172d32",
-            "encryptedData": encryptedCardData
-        ]
+        print("==============================")
+        print("Generic redirect paymen init")
+        print("==============================")
 
         delegate?.paymentHandlerDidFinish(
             handler: self,
-            type: .card,
+            type: .genericRedirect,
             status: .success,
             payload: [
-                "paymentInstrumentData": data,
                 "storeInstrument": saveInstrument
             ]
         )
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
-        guard let link = executionResult.links.threeDS,
-            let url = URL(string: link) else {
-            delegate?.paymentHandlerDidFail(
-                handler: self,
-                error: .missingData("Pending state failed due to missing 3ds link"),
-                type: .card
-            )
-            return
-        }
+//        guard let link = executionResult.links.threeDS,
+//            let url = URL(string: link) else {
+//            delegate?.paymentHandlerDidFail(
+//                handler: self,
+//                error: .missingData("Pending state failed due to missing 3ds link"),
+//                type: .card
+//            )
+//            return
+//        }
+//
+        // TODO: we might need a link here
         
         delegate?.paymentHandlerWillRequestChallengePresentation(self)
 
         DispatchQueue.main.async {
             let webViewController = PayWebViewController(
-                url: url,
+                url: URL("https://payrails.com")!,
                 delegate: self
             )
             self.presenter?.presentPayment(webViewController)
@@ -136,7 +132,7 @@ extension CardPaymentHandler: PaymentHandler {
     }
 }
 
-extension CardPaymentHandler: WKNavigationDelegate {
+extension GenericRedirectHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
 
@@ -195,5 +191,3 @@ extension CardPaymentHandler: WKNavigationDelegate {
         }
     }
 }
-
-

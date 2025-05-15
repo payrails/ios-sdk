@@ -47,7 +47,6 @@ extension PayPalHandler: PaymentHandler {
         )
     }
 
-    // TODO: paypal or any other payment with pending must go into this
     func handlePendingState(
         with executionResult: GetExecutionResult
     ) {
@@ -122,7 +121,6 @@ extension PayPalHandler: PaymentHandler {
         }
     }
     
-    // Add this method to the PayPalHandler class
     func processSuccessPayload(
         payload: [String: Any]?,
         amount: Amount,

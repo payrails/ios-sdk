@@ -59,7 +59,6 @@ extension ApplePayHandler: PaymentHandler {
             return
         }
         
-        // Create Apple Pay-specific payment composition
         let paymentComposition = PaymentComposition(
             paymentMethodCode: Payrails.PaymentType.applePay.rawValue,
             integrationType: "api",

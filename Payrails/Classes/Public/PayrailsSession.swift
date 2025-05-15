@@ -196,6 +196,14 @@ public extension Payrails {
                 )
                 self.paymentHandler = cardPaymentHandler
                 return true
+            case .genericRedirect:
+                let handler = GenericRedirectHandler(
+                    delegate: self,
+                    saveInstrument: false,
+                    presenter: presenter
+                )
+                self.paymentHandler = handler
+                return true
             }
             return true
         }

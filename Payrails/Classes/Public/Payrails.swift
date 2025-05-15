@@ -7,7 +7,7 @@ import PassKit
 public class Payrails {
     private static var currentSession: Payrails.Session?
 
-    static func configure(
+    static func createSession(
         with configuration: Payrails.Configuration,
         onInit: OnInitCallback
     ) {
@@ -84,11 +84,11 @@ public extension Payrails {
         )
     }
     
-    static func configure(
+    static func createSession(
         with configuration: Payrails.Configuration
     ) async throws -> Payrails.Session {
         let result = try await withCheckedThrowingContinuation({ continuation in
-            Payrails.configure(with: configuration) { result in
+            Payrails.createSession(with: configuration) { result in
                 switch result {
                 case let .success(session):
                     continuation.resume(returning: session)
@@ -202,6 +202,10 @@ public extension Payrails {
         )
         
         return cardForm
+    }
+    
+    static func createGenericRedirectButton() {
+        print("Implement generic rediret button")
     }
 }
 
