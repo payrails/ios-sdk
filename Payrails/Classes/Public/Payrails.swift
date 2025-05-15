@@ -100,51 +100,6 @@ public extension Payrails {
         return result
     }
     
-    static func createCardPaymentForm(
-        config: CardFormConfig? = nil,
-        buttonTitle: String = "Pay Now"
-    ) -> Payrails.CardPaymentForm {
-
-        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentForm")
-
-        let session = currentSession!
-        let defaultConfig = getDefaultCardFormConfig()
-        let defaultStylesConfig = defaultConfig.styles ?? CardFormStylesConfig.defaultConfig
-
-        let finalConfig: CardFormConfig
-        if let customConfig = config {
-            let finalStylesConfig = customConfig.styles?.merged(over: defaultStylesConfig) ?? defaultStylesConfig
-            
-            let defaultTranslations = defaultConfig.translations ?? CardTranslations()
-            let finalTranslations = defaultTranslations.merged(with: customConfig.translations)
-
-            finalConfig = CardFormConfig(
-                showNameField: customConfig.showNameField,
-                styles: finalStylesConfig,
-                translations: finalTranslations
-            )
-        } else {
-            finalConfig = defaultConfig
-        }
-
-        guard let cseInstance = session.getCSEInstance(),
-              let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
-            fatalError("CSE instance or holder reference not available in session.") // Or handle more gracefully
-        }
-
-        let cardPaymentForm = Payrails.CardPaymentForm(
-            config: finalConfig,
-            tableName: "tableName",
-            cseConfig: (data: "", version: ""),
-            holderReference: holderReference,
-            cseInstance: cseInstance,
-            session: session,
-            buttonTitle: buttonTitle
-        )
-
-        return cardPaymentForm
-    }
-    
     static func createPayPalButton() -> Payrails.PayPalButton {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a PayPalButton")
         let session = currentSession!
@@ -164,11 +119,10 @@ public extension Payrails {
         return button
     }
     
-    
     static func createCardPaymentButton(
         cardForm: Payrails.CardForm,
-        buttonTitle: String = "Pay Now",
-        buttonStyle: CardButtonStyle? = nil
+        buttonStyle: CardButtonStyle? = nil,
+        translations: CardPaymenButtonTranslations
     ) -> Payrails.CardPaymentButton {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentButton")
         let session = currentSession!
@@ -176,7 +130,7 @@ public extension Payrails {
         let button = Payrails.CardPaymentButton(
             cardForm: cardForm,
             session: session,
-            buttonTitle: buttonTitle
+            translations: translations
         )
         
         // Apply button styles if provided

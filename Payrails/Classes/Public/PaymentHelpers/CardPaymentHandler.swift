@@ -2,7 +2,6 @@ import Foundation
 import WebKit
 
 class CardPaymentHandler: NSObject {
-
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
     private let saveInstrument: Bool

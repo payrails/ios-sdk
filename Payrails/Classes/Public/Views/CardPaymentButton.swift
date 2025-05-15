@@ -22,12 +22,12 @@ public extension Payrails {
         public weak var presenter: PaymentPresenter?
         
         // Internal initializer used by factory method
-        internal init(cardForm: Payrails.CardForm, session: Payrails.Session?, buttonTitle: String = "Pay Now") {
+        internal init(cardForm: Payrails.CardForm, session: Payrails.Session?, translations: CardPaymenButtonTranslations) {
             self.cardForm = cardForm
             self.session = session
             super.init()
             
-            setupButton(buttonTitle: buttonTitle)
+            setupButton(translations: translations)
             cardForm.delegate = self
         }
         
@@ -48,8 +48,8 @@ public extension Payrails {
             }
         }
         
-        private func setupButton(buttonTitle: String) {
-            setTitle(buttonTitle, for: .normal)
+        private func setupButton(translations: CardPaymenButtonTranslations) {
+            setTitle(translations.label, for: .normal)
             backgroundColor = .systemBlue
             setTitleColor(.white, for: .normal)
             layer.cornerRadius = 8
@@ -74,10 +74,8 @@ public extension Payrails {
                 self?.isProcessing = true
                 
                 var result: OnPayResult?
-                if let session = session, let encryptedCardData = self?.encryptedCardData {
-                    if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {
-                        cardPaymentPresenter.encryptedCardData = encryptedCardData
-                        
+                if let session = session {
+                    if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {                        
                         result = await session.executePayment(
                             with: paymentType,
                             saveInstrument: false,
@@ -125,11 +123,6 @@ extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
             guard let self = self else { return }
             
             self.encryptedCardData = data
-            
-            // Update the encryptedCardData on the presenter
-            if let presenter = self.presenter as? (any PaymentPresenter) {
-                presenter.encryptedCardData = data
-            }
             
             // Start the payment process
             self.pay(with: .card)

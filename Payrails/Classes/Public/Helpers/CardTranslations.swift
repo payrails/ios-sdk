@@ -116,3 +116,10 @@ extension CardTranslations {
     }
 }
 
+public struct CardPaymenButtonTranslations {
+    public let label: String?
+    
+    public init(label: String? = "Pay") {
+        self.label = label
+    }
+}
