@@ -30,6 +30,10 @@ public extension Payrails {
             self.option = configuration.option
             self.config = try parse(config: configuration)
             print(self.config);
+            print("------------------------")
+            print(self.config.paymentOption(for: PaymentType.genericRedirect))
+            print("--------------------------")
+            print(self.config.paymentOption(forPaymentMethodCode: "eftPro"))
             print("isapplepayabaial")
             print(isApplePayAvailable)
             print("isapplepayabaial")
@@ -58,6 +62,10 @@ public extension Payrails {
 
         public var isApplePayAvailable: Bool {
             return config.paymentOption(for: .applePay) != nil
+        }
+        
+        public func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
+            return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
         }
 
         public func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {

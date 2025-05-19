@@ -6,6 +6,8 @@ import PassKit
 
 public class Payrails {
     private static var currentSession: Payrails.Session?
+    private static var currentCardForm: Payrails.CardForm?
+
 
     static func createSession(
         with configuration: Payrails.Configuration,
@@ -120,12 +122,15 @@ public extension Payrails {
     }
     
     static func createCardPaymentButton(
-        cardForm: Payrails.CardForm,
         buttonStyle: CardButtonStyle? = nil,
         translations: CardPaymenButtonTranslations
     ) -> Payrails.CardPaymentButton {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentButton")
+        precondition(currentCardForm != nil, "A card form must be created with createCardForm() before creating a CardPaymentButton")
+        
         let session = currentSession!
+        let cardForm = currentCardForm!
+
         
         let button = Payrails.CardPaymentButton(
             cardForm: cardForm,
@@ -201,11 +206,44 @@ public extension Payrails {
             cseInstance: cseInstance
         )
         
+        currentCardForm = cardForm
+        
         return cardForm
     }
     
-    static func createGenericRedirectButton() {
-        print("Implement generic rediret button")
+    static func createGenericRedirectButton(
+        buttonStyle: CardButtonStyle? = nil,
+        translations: CardPaymenButtonTranslations
+    ) -> Payrails.GenericRedirectButton {
+        let session = currentSession!
+        let button = Payrails.GenericRedirectButton(session: session, translations: translations)
+        
+        if let style = buttonStyle {
+            if let bgColor = style.backgroundColor {
+                button.backgroundColor = bgColor
+            }
+            if let textColor = style.textColor {
+                button.setTitleColor(textColor, for: .normal)
+            }
+            if let font = style.font {
+                button.titleLabel?.font = font
+            }
+            if let cornerRadius = style.cornerRadius {
+                button.layer.cornerRadius = cornerRadius
+                button.layer.masksToBounds = cornerRadius > 0
+            }
+            if let borderWidth = style.borderWidth {
+                button.layer.borderWidth = borderWidth
+            }
+            if let borderColor = style.borderColor {
+                button.layer.borderColor = borderColor.cgColor
+            }
+            if let insets = style.contentEdgeInsets {
+                button.contentEdgeInsets = insets
+            }
+        }
+        
+        return button
     }
 }
 

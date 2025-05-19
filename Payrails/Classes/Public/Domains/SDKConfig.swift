@@ -339,8 +339,6 @@ struct PaymentOptions: Decodable {
         }
         self.optionalPaymentType = determinedPaymentType
         
-//        optionalPaymentType = Payrails.PaymentType(rawValue: paymentMethodCode)
-        
         // Only try to decode config if it exists
         let hasConfig = container.contains(.config)
         
