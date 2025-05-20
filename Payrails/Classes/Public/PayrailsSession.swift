@@ -130,6 +130,7 @@ public extension Payrails {
 
         public func executePayment(
             with type: PaymentType,
+            paymentMethodCode: String? = nil,
             saveInstrument: Bool = false,
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
@@ -141,6 +142,7 @@ public extension Payrails {
 
             guard prepareHandler(
                 for: type,
+                paymentMethodCode: paymentMethodCode,
                 saveInstrument: saveInstrument,
                 presenter: presenter
             ),
@@ -159,10 +161,18 @@ public extension Payrails {
 
         private func prepareHandler(
             for type: PaymentType,
+            paymentMethodCode: String? = nil,
             saveInstrument: Bool,
             presenter: PaymentPresenter?
         ) -> Bool {            
-            guard let paymentComposition = config.paymentOption(for: type) else {
+            let paymentComposition: PaymentOptions?
+            if let code = paymentMethodCode {
+                paymentComposition = config.paymentOption(forPaymentMethodCode: code)
+            } else {
+                paymentComposition = config.paymentOption(for: type)
+            }
+            
+            guard let paymentComposition = paymentComposition else {
                 isPaymentInProgress = false
                 onResult?(.error(.unsupportedPayment(type: type)))
                 return false
@@ -208,7 +218,8 @@ public extension Payrails {
                 let handler = GenericRedirectHandler(
                     delegate: self,
                     saveInstrument: false,
-                    presenter: presenter
+                    presenter: presenter,
+                    paymentOption: paymentComposition
                 )
                 self.paymentHandler = handler
                 return true
@@ -288,7 +299,8 @@ extension Payrails.Session: PaymentHandlerDelegate {
                 
                 switch result {
                 case .success(let body):
-                    // Make the API call with the prepared body
+                    print("payment is coming")
+                    print(body)
                     self.currentTask = Task {
                         do {
                             let paymentStatus = try await self.payrailsAPI.makePayment(
@@ -402,6 +414,7 @@ public extension Payrails.Session {
     @MainActor
     func executePayment(
         with type: Payrails.PaymentType,
+        paymentMethodCode: String? = nil,
         saveInstrument: Bool = false,
         presenter: PaymentPresenter?
     ) async -> OnPayResult {

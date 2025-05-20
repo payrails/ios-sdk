@@ -16,6 +16,8 @@ public extension Payrails {
     final class GenericRedirectButton: ActionButton {
         private weak var session: Payrails.Session?
         private var paymentTask: Task<Void, Error>?
+        private let paymentMethodCode: String
+
         private var isProcessing: Bool = false {
             didSet {
                 self.isUserInteractionEnabled = !isProcessing
@@ -27,9 +29,16 @@ public extension Payrails {
         public weak var presenter: PaymentPresenter?
         
         // Internal initializer used by factory method
-        internal init(session: Payrails.Session?, translations: CardPaymenButtonTranslations) {
+        internal init(
+            // TODO: paymentMethodCode can probably be typed better
+            paymentMethodCode: String,
+            session: Payrails.Session?,
+            translations: CardPaymenButtonTranslations
+        ) {
             self.session = session
+            self.paymentMethodCode = paymentMethodCode
             super.init()
+            
             
             setupButton(translations: translations)
         }
@@ -71,7 +80,32 @@ public extension Payrails {
                 return
             }
             
-            print("Generic Redirect pay method is not implemented yet")
+            paymentTask = Task { [weak self, weak session] in
+                self?.isProcessing = true
+                
+                var result: OnPayResult?
+                if let session = session {
+                    if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {
+                        result = await session.executePayment(
+                            with: PaymentType.genericRedirect,
+                            paymentMethodCode: self?.paymentMethodCode,
+                            saveInstrument: false,
+                            presenter: presenter
+                        )
+                    }
+                } else if let storedInstrument = storedInstrument, let session = session {
+                    result = await session.executePayment(
+                        withStoredInstrument: storedInstrument
+                    )
+                } else {
+                    Payrails.log("Missing required payment data or session")
+                }
+                
+                await MainActor.run {
+                    self?.handlePaymentResult(result)
+                    self?.isProcessing = false
+                }
+            }
         }
         
         private func handlePaymentResult(_ result: OnPayResult?) {

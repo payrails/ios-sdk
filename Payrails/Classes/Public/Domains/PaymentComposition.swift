@@ -10,7 +10,7 @@ struct PaymentComposition {
     let storeInstrument: Bool
     // TODO: this must be typed better, problem is applePay and others have different object structures
     let paymentInstrumentData: Any?
-    let enrollInstrumentToNetworkOffers: Bool
+    let enrollInstrumentToNetworkOffers: Bool?
 }
 
 

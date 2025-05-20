@@ -12,17 +12,20 @@ class GenericRedirectHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
     private let saveInstrument: Bool
+    private let paymentOption: PaymentOptions
     public weak var presenter: PaymentPresenter?
     private var webViewController: PayWebViewController?
 
     init(
         delegate: PaymentHandlerDelegate?,
         saveInstrument: Bool,
-        presenter: PaymentPresenter?
+        presenter: PaymentPresenter?,
+        paymentOption: PaymentOptions
     ) {
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
+        self.paymentOption = paymentOption
     }
 }
 
@@ -39,9 +42,11 @@ extension GenericRedirectHandler: PaymentHandler {
         let effectivePresenter = presenter ?? self.presenter
         
         print("==============================")
-        print("Generic redirect paymen init")
+        print("Generic redirect payment init")
         print("==============================")
-
+        
+        print(self.paymentOption)
+        
         delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .genericRedirect,
@@ -82,34 +87,9 @@ extension GenericRedirectHandler: PaymentHandler {
         amount: Amount,
         completion: @escaping (Result<[String: Any], Error>) -> Void
     ) {
-        guard let payload = payload,
-              let paymentInstrumentData = payload["paymentInstrumentData"] as? [String: Any],
-              let cardData = paymentInstrumentData["card"] as? [String: Any],
-              let encryptedData = cardData["encryptedData"] as? String,
-              let vaultProviderConfigId = cardData["vaultProviderConfigId"] as? String,
-              let storeInstrument = payload["storeInstrument"] as? Bool else {
-
-            completion(.failure(PayrailsError.invalidDataFormat))
-            return
-        }
-
-        let country = Country(code: "DE", fullName: "Germany", iso3: "DEU") // TODO: Review hardcoded country
-        let billingAddress = BillingAddress(country: country)
-
-        let instrumentData = PaymentInstrumentData(
-            encryptedData: encryptedData,
-            vaultProviderConfigId: vaultProviderConfigId,
-            billingAddress: billingAddress
-        )
-
-        let paymentComposition = PaymentComposition(
-            paymentMethodCode: Payrails.PaymentType.card.rawValue,
-            integrationType: "api",
-            amount: amount,
-            storeInstrument: storeInstrument,
-            paymentInstrumentData: instrumentData,
-            enrollInstrumentToNetworkOffers: false
-        )
+        print("-------------------------")
+        print("Generic redirect processSuccessPayload is not implemented yet")
+        print("-------------------------")
 
         let returnInfo: [String: String] = [
              "success": "https://assets.payrails.io/html/payrails-success.html",
@@ -120,12 +100,21 @@ extension GenericRedirectHandler: PaymentHandler {
         let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
         let meta = ["risk": risk]
         let amountDict = ["value": amount.value, "currency": amount.currency]
+        
+        let paymentComposition = PaymentComposition(
+            paymentMethodCode: self.paymentOption.paymentMethodCode,
+            integrationType: "api",
+            amount: amount,
+            storeInstrument: false,
+            paymentInstrumentData: nil,
+            enrollInstrumentToNetworkOffers: false
+        )
 
         let body: [String: Any] = [
             "amount": amountDict,
-            "paymentComposition": [paymentComposition],
             "returnInfo": returnInfo,
-            "meta": meta
+            "meta": meta,
+            "paymentComposition": [paymentComposition]
         ]
         
         completion(.success(body))
