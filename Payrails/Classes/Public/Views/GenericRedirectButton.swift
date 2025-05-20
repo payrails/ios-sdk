@@ -82,10 +82,16 @@ public extension Payrails {
             
             paymentTask = Task { [weak self, weak session] in
                 self?.isProcessing = true
+                print("slslslslslslslslsls")
+                print(self?.paymentMethodCode)
+                print("slslslslslslslslsls")
                 
                 var result: OnPayResult?
                 if let session = session {
                     if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {
+                        print("slslslslslslslslsls")
+                        print(self?.paymentMethodCode)
+                        print("slslslslslslslslsls")
                         result = await session.executePayment(
                             with: PaymentType.genericRedirect,
                             paymentMethodCode: self?.paymentMethodCode,

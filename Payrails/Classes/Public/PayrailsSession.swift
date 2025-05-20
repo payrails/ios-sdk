@@ -167,9 +167,15 @@ public extension Payrails {
         ) -> Bool {            
             let paymentComposition: PaymentOptions?
             if let code = paymentMethodCode {
+                print("0-000-9-09-09-09-09-")
+                print("here is paymentMethodCope", paymentMethodCode)
+                print("0-000-9-09-09-09-09-")
                 paymentComposition = config.paymentOption(forPaymentMethodCode: code)
             } else {
                 paymentComposition = config.paymentOption(for: type)
+                print("0-11111111111111-9-09-09-09-09-")
+                print("here is paymentMethodCope", paymentMethodCode)
+                print("0-111111111111111-09-")
             }
             
             guard let paymentComposition = paymentComposition else {
@@ -374,7 +380,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
-        Payrails.log("Call handle payment withn status")
+        Payrails.log("Call handle payment withn status", paymentStatus)
         switch paymentStatus {
         case .failed:
             onResult?(.failure)
@@ -421,6 +427,7 @@ public extension Payrails.Session {
         let result = await withCheckedContinuation({ continuation in
             executePayment(
                 with: type,
+                paymentMethodCode: paymentMethodCode,
                 saveInstrument: saveInstrument,
                 presenter: presenter
             ) { result in

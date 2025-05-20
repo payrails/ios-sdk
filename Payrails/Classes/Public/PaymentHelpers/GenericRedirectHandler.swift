@@ -103,7 +103,7 @@ extension GenericRedirectHandler: PaymentHandler {
         
         let paymentComposition = PaymentComposition(
             paymentMethodCode: self.paymentOption.paymentMethodCode,
-            integrationType: "api",
+            integrationType: self.paymentOption.integrationType,
             amount: amount,
             storeInstrument: false,
             paymentInstrumentData: nil,
