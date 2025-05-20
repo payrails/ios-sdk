@@ -123,7 +123,7 @@ extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
             guard let self = self else { return }
             
             self.encryptedCardData = data
-            
+            self.presenter?.encryptedCardData = encryptedCardData
             // Start the payment process
             self.pay(with: .card)
         }
