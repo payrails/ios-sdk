@@ -1,18 +1,18 @@
 import UIKit
-import PayPalCheckout
+import PassKit
 
-public protocol PayrailsPayPalButtonDelegate: AnyObject {
-    func onPaymentButtonClicked(_ button: Payrails.PayPalButton)
-    func onAuthorizeSuccess(_ button: Payrails.PayPalButton)
-    func onAuthorizeFailed(_ button: Payrails.PayPalButton)
-    func onPaymentSessionExpired(_ button: Payrails.PayPalButton)
+public protocol PayrailsApplePayButtonDelegate: AnyObject {
+    func onPaymentButtonClicked(_ button: Payrails.ApplePayButton)
+    func onAuthorizeSuccess(_ button: Payrails.ApplePayButton)
+    func onAuthorizeFailed(_ button: Payrails.ApplePayButton)
+    func onPaymentSessionExpired(_ button: Payrails.ApplePayButton)
 }
 
 public extension Payrails {
 
-    class PaypalElement: UIView {
+    class ApplePayElement: UIView {
 
-        public weak var delegate: PayrailsPayPalButtonDelegate?
+        public weak var delegate: PayrailsApplePayButtonDelegate?
         public weak var presenter: PaymentPresenter?
         public var saveInstrument: Bool = false
         public var isEnabled: Bool = true
@@ -30,7 +30,7 @@ public extension Payrails {
         
         required init?(coder: NSCoder) {
             super.init(coder: coder)
-            print("Warning: Payrails.PaypalElement initialized via coder without a session.")
+            print("Warning: Payrails.ApplePayElement initialized via coder without a session.")
         }
         
         deinit {
@@ -42,19 +42,19 @@ public extension Payrails {
             guard !isProcessing else { return }
             
             guard let currentSession = session else {
-                print("Payrails.PaypalElement Error: Internal Session is missing.")
+                print("Payrails.ApplePayElement Error: Internal Session is missing.")
                 return
             }
             
             guard let currentPresenter = presenter else {
-                print("Payrails.PaypalElement Error: Payment Presenter is not configured.")
+                print("Payrails.ApplePayElement Error: Payment Presenter is not configured.")
                 return
             }
             
             isProcessing = true
             paymentTask?.cancel()
             
-            if let button = self as? PayPalButton {
+            if let button = self as? ApplePayButton {
                 delegate?.onPaymentButtonClicked(button)
             }
             
@@ -66,7 +66,7 @@ public extension Payrails {
                 guard let self = self else { return }
                 do {
                     let result: OnPayResult? = await currentSession.executePayment(
-                        with: .payPal,
+                        with: .applePay,
                         saveInstrument: self.saveInstrument,
                         presenter: currentPresenter
                     )
@@ -74,7 +74,7 @@ public extension Payrails {
                     await MainActor.run {
                         guard self.isProcessing else { return }
                         
-                        if let button = self as? PayPalButton {
+                        if let button = self as? ApplePayButton {
                             switch result {
                             case .success:
                                 self.delegate?.onAuthorizeSuccess(button)
@@ -87,7 +87,7 @@ public extension Payrails {
                             case .cancelledByUser:
                                 self.delegate?.onPaymentSessionExpired(button)
                             default:
-                                print("PayPal payment result: \(String(describing: result))")
+                                print("Apple Pay payment result: \(String(describing: result))")
                             }
                         }
                         
@@ -98,7 +98,7 @@ public extension Payrails {
                 } catch {
                     await MainActor.run {
                         let payrailsError = PayrailsError.unknown(error: error)
-                        if let button = self as? PayPalButton {
+                        if let button = self as? ApplePayButton {
                             self.delegate?.onAuthorizeFailed(button)
                         }
                         self.isProcessing = false

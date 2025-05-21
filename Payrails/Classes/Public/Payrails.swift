@@ -117,14 +117,19 @@ public extension Payrails {
         }
     }
     
-    static func createApplePayButton(type: PKPaymentButtonType, style: PKPaymentButtonStyle) -> Payrails.ApplePayButton {
+    static func createApplePayButton(type: PKPaymentButtonType, style: PKPaymentButtonStyle, showSaveInstrument: Bool = false) -> ApplePayElement {
         Payrails.log("Creating apple pay button")
         precondition(currentSession != nil, "Payrails session must be initialized before creating an ApplePayButton")
         let session = currentSession!
         
-        
-        let button = Payrails.ApplePayButton(session: session, type: type, style: style)
-        return button
+        if showSaveInstrument {
+            Payrails.log("Creating apple pay button with toggle")
+            let button = Payrails.ApplePayButtonWithToggle(session: session, showSaveInstrument: true, type: type, style: style)
+            return button
+        } else {
+            let button = Payrails.ApplePayButton(session: session, type: type, style: style)
+            return button
+        }
     }
     
     static func createCardPaymentButton(
