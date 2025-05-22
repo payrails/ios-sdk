@@ -180,7 +180,8 @@ public extension Payrails {
     
     
     static func createCardForm(
-        config: CardFormConfig? = nil
+        config: CardFormConfig? = nil,
+        showSaveInstrument: Bool = false
     ) -> Payrails.CardForm {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a CardForm")
         
@@ -197,11 +198,17 @@ public extension Payrails {
             
             finalConfig = CardFormConfig(
                 showNameField: customConfig.showNameField,
+                showSaveInstrument: showSaveInstrument,
                 styles: finalStylesConfig,
                 translations: finalTranslations
             )
         } else {
-            finalConfig = defaultConfig
+            finalConfig = CardFormConfig(
+                showNameField: defaultConfig.showNameField,
+                showSaveInstrument: showSaveInstrument,
+                styles: defaultConfig.styles,
+                translations: defaultConfig.translations
+            )
         }
         
         guard let cseInstance = session.getCSEInstance(),

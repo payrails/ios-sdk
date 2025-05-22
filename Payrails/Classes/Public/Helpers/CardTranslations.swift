@@ -18,7 +18,7 @@ public struct CardTranslations {
 
     public struct Labels {
         private var values: [CardFieldType: String]
-        private var saveInstrument: String?
+        public var saveInstrument: String?
         private var storeInstrument: String?
         private var paymentInstallments: String?
 

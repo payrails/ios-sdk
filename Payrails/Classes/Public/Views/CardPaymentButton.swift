@@ -70,15 +70,21 @@ public extension Payrails {
             
             let paymentType = type ?? .card
             
+            print("-----------------------")
+            print("Save instrument:",  self.cardForm.saveInstrument)
+            print("-----------------------")
+            
             paymentTask = Task { [weak self, weak session] in
                 self?.isProcessing = true
                 
                 var result: OnPayResult?
                 if let session = session {
-                    if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {                        
+                    if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {
+                        // Use the saveInstrument value from the CardForm
+                        let saveInstrument = self?.cardForm.saveInstrument ?? false
                         result = await session.executePayment(
                             with: paymentType,
-                            saveInstrument: false,
+                            saveInstrument: saveInstrument,
                             presenter: presenter
                         )
                     }
@@ -134,4 +140,3 @@ extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
         // Could notify delegate here if needed
     }
 }
-

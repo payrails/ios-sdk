@@ -60,6 +60,7 @@ public extension Payrails {
             
             print("--------------------")
             print("save instrument: ", self.saveInstrument)
+            Payrails.log("save instrumentsssss: ", self.saveInstrument)
             print("--------------------")
             
             paymentTask = Task { [weak self] in

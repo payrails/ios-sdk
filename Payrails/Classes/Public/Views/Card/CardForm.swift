@@ -34,6 +34,15 @@ public extension Payrails {
         public var cardContainer: CardCollectContainer?
         private var payrailsCSE: PayrailsCSE?
         
+        // Save instrument properties
+        public var saveInstrument: Bool = false {
+            didSet {
+                saveInstrumentToggle.isOn = saveInstrument
+            }
+        }
+        internal let saveInstrumentToggle = UISwitch()
+        internal let saveInstrumentLabel = UILabel()
+        
         public init(
             config: CardFormConfig,
             tableName: String,
@@ -262,6 +271,11 @@ public extension Payrails {
             } catch {
                 print("Error getting composable view: \(error)") // Added error handling
             }
+            
+            // Add save instrument toggle if enabled
+            if config.showSaveInstrument {
+                setupSaveInstrumentToggle()
+            }
         }
 
         public class CardCollectCallback: Callback {
@@ -275,6 +289,34 @@ public extension Payrails {
             public func onFailure(_ error: Any) {
                 onFailure?(error)
             }
+        }
+        
+        private func setupSaveInstrumentToggle() {
+            // Configure label
+            let labelText = config.translations?.labels.saveInstrument ?? "Save card"
+            saveInstrumentLabel.text = labelText
+            saveInstrumentLabel.font = UIFont.systemFont(ofSize: 14)
+            saveInstrumentLabel.textColor = .darkGray
+            
+            // Create toggle container
+            let toggleContainer = UIStackView()
+            toggleContainer.axis = .horizontal
+            toggleContainer.spacing = 8
+            toggleContainer.alignment = .center
+            
+            // Add toggle and label to container
+            toggleContainer.addArrangedSubview(saveInstrumentLabel)
+            toggleContainer.addArrangedSubview(saveInstrumentToggle)
+            
+            // Add toggle container to main stack
+            self.addArrangedSubview(toggleContainer)
+            
+            // Link toggle to property
+            saveInstrumentToggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
+        }
+        
+        @objc private func toggleChanged() {
+            self.saveInstrument = saveInstrumentToggle.isOn
         }
         
         public func collectFields() {

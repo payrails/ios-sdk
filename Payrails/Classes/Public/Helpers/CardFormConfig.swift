@@ -7,16 +7,19 @@
 //
 public struct CardFormConfig {
     public let showNameField: Bool
+    public let showSaveInstrument: Bool
     public let translations: CardTranslations?
     
     public let styles: CardFormStylesConfig?
 
     public init(
         showNameField: Bool = false,
+        showSaveInstrument: Bool = false,
         styles: CardFormStylesConfig? = nil,
         translations: CardTranslations? = nil
     ) {
         self.showNameField = showNameField
+        self.showSaveInstrument = showSaveInstrument
         self.translations = translations
         self.styles = styles?.merged(over: CardFormStylesConfig.defaultConfig) ?? CardFormStylesConfig.defaultConfig
     }
@@ -26,6 +29,7 @@ public struct CardFormConfig {
 
         return .init(
             showNameField: true,
+            showSaveInstrument: false,
             styles: defaultStyles,
             translations: nil
         )

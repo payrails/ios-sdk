@@ -8,7 +8,8 @@ class ApplePayHandler: NSObject {
 
     init(
         config: PaymentOptions.ApplePayConfig,
-        delegate: PaymentHandlerDelegate?
+        delegate: PaymentHandlerDelegate?,
+        saveInstrument: Bool
     ) {
         request.merchantIdentifier = config.parameters.merchantIdentifier
         request.supportedNetworks = config.parameters.supportedNetworks.paymentNetworks

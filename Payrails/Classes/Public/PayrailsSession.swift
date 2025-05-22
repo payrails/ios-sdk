@@ -139,7 +139,10 @@ public extension Payrails {
             
             isPaymentInProgress = true
             self.onResult = onResult
-
+            
+            print("Execute payment: ", saveInstrument)
+            Payrails.log("Execute payment: ", saveInstrument)
+            
             guard prepareHandler(
                 for: type,
                 paymentMethodCode: paymentMethodCode,
@@ -178,6 +181,7 @@ public extension Payrails {
                 print("0-111111111111111-09-")
             }
             
+            Payrails.log("Prepeare handler saveInstrument ", saveInstrument)
             guard let paymentComposition = paymentComposition else {
                 isPaymentInProgress = false
                 onResult?(.error(.unsupportedPayment(type: type)))
@@ -204,7 +208,8 @@ public extension Payrails {
                 case let .applePay(applePayConfig):
                     let applePayHandler = ApplePayHandler(
                         config: applePayConfig,
-                        delegate: self
+                        delegate: self,
+                        saveInstrument: saveInstrument
                     )
                     self.paymentHandler = applePayHandler
                 default:
