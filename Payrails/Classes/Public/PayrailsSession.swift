@@ -310,7 +310,9 @@ extension Payrails.Session: PaymentHandlerDelegate {
                 
                 switch result {
                 case .success(let body):
-                    print("payment is coming")
+                    print("🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰")
+                    print("payment body is ready")
+                    print("🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰")
                     print(body)
                     self.currentTask = Task {
                         do {
@@ -318,6 +320,9 @@ extension Payrails.Session: PaymentHandlerDelegate {
                                 type: type,
                                 payload: body
                             )
+                            print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
+                            print("make payment result", paymentStatus)
+                            print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
                             self.handle(paymentStatus: paymentStatus)
                         } catch {
                             self.handle(error: error)
@@ -385,7 +390,9 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
-        Payrails.log("Call handle payment withn status", paymentStatus)
+        print("🧤🧤🧤🧤🧤🧤🧤🧤🧤🧤")
+        print("Call handle payment withn status", paymentStatus)
+        print("🧤🧤🧤🧤🧤🧤🧤🧤🧤🧤")
         switch paymentStatus {
         case .failed:
             onResult?(.failure)

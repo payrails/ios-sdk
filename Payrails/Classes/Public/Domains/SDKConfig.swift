@@ -63,12 +63,14 @@ struct ExecutionLinks: Decodable {
   let threeDS: String?
   let lookup: Link?
   let confirm: Link?
+  let redirect: String?
 
     enum CodingKeys: String, CodingKey {
         case `self`
         case threeDS = "3ds"
         case lookup
         case confirm
+        case redirect
     }
 }
 

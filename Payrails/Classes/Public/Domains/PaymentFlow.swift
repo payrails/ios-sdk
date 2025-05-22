@@ -23,4 +23,5 @@ struct GetExecutionResult: Decodable {
     let holderReference: String
     let workflow: Workflow
     let links: ExecutionLinks
+    let actionRequired: String?
 }

@@ -70,11 +70,25 @@ extension GenericRedirectHandler: PaymentHandler {
 //
         // TODO: we might need a link here
         
+        print("⌛⌛⌛⌛⌛⌛⌛⌛⌛⌛")
+        print("handle pending state")
+        print(executionResult)
+        print(executionResult.links.redirect)
+        print("⌛⌛⌛⌛⌛⌛⌛⌛⌛⌛")
+        guard let link = executionResult.links.redirect,
+            let url = URL(string: link) else {
+            delegate?.paymentHandlerDidFail(
+                handler: self,
+                error: .missingData("Pending state failed due to missing 3ds link"),
+                type: .card
+            )
+            return
+        }
         delegate?.paymentHandlerWillRequestChallengePresentation(self)
 
         DispatchQueue.main.async {
             let webViewController = PayWebViewController(
-                url: URL("https://payrails.com")!,
+                url: url,
                 delegate: self
             )
             self.presenter?.presentPayment(webViewController)
