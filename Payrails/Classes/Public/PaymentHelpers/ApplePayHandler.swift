@@ -5,6 +5,7 @@ class ApplePayHandler: NSObject {
 
     private let request = PKPaymentRequest()
     private weak var delegate: PaymentHandlerDelegate?
+    private let saveInstrument: Bool
 
     init(
         config: PaymentOptions.ApplePayConfig,
@@ -18,6 +19,7 @@ class ApplePayHandler: NSObject {
         }
         request.countryCode = config.parameters.countryCode
         self.delegate = delegate
+        self.saveInstrument = saveInstrument
     }
 }
 
@@ -64,7 +66,7 @@ extension ApplePayHandler: PaymentHandler {
             paymentMethodCode: Payrails.PaymentType.applePay.rawValue,
             integrationType: "api",
             amount: amount,
-            storeInstrument: false,
+            storeInstrument: self.saveInstrument,
             paymentInstrumentData: paymentInstrumentData,
             enrollInstrumentToNetworkOffers: false
         )
