@@ -231,10 +231,15 @@ public extension Payrails {
     
     static func createGenericRedirectButton(
         buttonStyle: CardButtonStyle? = nil,
-        translations: CardPaymenButtonTranslations
+        translations: CardPaymenButtonTranslations,
+        paymentMethodCode: String
     ) -> Payrails.GenericRedirectButton {
         let session = currentSession!
-        let button = Payrails.GenericRedirectButton( paymentMethodCode: "mercadoPago",session: session, translations: translations)
+        let button = Payrails.GenericRedirectButton(
+            paymentMethodCode: paymentMethodCode,
+            session: session,
+            translations: translations
+        )
         
         if let style = buttonStyle {
             if let bgColor = style.backgroundColor {
