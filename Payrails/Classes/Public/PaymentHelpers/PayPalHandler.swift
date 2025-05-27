@@ -73,7 +73,6 @@ extension PayPalHandler: PaymentHandler {
                     type: .payPal
                 )
             }
-
         }
 
         Checkout.setOnApproveCallback { [weak self] approval in

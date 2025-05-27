@@ -378,12 +378,21 @@ extension Payrails.Session: PaymentHandlerDelegate {
         currentTask = Task { [weak self] in
             guard let strongSelf = self else { return }
             do {
+                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
+                print("paymentHandlerDidHandlePending")
+                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
                 let paymentStatus = try await strongSelf.payrailsAPI.confirmPayment(
                     link: link,
                     payload: payload
                 )
+                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
+                print("paymentHandlerDidHandlePending second log", paymentStatus)
+                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
                 strongSelf.handle(paymentStatus: paymentStatus)
             } catch {
+                print("❌❌❌❌❌❌❌❌❌❌")
+                print("paymentHandlerDidHandlePending", error)
+                print("❌❌❌❌❌❌❌❌❌❌")
                 strongSelf.handle(error: error)
             }
         }
