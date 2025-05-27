@@ -213,9 +213,7 @@ class PayrailsAPI {
             print("   - authorizeRequestedStatus != nil: \(authorizeRequestedStatus != nil)")
             throw PayrailsError.unknown(error: nil) // Or a more specific error like .pollingFailed
         }
-        
-        print("✅ [CheckExecutionStatus] 'authorizeRequested' status confirmed. Proceeding to find final state.")
-        print("ℹ️ [CheckExecutionStatus] authorizeRequestDate (for time comparison): \(String(describing: authorizeRequestDate))") // Log the date used for comparison
+
 
         if let finalState = executionResult.sortedStatus.first(where: { status in
             let isTargetStatus = targetStatuses.map { $0.rawValue }.contains(status.code)

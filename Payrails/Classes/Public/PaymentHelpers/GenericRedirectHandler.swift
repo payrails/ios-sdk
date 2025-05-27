@@ -58,23 +58,6 @@ extension GenericRedirectHandler: PaymentHandler {
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
-//        guard let link = executionResult.links.threeDS,
-//            let url = URL(string: link) else {
-//            delegate?.paymentHandlerDidFail(
-//                handler: self,
-//                error: .missingData("Pending state failed due to missing 3ds link"),
-//                type: .card
-//            )
-//            return
-//        }
-//
-        // TODO: we might need a link here
-        
-        print("⌛⌛⌛⌛⌛⌛⌛⌛⌛⌛")
-        print("handle pending state")
-        print(executionResult)
-        print(executionResult.links.redirect)
-        print("⌛⌛⌛⌛⌛⌛⌛⌛⌛⌛")
         guard let link = executionResult.links.redirect,
             let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
@@ -101,10 +84,6 @@ extension GenericRedirectHandler: PaymentHandler {
         amount: Amount,
         completion: @escaping (Result<[String: Any], Error>) -> Void
     ) {
-        print("-------------------------")
-        print("Generic redirect processSuccessPayload is not implemented yet")
-        print("-------------------------")
-
         let returnInfo: [String: String] = [
              "success": "https://assets.payrails.io/html/payrails-success.html",
              "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
@@ -139,7 +118,8 @@ extension GenericRedirectHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
 
-        guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {            decisionHandler(.allow)
+        guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {
+            decisionHandler(.allow)
             return
         }
 

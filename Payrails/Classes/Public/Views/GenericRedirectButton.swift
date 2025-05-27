@@ -8,8 +8,8 @@
 public protocol GenericRedirectPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.GenericRedirectButton)
     func onAuthorizeSuccess(_ button: Payrails.GenericRedirectButton)
-    func onThreeDSecureChallenge(_ button: Payrails.GenericRedirectButton)
     func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton)
+    func onPaymentSessionExpired(_ button: Payrails.GenericRedirectButton)
 }
 
 public extension Payrails {
@@ -82,16 +82,10 @@ public extension Payrails {
             
             paymentTask = Task { [weak self, weak session] in
                 self?.isProcessing = true
-                print("slslslslslslslslsls")
-                print(self?.paymentMethodCode)
-                print("slslslslslslslslsls")
                 
                 var result: OnPayResult?
                 if let session = session {
                     if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {
-                        print("slslslslslslslslsls")
-                        print(self?.paymentMethodCode)
-                        print("slslslslslslslslsls")
                         result = await session.executePayment(
                             with: PaymentType.genericRedirect,
                             paymentMethodCode: self?.paymentMethodCode,
