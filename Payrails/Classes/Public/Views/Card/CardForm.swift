@@ -133,11 +133,7 @@ public extension Payrails {
                 
                 let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
                 let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
-                
-                print("input style")
-                print(inputStyle)
-                print("input style")
-                
+
                 let collectCardNumberInput = CollectElementInput(
                     table: tableName,
                     column: "card_number",

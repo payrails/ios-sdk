@@ -29,14 +29,7 @@ public extension Payrails {
         ) throws {
             self.option = configuration.option
             self.config = try parse(config: configuration)
-            print(self.config);
-            print("------------------------")
-            print(self.config.paymentOption(for: PaymentType.genericRedirect))
-            print("--------------------------")
-            print(self.config.paymentOption(forPaymentMethodCode: "eftPro"))
-            print("isapplepayabaial")
-            print(isApplePayAvailable)
-            print("isapplepayabaial")
+
             self.payrailsAPI = PayrailsAPI(config: config)
             if isPaymentAvailable(type: .card),
                   let vaultId = config.vaultConfiguration?.vaultId,
@@ -170,18 +163,11 @@ public extension Payrails {
         ) -> Bool {            
             let paymentComposition: PaymentOptions?
             if let code = paymentMethodCode {
-                print("0-000-9-09-09-09-09-")
-                print("here is paymentMethodCope", paymentMethodCode)
-                print("0-000-9-09-09-09-09-")
                 paymentComposition = config.paymentOption(forPaymentMethodCode: code)
             } else {
                 paymentComposition = config.paymentOption(for: type)
-                print("0-11111111111111-9-09-09-09-09-")
-                print("here is paymentMethodCope", paymentMethodCode)
-                print("0-111111111111111-09-")
             }
             
-            Payrails.log("Prepeare handler saveInstrument ", saveInstrument)
             guard let paymentComposition = paymentComposition else {
                 isPaymentInProgress = false
                 onResult?(.error(.unsupportedPayment(type: type)))
@@ -310,19 +296,12 @@ extension Payrails.Session: PaymentHandlerDelegate {
                 
                 switch result {
                 case .success(let body):
-                    print("🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰")
-                    print("payment body is ready")
-                    print("🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰🫰")
-                    print(body)
                     self.currentTask = Task {
                         do {
                             let paymentStatus = try await self.payrailsAPI.makePayment(
                                 type: type,
                                 payload: body
                             )
-                            print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
-                            print("make payment result", paymentStatus)
-                            print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
                             self.handle(paymentStatus: paymentStatus)
                         } catch {
                             self.handle(error: error)
@@ -378,30 +357,19 @@ extension Payrails.Session: PaymentHandlerDelegate {
         currentTask = Task { [weak self] in
             guard let strongSelf = self else { return }
             do {
-                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
-                print("paymentHandlerDidHandlePending")
-                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
                 let paymentStatus = try await strongSelf.payrailsAPI.confirmPayment(
                     link: link,
                     payload: payload
                 )
-                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
-                print("paymentHandlerDidHandlePending second log", paymentStatus)
-                print("⌛⌛⌛⌛⌛⌛⌛⌛⌛")
+
                 strongSelf.handle(paymentStatus: paymentStatus)
             } catch {
-                print("❌❌❌❌❌❌❌❌❌❌")
-                print("paymentHandlerDidHandlePending", error)
-                print("❌❌❌❌❌❌❌❌❌❌")
                 strongSelf.handle(error: error)
             }
         }
     }
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
-        print("🧤🧤🧤🧤🧤🧤🧤🧤🧤🧤")
-        print("Call handle payment withn status", paymentStatus)
-        print("🧤🧤🧤🧤🧤🧤🧤🧤🧤🧤")
         switch paymentStatus {
         case .failed:
             onResult?(.failure)

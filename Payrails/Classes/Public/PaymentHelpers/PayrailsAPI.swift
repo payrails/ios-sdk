@@ -167,169 +167,82 @@ class PayrailsAPI {
     private func checkExecutionStatus(
         url: URL,
         targetStatuses: [PaymentAuthorizeStatus]
-    ) async throws -> (PaymentStatus) {
-        var authorizeRequestedFound = false
-        var executionResult: GetExecutionResult! // Implicitly unwrapped, be careful!
-        var authorizeRequestedStatus: Status!  // Implicitly unwrapped!
+    ) async throws -> PaymentStatus {
+        var finalExecutionResultContainingAuthorizeRequested: GetExecutionResult? // Will store the specific result
+        var dateOfAuthorizeRequested: Date?                                     // Will store the specific time
 
         var attempt = 0
-        let maxAttempts = 10 // Define max attempts clearly
+        let maxAttempts = 10
+        var latestExecutionResult: GetExecutionResult? // To hold the most recent result for long polling starting point
 
-        while !authorizeRequestedFound && isRunning && attempt < maxAttempts {
+        while finalExecutionResultContainingAuthorizeRequested == nil && isRunning && attempt < maxAttempts {
             attempt += 1
-
             do {
-                executionResult = try await getExecution(url: url)
-                let receivedStatusCodes = executionResult.sortedStatus.map { "(\($0.code): \($0.time))" }.joined(separator: ", ")
+                let currentExecutionResult = try await getExecution(url: url)
+                latestExecutionResult = currentExecutionResult // Always store the latest result
 
-                authorizeRequestedStatus = executionResult.sortedStatus.first(where: { $0.code == "authorizeRequested" })
-                authorizeRequestedFound = authorizeRequestedStatus != nil
-
-                if !authorizeRequestedFound && isRunning && attempt < maxAttempts {
-                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                if let foundStatus = currentExecutionResult.sortedStatus.first(where: { $0.code == "authorizeRequested" }) {
+                    // This is the moment we found it. Capture this specific result and time.
+                    finalExecutionResultContainingAuthorizeRequested = currentExecutionResult
+                    dateOfAuthorizeRequested = foundStatus.time
+                    // Loop will now terminate because finalExecutionResultContainingAuthorizeRequested is no longer nil
+                } else if isRunning && attempt < maxAttempts {
+                    // Only sleep if not found and still within criteria
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
                 }
             } catch {
+                // Error during getExecution, break and let guard handle it
                 break
             }
         }
 
-        if !isRunning {
-            print("🛑 [CheckExecutionStatus] Loop terminated because isRunning became false.")
-        }
-        if attempt >= maxAttempts && !authorizeRequestedFound {
-            print("🛑 [CheckExecutionStatus] Loop terminated because max attempts (\(maxAttempts)) reached without finding 'authorizeRequested'.")
-        }
-
-        print("ℹ️ [CheckExecutionStatus] After polling loop: authorizeRequestedFound: \(authorizeRequestedFound), executionResult is nil: \(executionResult == nil), authorizeRequestedStatus is nil: \(authorizeRequestedStatus == nil)")
-        guard authorizeRequestedFound,
-              executionResult != nil, // Should be non-nil if authorizeRequestedFound is true and no error in loop
-              authorizeRequestedStatus != nil else { // Should be non-nil if authorizeRequestedFound is true
-            print("🚨 [CheckExecutionStatus] Guard Failed! Conditions not met after polling loop.")
-            print("   - authorizeRequestedFound: \(authorizeRequestedFound)")
-            print("   - executionResult != nil: \(executionResult != nil)")
-            if executionResult == nil {
-                 print("   - executionResult was nil. This likely means getExecution failed or never successfully ran in the loop.")
-            }
-            print("   - authorizeRequestedStatus != nil: \(authorizeRequestedStatus != nil)")
-            throw PayrailsError.unknown(error: nil) // Or a more specific error like .pollingFailed
+        guard let validResultForAuth = finalExecutionResultContainingAuthorizeRequested,
+              let validDateForAuth = dateOfAuthorizeRequested else {
+            // If this guard fails, it means we never successfully found "authorizeRequested" within attempts,
+            // or isRunning became false, or getExecution continuously failed.
+            let reason = "Could not find 'authorizeRequested' status after \(attempt) attempts or polling was interrupted."
+            throw PayrailsError.pollingFailed(reason)
         }
 
-
-        if let finalState = executionResult.sortedStatus.first(where: { status in
-            let isTargetStatus = targetStatuses.map { $0.rawValue }.contains(status.code)
-            let isAfterRequestDate = status.time > authorizeRequestDate
-            // Detailed log for each status being checked:
-            // print("  🔎 Checking status: \(status.code) at \(status.time). Is target: \(isTargetStatus). Is after request date (\(authorizeRequestDate)): \(isAfterRequestDate).")
-            return isTargetStatus && isAfterRequestDate
+        // Check for immediate final state using the specific result and time
+        if let finalState = validResultForAuth.sortedStatus.first(where: { status in
+            targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > validDateForAuth
         }) {
-            print("👍 [CheckExecutionStatus] Immediate finalState FOUND: (Code: \(finalState.code), Time: \(finalState.time))")
-            if let paymentStatus = finalState.paymentStatus(with: executionResult) {
-                print("✅ [CheckExecutionStatus] Successfully derived paymentStatus from immediate finalState. Returning: \(paymentStatus)")
+            if let paymentStatus = finalState.paymentStatus(with: validResultForAuth) {
                 return paymentStatus
             } else {
-                print("🚨 [CheckExecutionStatus] Error: finalState found, but paymentStatus(with:) returned nil.")
-                throw PayrailsError.unknown(error: nil) // Or .failedToDerivePaymentStatus
+                throw PayrailsError.failedToDerivePaymentStatus("Found final state but could not derive payment status.")
             }
         } else {
-            print("⏳ [CheckExecutionStatus] Immediate finalState NOT FOUND. Starting long polling.")
-            let currentStatuses = executionResult.sortedStatus.map { $0.code }
-            let timeoutSeconds: Double = 300
-            print("ℹ️ [CheckExecutionStatus] Long polling with statusesToWait: \(currentStatuses), timeout: \(timeoutSeconds)s")
+            // No immediate final state, proceed to long polling
+            // Use latestExecutionResult for current statuses if available, otherwise validResultForAuth
+            let statusesForLongPoll = (latestExecutionResult ?? validResultForAuth).sortedStatus.map { $0.code }
+            let timeoutSeconds: Int = 300
 
             do {
                 let longPollingExecutionResult = try await getExecution(
                     url: url,
-                    statusesToWait: currentStatuses,
-                    timeout: Int(timeoutSeconds)
+                    statusesToWait: statusesForLongPoll,
+                    timeout: timeoutSeconds
                 )
-                let receivedLongPollStatusCodes = longPollingExecutionResult.sortedStatus.map { "(\($0.code): \($0.time))" }.joined(separator: ", ")
-                print("✅ [CheckExecutionStatus] Long polling getExecution successful. Statuses: [\(receivedLongPollStatusCodes)]")
-                
-                // Re-log authorizeRequestDate if there's any chance it could change or for clarity
-                print("ℹ️ [CheckExecutionStatus] (Long Poll) authorizeRequestDate (for time comparison): \(String(describing: authorizeRequestDate))")
 
                 if let finalStateFromLongPoll = longPollingExecutionResult.sortedStatus.first(where: { status in
-                    let isTargetStatus = targetStatuses.map { $0.rawValue }.contains(status.code)
-                    let isAfterRequestDate = status.time > authorizeRequestDate
-                    // print("  🔎 [Long Poll] Checking status: \(status.code) at \(status.time). Is target: \(isTargetStatus). Is after request date (\(authorizeRequestDate)): \(isAfterRequestDate).")
-                    return isTargetStatus && isAfterRequestDate
+                    targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > validDateForAuth // CRITICAL: Still use validDateForAuth
                 }) {
-                    print("👍 [CheckExecutionStatus] finalState FOUND after long polling: (Code: \(finalStateFromLongPoll.code), Time: \(finalStateFromLongPoll.time))")
                     if let paymentStatus = finalStateFromLongPoll.paymentStatus(with: longPollingExecutionResult) {
-                        print("✅ [CheckExecutionStatus] Successfully derived paymentStatus from long-polled finalState. Returning: \(paymentStatus)")
                         return paymentStatus
                     } else {
-                        print("🚨 [CheckExecutionStatus] Error: finalState found after long poll, but paymentStatus(with:) returned nil.")
-                        throw PayrailsError.unknown(error: nil) // Or .failedToDerivePaymentStatusAfterLongPoll
+                        throw PayrailsError.failedToDerivePaymentStatus("Found final state after long poll but could not derive payment status.")
                     }
                 } else {
-                    print("🛑 [CheckExecutionStatus] No suitable finalState found even after long polling.")
-                    print("   - Target statuses: \(targetStatuses.map { $0.rawValue })")
-                    print("   - Last known statuses from long poll: \(longPollingExecutionResult.sortedStatus.map { "(\($0.code) at \($0.time))" })")
-                    print("   - authorizeRequestDate for comparison: \(String(describing: authorizeRequestDate))")
-                    throw PayrailsError.unknown(error: nil) // Or .finalStatusNotFoundAfterLongPoll
+                    throw PayrailsError.finalStatusNotFoundAfterLongPoll("No target final status found after long polling that occurred after authorizeRequested.")
                 }
             } catch {
-                print("🚨 [CheckExecutionStatus] Error during long polling getExecution(): \(error)")
-                throw error // Rethrow the error from long polling
+                if let payrailsError = error as? PayrailsError { throw payrailsError }
+                throw PayrailsError.longPollingFailed(underlyingError: error)
             }
         }
     }
-
-//    private func checkExecutionStatus(
-//        url: URL,
-//        targetStatuses: [PaymentAuthorizeStatus]
-//    ) async throws -> (PaymentStatus) {
-//        var authorizeRequestedFound = false
-//        var executionResult: GetExecutionResult!
-//        var authorizeRequestedStatus: Status!
-//
-//        
-//        var attempt = 0
-//        while !authorizeRequestedFound && isRunning && attempt < 10 {
-//            executionResult = try await getExecution(url: url)
-//            authorizeRequestedStatus = executionResult.sortedStatus.first(where: { $0.code == "authorizeRequested" })
-//            authorizeRequestedFound = authorizeRequestedStatus != nil
-//            if !authorizeRequestedFound {
-//                try? await Task.sleep(nanoseconds: 1_000_000_000)
-//            }
-//            attempt += 1
-//        }
-//
-//        guard authorizeRequestedFound,
-//              executionResult != nil,
-//              authorizeRequestedStatus != nil else {
-//            throw PayrailsError.unknown(error: nil)
-//        }
-//        
-//
-//        if let finalState = executionResult.sortedStatus.first(where: { status in
-//            targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestDate
-//        }) {
-//            if let paymentStatus = finalState.paymentStatus(with: executionResult) {
-//                return paymentStatus
-//            } else {
-//                throw PayrailsError.unknown(error: nil)
-//            }
-//        } else {
-//            // Start long polling
-//            let currentStatuses = executionResult.sortedStatus.map { $0.code }
-//            let longPollingExecutionResult = try await getExecution(
-//                url: url,
-//                statusesToWait: currentStatuses,
-//                timeout: 300
-//            )
-//            let finalState = longPollingExecutionResult.sortedStatus.first(where: { status in
-//                targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestDate
-//            })
-//
-//            if let paymentStatus = finalState?.paymentStatus(with: longPollingExecutionResult) {
-//                return paymentStatus
-//            } else {
-//                throw PayrailsError.unknown(error: nil)
-//            }
-//        }
-//    }
 
     private func getExecution(
         url: URL,
