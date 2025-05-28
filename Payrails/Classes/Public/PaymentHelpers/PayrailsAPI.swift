@@ -104,13 +104,17 @@ class PayrailsAPI {
         
         // 1. Ensure 'execution' string exists
         guard let execution = authorizeResponse.links.execution else {
-            print("🚨 Error: Execution link string is missing from authorizeResponse.links.")
+            #if DEBUG
+            Payrails.log("Error: Execution link string is missing from authorizeResponse.links.")
+            #endif
             throw PayrailsError.missingData("Execution link string is missing from authorizeResponse.links")
         }
 
         // 2. Ensure 'execution' string can be converted to a URL
         guard let executionURL = URL(string: execution) else {
-            print("🚨 Error: Could not create URL from execution string: '\(execution)'.")
+            #if DEBUG
+            Payrails.log("Error: Could not create URL from execution string: '\(execution)'.")
+            #endif
             throw PayrailsError.missingData("Execution link string is invalid and cannot form a URL: \(execution)")
         }
 
@@ -120,6 +124,31 @@ class PayrailsAPI {
         )
         
         return paymentStatus
+    }
+    
+    func confirmPaymentWithRetry(
+        link: Link,
+        payload: [String: Any]?,
+        maxRetries: Int = 2
+    ) async throws -> PayrailsAPI.PaymentStatus {
+        var lastError: Error?
+        
+        for attempt in 1...(maxRetries + 1) {
+            do {
+                return try await confirmPayment(link: link, payload: payload)
+            } catch {
+                lastError = error
+                if attempt <= maxRetries {
+                    #if DEBUG
+                    Payrails.log("Retrying PayPal confirmPayment (attempt \(attempt + 1))")
+                    #endif
+                    let delay = TimeInterval(attempt) // 1s, 2s delays
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+            }
+        }
+        
+        throw lastError ?? PayrailsError.unknown(error: nil)
     }
 
     private func authorizePayment(
@@ -164,6 +193,11 @@ class PayrailsAPI {
         }
     }
     
+    private func isStatusValidForCompletion(_ status: Status, referenceTime: Date) -> Bool {
+        let timeTolerance: TimeInterval = 5.0 // 5 seconds tolerance for timing edge cases
+        return status.time >= referenceTime.addingTimeInterval(-timeTolerance)
+    }
+    
     private func checkExecutionStatus(
         url: URL,
         targetStatuses: [PaymentAuthorizeStatus]
@@ -204,14 +238,27 @@ class PayrailsAPI {
             throw PayrailsError.pollingFailed(reason)
         }
 
-        // Check for immediate final state using the specific result and time
+        // Check for immediate final state using the specific result and time with tolerance
         if let finalState = validResultForAuth.sortedStatus.first(where: { status in
-            targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > validDateForAuth
+            let isTargetStatus = targetStatuses.map { $0.rawValue }.contains(status.code)
+            let isValidTiming = isStatusValidForCompletion(status, referenceTime: validDateForAuth)
+            return isTargetStatus && isValidTiming
         }) {
             if let paymentStatus = finalState.paymentStatus(with: validResultForAuth) {
                 return paymentStatus
             } else {
                 throw PayrailsError.failedToDerivePaymentStatus("Found final state but could not derive payment status.")
+            }
+        } else if let fallbackSuccess = validResultForAuth.sortedStatus.first(where: { status in
+            status.code == "authorizeSuccessful" // Fallback for PayPal timing edge cases
+        }) {
+            #if DEBUG
+            Payrails.log("⚠️ PayPal payment succeeded with timing discrepancy")
+            #endif
+            if let paymentStatus = fallbackSuccess.paymentStatus(with: validResultForAuth) {
+                return paymentStatus
+            } else {
+                throw PayrailsError.failedToDerivePaymentStatus("Found success state but could not derive payment status.")
             }
         } else {
             // No immediate final state, proceed to long polling
@@ -227,7 +274,9 @@ class PayrailsAPI {
                 )
 
                 if let finalStateFromLongPoll = longPollingExecutionResult.sortedStatus.first(where: { status in
-                    targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > validDateForAuth // CRITICAL: Still use validDateForAuth
+                    let isTargetStatus = targetStatuses.map { $0.rawValue }.contains(status.code)
+                    let isValidTiming = isStatusValidForCompletion(status, referenceTime: validDateForAuth)
+                    return isTargetStatus && isValidTiming
                 }) {
                     if let paymentStatus = finalStateFromLongPoll.paymentStatus(with: longPollingExecutionResult) {
                         return paymentStatus
@@ -325,14 +374,18 @@ fileprivate extension PayrailsAPI {
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
             
             if statusCode == 401 || statusCode == 403 {
-                print("Authentication error: status code \(statusCode)")
+                #if DEBUG
+                Payrails.log("Authentication error: status code \(statusCode)")
+                #endif
                 throw PayrailsError.authenticationError
             }
             
             // If status code is not successful (outside 200-299 range)
             if statusCode < 200 || statusCode >= 300 {
-                print("API error: status code \(statusCode)")
-                print("Error response: \(responseString)")
+                #if DEBUG
+                Payrails.log("API error: status code \(statusCode)")
+                Payrails.log("Error response: \(responseString)")
+                #endif
             }
             
             let jsonDecoder = JSONDecoder.API()
@@ -340,11 +393,15 @@ fileprivate extension PayrailsAPI {
                 let result = try jsonDecoder.decode(T.self, from: data)
                 return result
             } catch {
-                print("ERROR: Failed to decode response: \(error)")
+                #if DEBUG
+                Payrails.log("ERROR: Failed to decode response: \(error)")
+                #endif
                 throw error
             }
         } catch {
-            print("ERROR: Network or decoding error: \(error)")
+            #if DEBUG
+            Payrails.log("ERROR: Network or decoding error: \(error)")
+            #endif
             throw error
         }
     }
@@ -436,9 +493,9 @@ func convertToJSON(body: [String: Any]) -> Data? {
         let jsonData = try JSONSerialization.data(withJSONObject: jsonBody, options: [.prettyPrinted])
         return jsonData
     } catch {
-        print("Error converting to JSON: \(error)")
+        #if DEBUG
+        Payrails.log("Error converting to JSON: \(error)")
+        #endif
         return nil
     }
 }
-
-

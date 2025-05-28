@@ -357,10 +357,21 @@ extension Payrails.Session: PaymentHandlerDelegate {
         currentTask = Task { [weak self] in
             guard let strongSelf = self else { return }
             do {
-                let paymentStatus = try await strongSelf.payrailsAPI.confirmPayment(
-                    link: link,
-                    payload: payload
-                )
+                let paymentStatus: PayrailsAPI.PaymentStatus
+                if type == .payPal {
+                    // Use retry logic specifically for PayPal
+                    paymentStatus = try await strongSelf.payrailsAPI.confirmPaymentWithRetry(
+                        link: link,
+                        payload: payload,
+                        maxRetries: 2
+                    )
+                } else {
+                    // Standard logic for other payment types
+                    paymentStatus = try await strongSelf.payrailsAPI.confirmPayment(
+                        link: link,
+                        payload: payload
+                    )
+                }
 
                 strongSelf.handle(paymentStatus: paymentStatus)
             } catch {
@@ -455,5 +466,3 @@ public extension Payrails.Session {
         return PublicSDKConfig(from: config)
     }
 }
-
-
