@@ -141,7 +141,7 @@ public extension Payrails {
                     labelStyles: Styles(base: labelStyle),
                     errorTextStyles: Styles(base: containerErrorStyle),
                     label: translation.label ?? "",
-                    placeholder: translation.placeholder ?? "•••• •••• •••• ••••", // Default placeholder
+                    placeholder: translation.placeholder ?? "•••• •••• •••• ••••",
                     type: .CARD_NUMBER,
                     customErrorMessage: translation.errorText
                 )

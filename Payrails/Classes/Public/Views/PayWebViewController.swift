@@ -10,14 +10,20 @@ internal class PayWebViewController: UIViewController {
 
     private var webView = WKWebView(frame: .zero)
     private let url: URL
+    private let dismissalCallback: (() -> Void)?
 
-    init(url: URL, delegate: WKNavigationDelegate) {
+    init(url: URL, delegate: WKNavigationDelegate, dismissalCallback: (() -> Void)? = nil) {
         self.url = url
+        self.dismissalCallback = dismissalCallback
         webView.navigationDelegate = delegate
         super.init(nibName: nil, bundle: nil)
      }
 
     required init?(coder: NSCoder) { nil }
+    
+    deinit {
+        dismissalCallback?()
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()

@@ -15,6 +15,7 @@ class GenericRedirectHandler: NSObject {
     private let paymentOption: PaymentOptions
     public weak var presenter: PaymentPresenter?
     private var webViewController: PayWebViewController?
+    private var paymentCompleted = false
 
     init(
         delegate: PaymentHandlerDelegate?,
@@ -41,10 +42,6 @@ extension GenericRedirectHandler: PaymentHandler {
     ) {
         let effectivePresenter = presenter ?? self.presenter
         
-        print("==============================")
-        print("Generic redirect payment init")
-        print("==============================")
-        
         print(self.paymentOption)
         
         delegate?.paymentHandlerDidFinish(
@@ -62,17 +59,39 @@ extension GenericRedirectHandler: PaymentHandler {
             let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
                 handler: self,
-                error: .missingData("Pending state failed due to missing 3ds link"),
-                type: .card
+                error: .missingData("Pending state failed due to missing redirect link"),
+                type: .genericRedirect
             )
             return
         }
         delegate?.paymentHandlerWillRequestChallengePresentation(self)
 
-        DispatchQueue.main.async {
+        // Reset payment completed flag when starting a new payment flow
+        paymentCompleted = false
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Create dismissal callback
+            let dismissalCallback = { [weak self] in
+                guard let self = self else { return }
+                
+                // Check if payment was not completed before dismissal
+                if !self.paymentCompleted {
+                    self.delegate?.paymentHandlerDidFinish(
+                        handler: self,
+                        type: .genericRedirect,
+                        status: .canceled,
+                        payload: nil
+                    )
+                    self.webViewController = nil
+                }
+            }
+            
             let webViewController = PayWebViewController(
                 url: url,
-                delegate: self
+                delegate: self,
+                dismissalCallback: dismissalCallback
             )
             self.presenter?.presentPayment(webViewController)
             self.webViewController = webViewController
@@ -128,13 +147,17 @@ extension GenericRedirectHandler: WKNavigationDelegate {
         let errorPrefix = "https://assets.payrails.io/html/payrails-error.html"
 
         let finalAction: (() -> Void)?
+        
+        print("Webview navigation")
+        print(urlString)
 
         if urlString.hasPrefix(successPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
+                self.paymentCompleted = true
                 self.delegate?.paymentHandlerDidHandlePending(
                     handler: self,
-                    type: .card,
+                    type: .genericRedirect,
                     link: nil,
                     payload: [:]
                 )
@@ -142,9 +165,10 @@ extension GenericRedirectHandler: WKNavigationDelegate {
         } else if urlString.hasPrefix(cancelPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
+                self.paymentCompleted = true
                 self.delegate?.paymentHandlerDidFinish(
                     handler: self,
-                    type: .card,
+                    type: .genericRedirect,
                     status: .canceled,
                     payload: nil
                 )
@@ -152,9 +176,10 @@ extension GenericRedirectHandler: WKNavigationDelegate {
         } else if urlString.hasPrefix(errorPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
+                self.paymentCompleted = true
                 self.delegate?.paymentHandlerDidFinish(
                     handler: self,
-                    type: .card,
+                    type: .genericRedirect,
                     status: .error(nil),
                     payload: nil
                 )
