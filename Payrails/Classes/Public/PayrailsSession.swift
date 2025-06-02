@@ -343,7 +343,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
         link: Link?,
         payload: [String: Any]?
     ) {
-        if type == .card || type == .genericRedirect {
+        if type == .genericRedirect {
             onResult?(.success)
             return
         }
@@ -366,11 +366,10 @@ extension Payrails.Session: PaymentHandlerDelegate {
                         maxRetries: 2
                     )
                 } else {
-                    print("handle payment success")
-                    // Standard logic for other payment types
                     paymentStatus = try await strongSelf.payrailsAPI.confirmPayment(
                         link: link,
-                        payload: payload
+                        payload: nil,
+                        type: .card
                     )
                 }
 

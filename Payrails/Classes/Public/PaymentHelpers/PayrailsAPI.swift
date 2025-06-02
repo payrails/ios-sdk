@@ -80,8 +80,18 @@ class PayrailsAPI {
 
     func confirmPayment(
         link: Link,
-        payload: [String: Any]?
+        payload: [String: Any]?,
+        type: Payrails.PaymentType? = nil
     ) async throws -> PayrailsAPI.PaymentStatus {
+        // Card payments needs polling only
+        if (type == .card) {
+            let paymentStatus = try await checkExecutionStatus(
+                url: URL(string: link.href!)!,
+                targetStatuses: statusesAfterPending
+            )
+            return paymentStatus
+        }
+        
         isRunning = true
         guard let href = link.href,
         let method = Method(rawValue: link.method ?? ""),

@@ -7,6 +7,7 @@ class CardPaymentHandler: NSObject {
     private let saveInstrument: Bool
     public weak var presenter: PaymentPresenter?
     private var webViewController: PayWebViewController?
+    private var selfLink: String
 
     init(
         delegate: PaymentHandlerDelegate?,
@@ -16,6 +17,7 @@ class CardPaymentHandler: NSObject {
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
+        self.selfLink = ""
     }
 }
 
@@ -59,6 +61,12 @@ extension CardPaymentHandler: PaymentHandler {
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
+        print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
+        print("handlepending state")
+        print(executionResult.links)
+        print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
+        self.selfLink = executionResult.links.`self`
+        
         guard let link = executionResult.links.threeDS,
             let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
@@ -153,10 +161,22 @@ extension CardPaymentHandler: WKNavigationDelegate {
         if urlString.hasPrefix(successPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
+                print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
+                print("handlepending state sucess")
+                print(self.selfLink)
+                print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
                 self.delegate?.paymentHandlerDidHandlePending(
                     handler: self,
                     type: .card,
-                    link: nil,
+                    link: Link(
+                        method: "GET",
+                        href: selfLink,
+                        action: LinkAction(
+                            redirectMethod: "",
+                            redirectUrl: "",
+                            parameters:  LinkAction.Parameters(orderId: "orderId", tokenId: "tokenId"),
+                            type: "")
+                    ),
                     payload: [:]
                 )
             }
