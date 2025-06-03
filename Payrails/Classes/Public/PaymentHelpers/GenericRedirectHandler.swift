@@ -1,27 +1,36 @@
+//
+//  GenericRedirectHandler.swift
+//  Pods
+//
+//  Created by Mustafa Dikici on 15.05.25.
+//
+
 import Foundation
 import WebKit
 
-class CardPaymentHandler: NSObject {
+class GenericRedirectHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
     private let saveInstrument: Bool
+    private let paymentOption: PaymentOptions
     public weak var presenter: PaymentPresenter?
     private var webViewController: PayWebViewController?
-    private var selfLink: String
+    private var paymentCompleted = false
 
     init(
         delegate: PaymentHandlerDelegate?,
         saveInstrument: Bool,
-        presenter: PaymentPresenter?
+        presenter: PaymentPresenter?,
+        paymentOption: PaymentOptions
     ) {
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
-        self.selfLink = ""
+        self.paymentOption = paymentOption
     }
 }
 
-extension CardPaymentHandler: PaymentHandler {
+extension GenericRedirectHandler: PaymentHandler {
     func set(response: Any) {
         self.response = response
     }
@@ -33,56 +42,54 @@ extension CardPaymentHandler: PaymentHandler {
     ) {
         let effectivePresenter = presenter ?? self.presenter
         
-        guard let encryptedCardData = effectivePresenter?.encryptedCardData, !encryptedCardData.isEmpty else {
-            print("Error: Missing or empty encrypted card data.")
-            delegate?.paymentHandlerDidFail(
-                handler: self,
-                error: .missingData("Encrypted card data is required but was missing or empty."),
-                type: .card
-            )
-            return
-        }
-
-        var data: [String: Any] = [:]
-        data["card"] = [
-            "vaultProviderConfigId": "0077318a-5dd2-47fb-b709-e475d2172d32",
-            "encryptedData": encryptedCardData
-        ]
-
         delegate?.paymentHandlerDidFinish(
             handler: self,
-            type: .card,
+            type: .genericRedirect,
             status: .success,
             payload: [
-                "paymentInstrumentData": data,
                 "storeInstrument": saveInstrument
             ]
         )
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
-        print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
-        print("handlepending state")
-        print(executionResult.links)
-        print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
-        self.selfLink = executionResult.links.`self`
-        
-        guard let link = executionResult.links.threeDS,
+        guard let link = executionResult.links.redirect,
             let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
                 handler: self,
-                error: .missingData("Pending state failed due to missing 3ds link"),
-                type: .card
+                error: .missingData("Pending state failed due to missing redirect link"),
+                type: .genericRedirect
             )
             return
         }
-        
         delegate?.paymentHandlerWillRequestChallengePresentation(self)
 
-        DispatchQueue.main.async {
+        // Reset payment completed flag when starting a new payment flow
+        paymentCompleted = false
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Create dismissal callback
+            let dismissalCallback = { [weak self] in
+                guard let self = self else { return }
+                
+                // Check if payment was not completed before dismissal
+                if !self.paymentCompleted {
+                    self.delegate?.paymentHandlerDidFinish(
+                        handler: self,
+                        type: .genericRedirect,
+                        status: .canceled,
+                        payload: nil
+                    )
+                    self.webViewController = nil
+                }
+            }
+            
             let webViewController = PayWebViewController(
                 url: url,
-                delegate: self
+                delegate: self,
+                dismissalCallback: dismissalCallback
             )
             self.presenter?.presentPayment(webViewController)
             self.webViewController = webViewController
@@ -94,35 +101,6 @@ extension CardPaymentHandler: PaymentHandler {
         amount: Amount,
         completion: @escaping (Result<[String: Any], Error>) -> Void
     ) {
-        guard let payload = payload,
-              let paymentInstrumentData = payload["paymentInstrumentData"] as? [String: Any],
-              let cardData = paymentInstrumentData["card"] as? [String: Any],
-              let encryptedData = cardData["encryptedData"] as? String,
-              let vaultProviderConfigId = cardData["vaultProviderConfigId"] as? String,
-              let storeInstrument = payload["storeInstrument"] as? Bool else {
-
-            completion(.failure(PayrailsError.invalidDataFormat))
-            return
-        }
-
-        let country = Country(code: "DE", fullName: "Germany", iso3: "DEU") // TODO: Review hardcoded country
-        let billingAddress = BillingAddress(country: country)
-
-        let instrumentData = PaymentInstrumentData(
-            encryptedData: encryptedData,
-            vaultProviderConfigId: vaultProviderConfigId,
-            billingAddress: billingAddress
-        )
-
-        let paymentComposition = PaymentComposition(
-            paymentMethodCode: Payrails.PaymentType.card.rawValue,
-            integrationType: "api",
-            amount: amount,
-            storeInstrument: storeInstrument,
-            paymentInstrumentData: instrumentData,
-            enrollInstrumentToNetworkOffers: false
-        )
-
         let returnInfo: [String: String] = [
              "success": "https://assets.payrails.io/html/payrails-success.html",
              "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
@@ -132,23 +110,33 @@ extension CardPaymentHandler: PaymentHandler {
         let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
         let meta = ["risk": risk]
         let amountDict = ["value": amount.value, "currency": amount.currency]
+        
+        let paymentComposition = PaymentComposition(
+            paymentMethodCode: self.paymentOption.paymentMethodCode,
+            integrationType: self.paymentOption.integrationType,
+            amount: amount,
+            storeInstrument: false,
+            paymentInstrumentData: nil,
+            enrollInstrumentToNetworkOffers: false
+        )
 
         let body: [String: Any] = [
             "amount": amountDict,
-            "paymentComposition": [paymentComposition],
             "returnInfo": returnInfo,
-            "meta": meta
+            "meta": meta,
+            "paymentComposition": [paymentComposition]
         ]
         
         completion(.success(body))
     }
 }
 
-extension CardPaymentHandler: WKNavigationDelegate {
+extension GenericRedirectHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
 
-        guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {            decisionHandler(.allow)
+        guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {
+            decisionHandler(.allow)
             return
         }
 
@@ -157,35 +145,28 @@ extension CardPaymentHandler: WKNavigationDelegate {
         let errorPrefix = "https://assets.payrails.io/html/payrails-error.html"
 
         let finalAction: (() -> Void)?
+        
+        print("Webview navigation")
+        print(urlString)
 
         if urlString.hasPrefix(successPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
-                print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
-                print("handlepending state sucess")
-                print(self.selfLink)
-                print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
+                self.paymentCompleted = true
                 self.delegate?.paymentHandlerDidHandlePending(
                     handler: self,
-                    type: .card,
-                    link: Link(
-                        method: "GET",
-                        href: selfLink,
-                        action: LinkAction(
-                            redirectMethod: "",
-                            redirectUrl: "",
-                            parameters:  LinkAction.Parameters(orderId: "orderId", tokenId: "tokenId"),
-                            type: "")
-                    ),
+                    type: .genericRedirect,
+                    link: nil,
                     payload: [:]
                 )
             }
         } else if urlString.hasPrefix(cancelPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
+                self.paymentCompleted = true
                 self.delegate?.paymentHandlerDidFinish(
                     handler: self,
-                    type: .card,
+                    type: .genericRedirect,
                     status: .canceled,
                     payload: nil
                 )
@@ -193,9 +174,10 @@ extension CardPaymentHandler: WKNavigationDelegate {
         } else if urlString.hasPrefix(errorPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
+                self.paymentCompleted = true
                 self.delegate?.paymentHandlerDidFinish(
                     handler: self,
-                    type: .card,
+                    type: .genericRedirect,
                     status: .error(nil),
                     payload: nil
                 )
@@ -215,5 +197,3 @@ extension CardPaymentHandler: WKNavigationDelegate {
         }
     }
 }
-
-

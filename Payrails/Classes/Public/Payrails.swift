@@ -1,11 +1,15 @@
 import Foundation
 import SwiftUICore
 import UIKit
+import PassKit
+
 
 public class Payrails {
     private static var currentSession: Payrails.Session?
+    private static var currentCardForm: Payrails.CardForm?
 
-    static func configure(
+
+    static func createSession(
         with configuration: Payrails.Configuration,
         onInit: OnInitCallback
     ) {
@@ -26,6 +30,22 @@ public class Payrails {
     
     static func getCurrentSession() -> Payrails.Session? {
         return currentSession
+    }
+
+    // MARK: - SDK Logging
+    public static func log(_ items: Any..., separator: String = " ", terminator: String = "\n", file: String = #file, function: String = #function, line: UInt = #line) {
+        
+        let output = items.map { "\($0)" }.joined(separator: separator)
+        let fileName = (file as NSString).lastPathComponent
+        let logMessage = "[\(fileName):\(line)] \(function) -> \(output)"
+        
+        // 1. Print to console (for Xcode debugging)
+        Swift.print(logMessage, terminator: terminator)
+        
+        // 2. Add to our on-screen LogStore
+        // Ensure this is thread-safe if called from various parts of the SDK
+        LogStore.shared.addLog(logMessage)
+        
     }
 }
 
@@ -66,11 +86,11 @@ public extension Payrails {
         )
     }
     
-    static func configure(
+    static func createSession(
         with configuration: Payrails.Configuration
     ) async throws -> Payrails.Session {
         let result = try await withCheckedThrowingContinuation({ continuation in
-            Payrails.configure(with: configuration) { result in
+            Payrails.createSession(with: configuration) { result in
                 switch result {
                 case let .success(session):
                     continuation.resume(returning: session)
@@ -82,56 +102,170 @@ public extension Payrails {
         return result
     }
     
-    static func createCardPaymentForm(
+    static func createPayPalButton(showSaveInstrument: Bool = false) -> PaypalElement {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a PayPalButton")
+        let session = currentSession!
+
+        if showSaveInstrument {
+            Payrails.log("Creating paypal button with toggle")
+            let button = Payrails.PayPalButtonWithToggle(session: session, showSaveInstrument: true)
+            return button
+        } else {
+            Payrails.log("Creating paypal button")
+            let button = Payrails.PayPalButton(session: session)
+            return button
+        }
+    }
+    
+    static func createApplePayButton(type: PKPaymentButtonType, style: PKPaymentButtonStyle, showSaveInstrument: Bool = false) -> ApplePayElement {
+        Payrails.log("Creating apple pay button")
+        precondition(currentSession != nil, "Payrails session must be initialized before creating an ApplePayButton")
+        let session = currentSession!
+        
+        if showSaveInstrument {
+            Payrails.log("Creating apple pay button with toggle")
+            let button = Payrails.ApplePayButtonWithToggle(session: session, showSaveInstrument: true, type: type, style: style)
+            return button
+        } else {
+            let button = Payrails.ApplePayButton(session: session, type: type, style: style)
+            return button
+        }
+    }
+    
+    static func createCardPaymentButton(
+        buttonStyle: CardButtonStyle? = nil,
+        translations: CardPaymenButtonTranslations
+    ) -> Payrails.CardPaymentButton {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentButton")
+        precondition(currentCardForm != nil, "A card form must be created with createCardForm() before creating a CardPaymentButton")
+        
+        let session = currentSession!
+        let cardForm = currentCardForm!
+
+        
+        let button = Payrails.CardPaymentButton(
+            cardForm: cardForm,
+            session: session,
+            translations: translations
+        )
+        
+        // Apply button styles if provided
+        if let style = buttonStyle {
+            if let bgColor = style.backgroundColor {
+                button.backgroundColor = bgColor
+            }
+            if let textColor = style.textColor {
+                button.setTitleColor(textColor, for: .normal)
+            }
+            if let font = style.font {
+                button.titleLabel?.font = font
+            }
+            if let cornerRadius = style.cornerRadius {
+                button.layer.cornerRadius = cornerRadius
+                button.layer.masksToBounds = cornerRadius > 0
+            }
+            if let borderWidth = style.borderWidth {
+                button.layer.borderWidth = borderWidth
+            }
+            if let borderColor = style.borderColor {
+                button.layer.borderColor = borderColor.cgColor
+            }
+            if let insets = style.contentEdgeInsets {
+                button.contentEdgeInsets = insets
+            }
+        }
+        
+        return button
+    }
+    
+    
+    static func createCardForm(
         config: CardFormConfig? = nil,
-        buttonTitle: String = "Pay Now"
-    ) -> Payrails.CardPaymentForm {
-
-        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentForm")
-
+        showSaveInstrument: Bool = false
+    ) -> Payrails.CardForm {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating a CardForm")
+        
         let session = currentSession!
         let defaultConfig = getDefaultCardFormConfig()
         let defaultStylesConfig = defaultConfig.styles ?? CardFormStylesConfig.defaultConfig
-
+        
         let finalConfig: CardFormConfig
         if let customConfig = config {
             let finalStylesConfig = customConfig.styles?.merged(over: defaultStylesConfig) ?? defaultStylesConfig
             
             let defaultTranslations = defaultConfig.translations ?? CardTranslations()
             let finalTranslations = defaultTranslations.merged(with: customConfig.translations)
-
+            
             finalConfig = CardFormConfig(
                 showNameField: customConfig.showNameField,
+                showSaveInstrument: showSaveInstrument,
                 styles: finalStylesConfig,
                 translations: finalTranslations
             )
         } else {
-            finalConfig = defaultConfig
+            finalConfig = CardFormConfig(
+                showNameField: defaultConfig.showNameField,
+                showSaveInstrument: showSaveInstrument,
+                styles: defaultConfig.styles,
+                translations: defaultConfig.translations
+            )
         }
-
+        
         guard let cseInstance = session.getCSEInstance(),
               let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
-            fatalError("CSE instance or holder reference not available in session.") // Or handle more gracefully
+            fatalError("CSE instance or holder reference not available in session.")
         }
-
-        let cardPaymentForm = Payrails.CardPaymentForm(
+        
+        let cardForm = Payrails.CardForm(
             config: finalConfig,
             tableName: "tableName",
             cseConfig: (data: "", version: ""),
             holderReference: holderReference,
-            cseInstance: cseInstance,
-            session: session,
-            buttonTitle: buttonTitle
+            cseInstance: cseInstance
         )
-
-        return cardPaymentForm
+        
+        currentCardForm = cardForm
+        
+        return cardForm
     }
     
-    static func createPayPalButton() -> Payrails.PayPalButton {
-        precondition(currentSession != nil, "Payrails session must be initialized before creating a PayPalButton")
+    static func createGenericRedirectButton(
+        buttonStyle: CardButtonStyle? = nil,
+        translations: CardPaymenButtonTranslations,
+        paymentMethodCode: String
+    ) -> Payrails.GenericRedirectButton {
         let session = currentSession!
-
-        let button = Payrails.PayPalButton(session: session)
+        let button = Payrails.GenericRedirectButton(
+            paymentMethodCode: paymentMethodCode,
+            session: session,
+            translations: translations
+        )
+        
+        if let style = buttonStyle {
+            if let bgColor = style.backgroundColor {
+                button.backgroundColor = bgColor
+            }
+            if let textColor = style.textColor {
+                button.setTitleColor(textColor, for: .normal)
+            }
+            if let font = style.font {
+                button.titleLabel?.font = font
+            }
+            if let cornerRadius = style.cornerRadius {
+                button.layer.cornerRadius = cornerRadius
+                button.layer.masksToBounds = cornerRadius > 0
+            }
+            if let borderWidth = style.borderWidth {
+                button.layer.borderWidth = borderWidth
+            }
+            if let borderColor = style.borderColor {
+                button.layer.borderColor = borderColor.cgColor
+            }
+            if let insets = style.contentEdgeInsets {
+                button.contentEdgeInsets = insets
+            }
+        }
+        
         return button
     }
 }

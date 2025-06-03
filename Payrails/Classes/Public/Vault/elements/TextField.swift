@@ -253,6 +253,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
         setupField()
     }
+    
     public func update(updateOptions: CollectElementOptions){
         if(updateOptions.cardMetaData != nil && self.fieldType == .CARD_NUMBER){
             self.options.cardMetaData = updateOptions.cardMetaData

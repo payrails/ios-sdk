@@ -2,6 +2,6 @@ import UIKit
 
 public extension Payrails {
     enum PaymentType: String, Decodable {
-        case payPal, applePay, card
+        case payPal, applePay, card, genericRedirect
     }
 }

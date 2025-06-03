@@ -63,12 +63,14 @@ struct ExecutionLinks: Decodable {
   let threeDS: String?
   let lookup: Link?
   let confirm: Link?
+  let redirect: String?
 
     enum CodingKeys: String, CodingKey {
         case `self`
         case threeDS = "3ds"
         case lookup
         case confirm
+        case redirect
     }
 }
 
@@ -300,6 +302,7 @@ struct PaymentOptions: Decodable {
     enum PaymentConfig {
         case applePay(ApplePayConfig)
         case paypal(PayPalConfig)
+        case genericRedirect(GenericRedirectConfig)
     }
 
     struct ApplePayConfig: Decodable {
@@ -316,6 +319,11 @@ struct PaymentOptions: Decodable {
         let clientId: String
         let merchantId: String
     }
+    
+    struct GenericRedirectConfig: Decodable {
+        // Most genericRedirect payments don't require special config
+        // but we may add specific fields if needed
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -324,7 +332,14 @@ struct PaymentOptions: Decodable {
         description = try? container.decode(String.self, forKey: .description)
         clientConfig = try? container.decode(ClientConfig.self, forKey: .clientConfig)
 
-        optionalPaymentType = Payrails.PaymentType(rawValue: paymentMethodCode)
+        var determinedPaymentType = Payrails.PaymentType(rawValue: paymentMethodCode)
+
+        if determinedPaymentType == nil { // If the paymentMethodCode wasn't directly recognized
+            if clientConfig?.flow == "redirect" || integrationType == "hpp" {
+                determinedPaymentType = .genericRedirect // Treat it as genericRedirect
+            }
+        }
+        self.optionalPaymentType = determinedPaymentType
         
         // Only try to decode config if it exists
         let hasConfig = container.contains(.config)
@@ -353,6 +368,10 @@ struct PaymentOptions: Decodable {
             case .card:
                 if let element = try? container.decode([CardInstrument].self, forKey: .paymentInstruments) {
                     tempInstruments = .card(element)
+                }
+            case .genericRedirect:
+                if let genericRedirectConfig = try? container.decode(GenericRedirectConfig.self, forKey: .config) {
+                    tempConfig = .genericRedirect(genericRedirectConfig)
                 }
             }
         }

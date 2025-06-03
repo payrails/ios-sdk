@@ -18,7 +18,7 @@ public struct CardTranslations {
 
     public struct Labels {
         private var values: [CardFieldType: String]
-        private var saveInstrument: String?
+        public var saveInstrument: String?
         private var storeInstrument: String?
         private var paymentInstallments: String?
 
@@ -116,3 +116,10 @@ extension CardTranslations {
     }
 }
 
+public struct CardPaymenButtonTranslations {
+    public let label: String?
+    
+    public init(label: String? = "Pay") {
+        self.label = label
+    }
+}

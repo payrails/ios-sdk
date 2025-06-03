@@ -26,7 +26,6 @@ public extension Payrails {
 
     class CardForm: UIStackView {
         public weak var delegate: PayrailsCardFormDelegate?
-
         private let config: CardFormConfig
         private let containerClient: Client
         private var container: Container<ComposableContainer>?
@@ -34,6 +33,15 @@ public extension Payrails {
         private let holderReference: String
         public var cardContainer: CardCollectContainer?
         private var payrailsCSE: PayrailsCSE?
+        
+        // Save instrument properties
+        public var saveInstrument: Bool = false {
+            didSet {
+                saveInstrumentToggle.isOn = saveInstrument
+            }
+        }
+        internal let saveInstrumentToggle = UISwitch()
+        internal let saveInstrumentLabel = UILabel()
         
         public init(
             config: CardFormConfig,
@@ -51,11 +59,9 @@ public extension Payrails {
             
             super.init(frame: .zero)
 
-            // Apply wrapper styles from config, falling back to defaults
             let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
             let wrapperStyle = stylesConfig.wrapperStyle ?? CardWrapperStyle.defaultStyle
 
-            // Apply styles to the view's layer and layout margins
             if let bgColor = wrapperStyle.backgroundColor {
                 self.backgroundColor = bgColor // Apply background color to the view itself
             }
@@ -67,12 +73,11 @@ public extension Payrails {
             }
             if let cornerRadius = wrapperStyle.cornerRadius {
                 self.layer.cornerRadius = cornerRadius
-                self.clipsToBounds = true // Ensure content is clipped if corner radius is set
+                self.clipsToBounds = true
             } else {
-                self.clipsToBounds = false // No corner radius, no need to clip
+                self.clipsToBounds = false
             }
             
-            // Apply padding (layout margins)
             if let padding = wrapperStyle.padding {
                 self.layoutMargins = padding
             }
@@ -100,7 +105,7 @@ public extension Payrails {
             guard let container = self.containerClient.container(
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
-                    layout: config.showNameField ? [1, 1, 1, 2] : [1, 1, 2], // Layout depends on showing name field
+                    layout: config.showNameField ? [1, 1, 3] : [1, 3], // Layout depends on showing name field
                     // Use the errorTextStyle from the new config for the container
                     errorTextStyles: Styles(base: containerErrorStyle)
                 )
@@ -120,26 +125,23 @@ public extension Payrails {
                 return (placeholder, label, errorText)
             }
             
-            let requiredOption = CollectElementOptions(required: true)
+            let requiredOption = CollectElementOptions(required: true, enableCardIcon: false, enableCopy: true)
             
-            // --- Card Number Field ---
             do {
                 let fieldType = CardFieldType.CARD_NUMBER
                 let translation = getTranslation(for: fieldType)
                 
-                // Get effective styles using the helper method
                 let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
                 let labelStyle = stylesConfig.labelStyles?[fieldType] ?? defaultLabelStyle
-                // Error style is shared
-                
+
                 let collectCardNumberInput = CollectElementInput(
                     table: tableName,
                     column: "card_number",
-                    inputStyles: inputStyle.skyflowStyles, // Use helper from CardFieldSpecificStyles
-                    labelStyles: Styles(base: labelStyle), // Wrap single style
-                    errorTextStyles: Styles(base: containerErrorStyle), // Use shared error style
-                    label: translation.label ?? "", // Use provided label or empty string
-                    placeholder: translation.placeholder ?? "•••• •••• •••• ••••", // Default placeholder
+                    inputStyles: inputStyle.skyflowStyles,
+                    labelStyles: Styles(base: labelStyle),
+                    errorTextStyles: Styles(base: containerErrorStyle),
+                    label: translation.label ?? "",
+                    placeholder: translation.placeholder ?? "•••• •••• •••• ••••",
                     type: .CARD_NUMBER,
                     customErrorMessage: translation.errorText
                 )
@@ -147,7 +149,6 @@ public extension Payrails {
                 _ = container.create(input: collectCardNumberInput, options: requiredOption)
             }
 
-            // --- Cardholder Name Field (Conditional) ---
             if config.showNameField {
                 do {
                     let fieldType = CardFieldType.CARDHOLDER_NAME
@@ -257,7 +258,7 @@ public extension Payrails {
             
             // --- StackView Configuration ---
             self.axis = .vertical
-            self.spacing = 10 // Adjusted spacing slightly
+            self.spacing = 10
 
             // --- Add Composable View ---
             do {
@@ -265,6 +266,11 @@ public extension Payrails {
                 self.addArrangedSubview(composableView)
             } catch {
                 print("Error getting composable view: \(error)") // Added error handling
+            }
+            
+            // Add save instrument toggle if enabled
+            if config.showSaveInstrument {
+                setupSaveInstrumentToggle()
             }
         }
 
@@ -279,6 +285,34 @@ public extension Payrails {
             public func onFailure(_ error: Any) {
                 onFailure?(error)
             }
+        }
+        
+        private func setupSaveInstrumentToggle() {
+            // Configure label
+            let labelText = config.translations?.labels.saveInstrument ?? "Save card"
+            saveInstrumentLabel.text = labelText
+            saveInstrumentLabel.font = UIFont.systemFont(ofSize: 14)
+            saveInstrumentLabel.textColor = .darkGray
+            
+            // Create toggle container
+            let toggleContainer = UIStackView()
+            toggleContainer.axis = .horizontal
+            toggleContainer.spacing = 8
+            toggleContainer.alignment = .center
+            
+            // Add toggle and label to container
+            toggleContainer.addArrangedSubview(saveInstrumentLabel)
+            toggleContainer.addArrangedSubview(saveInstrumentToggle)
+            
+            // Add toggle container to main stack
+            self.addArrangedSubview(toggleContainer)
+            
+            // Link toggle to property
+            saveInstrumentToggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
+        }
+        
+        @objc private func toggleChanged() {
+            self.saveInstrument = saveInstrumentToggle.isOn
         }
         
         public func collectFields() {
@@ -299,14 +333,16 @@ public extension Payrails {
                    let expiryMonth = fields["expiry_month"] as? String,
                    let expiryYear = fields["expiry_year"] as? String,
                    let securityCode = fields["security_code"] as? String {
-                   
-                    // Create card object
+                    
+                    let holderName = fields["cardholder_name"] as? String
+                    print(holderName, "holder name")
+                    
                     let payrailsCard = Card(
                         holderReference: self.holderReference,
                         cardNumber: cardNumber,
                         expiryMonth: expiryMonth,
                         expiryYear: expiryYear,
-                        holderName: "nil sasds",
+                        holderName: holderName,
                         securityCode: securityCode
                     )
                     
