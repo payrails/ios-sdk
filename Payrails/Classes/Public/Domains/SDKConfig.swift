@@ -334,45 +334,51 @@ struct PaymentOptions: Decodable {
 
         var determinedPaymentType = Payrails.PaymentType(rawValue: paymentMethodCode)
 
-        if determinedPaymentType == nil { // If the paymentMethodCode wasn't directly recognized
+        if determinedPaymentType == nil {
             if clientConfig?.flow == "redirect" || integrationType == "hpp" {
-                determinedPaymentType = .genericRedirect // Treat it as genericRedirect
+                determinedPaymentType = .genericRedirect
             }
         }
         self.optionalPaymentType = determinedPaymentType
-        
-        // Only try to decode config if it exists
-        let hasConfig = container.contains(.config)
         
         // Initialize with nil values first
         var tempConfig: PaymentConfig? = nil
         var tempInstruments: PaymentInstrument? = nil
 
-        // Only proceed with specialized decoding if payment type is recognized
+        // Decode config only if it exists and payment type is recognized
+        let hasConfig = container.contains(.config)
         if let paymentType = optionalPaymentType, hasConfig {
             switch paymentType {
             case .payPal:
                 if let paypalConfig = try? container.decode(PayPalConfig.self, forKey: .config) {
                     tempConfig = .paypal(paypalConfig)
                 }
-                
-                if let element = try? container.decode([PayPalPaymentInstrument].self, forKey: .paymentInstruments) {
-                    tempInstruments = .paypal(element)
-                }
-
             case .applePay:
                 if let applePayConfig = try? container.decode(ApplePayConfig.self, forKey: .config) {
                     tempConfig = .applePay(applePayConfig)
-                }
-
-            case .card:
-                if let element = try? container.decode([CardInstrument].self, forKey: .paymentInstruments) {
-                    tempInstruments = .card(element)
                 }
             case .genericRedirect:
                 if let genericRedirectConfig = try? container.decode(GenericRedirectConfig.self, forKey: .config) {
                     tempConfig = .genericRedirect(genericRedirectConfig)
                 }
+            default:
+                break
+            }
+        }
+        
+        // Decode paymentInstruments separately (regardless of config presence)
+        if let paymentType = optionalPaymentType {
+            switch paymentType {
+            case .payPal:
+                if let element = try? container.decode([PayPalPaymentInstrument].self, forKey: .paymentInstruments) {
+                    tempInstruments = .paypal(element)
+                }
+            case .card:
+                if let element = try? container.decode([CardInstrument].self, forKey: .paymentInstruments) {
+                    tempInstruments = .card(element)
+                }
+            default:
+                break
             }
         }
         

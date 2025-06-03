@@ -30,7 +30,9 @@ public extension Payrails {
             self.option = configuration.option
             self.config = try parse(config: configuration)
 
+            print(self.config)
             self.payrailsAPI = PayrailsAPI(config: config)
+            
             if isPaymentAvailable(type: .card),
                   let vaultId = config.vaultConfiguration?.vaultId,
                   let vaultUrl = config.vaultConfiguration?.vaultUrl,
@@ -232,6 +234,10 @@ private extension Payrails.Session {
             throw(PayrailsError.invalidDataFormat)
         }
 
+        print("data")
+        print(String(data: data, encoding: .utf8))
+        print("data")
+        
         let jsonDecoder = JSONDecoder.API()
         do {
             return try jsonDecoder.decode(SDKConfig.self, from: data)
