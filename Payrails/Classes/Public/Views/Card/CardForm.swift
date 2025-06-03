@@ -333,14 +333,16 @@ public extension Payrails {
                    let expiryMonth = fields["expiry_month"] as? String,
                    let expiryYear = fields["expiry_year"] as? String,
                    let securityCode = fields["security_code"] as? String {
-                   
-                    // Create card object
+                    
+                    let holderName = fields["cardholder_name"] as? String
+                    print(holderName, "holder name")
+                    
                     let payrailsCard = Card(
                         holderReference: self.holderReference,
                         cardNumber: cardNumber,
                         expiryMonth: expiryMonth,
                         expiryYear: expiryYear,
-                        holderName: "nil sasds",
+                        holderName: holderName,
                         securityCode: securityCode
                     )
                     

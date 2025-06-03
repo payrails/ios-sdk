@@ -42,8 +42,6 @@ extension GenericRedirectHandler: PaymentHandler {
     ) {
         let effectivePresenter = presenter ?? self.presenter
         
-        print(self.paymentOption)
-        
         delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .genericRedirect,
