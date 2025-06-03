@@ -268,6 +268,25 @@ public extension Payrails {
         
         return button
     }
+    
+    static func createStoredInstruments(
+        style: StoredInstrumentsStyle? = nil,
+        translations: StoredInstrumentsTranslations? = nil
+    ) -> Payrails.StoredInstruments {
+        precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstruments")
+        
+        let session = currentSession!
+        let finalStyle = style ?? StoredInstrumentsStyle.defaultStyle
+        let finalTranslations = translations ?? StoredInstrumentsTranslations()
+        
+        let storedInstruments = Payrails.StoredInstruments(
+            session: session,
+            style: finalStyle,
+            translations: finalTranslations
+        )
+        
+        return storedInstruments
+    }
 }
 
 public extension Payrails {

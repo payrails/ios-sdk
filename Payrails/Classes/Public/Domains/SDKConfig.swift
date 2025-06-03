@@ -267,6 +267,8 @@ struct PaymentOptions: Decodable {
         let createdAt: String
         let status: String
         let data: CardInstrumentData?
+        let displayName: String?
+        let paymentMethod: String?
     }
 
     struct CardInstrumentData: Decodable {
