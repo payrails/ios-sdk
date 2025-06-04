@@ -58,20 +58,14 @@ public struct StoredInstrumentsStyle {
     public static let defaultStyle = StoredInstrumentsStyle()
 }
 
-private struct InstrumentItemView {
-    let instrument: StoredInstrument
-    let containerView: UIView
-    let labelView: UILabel
-    let paymentButton: Payrails.StoredInstrumentPaymentButton
-    let tapGestureRecognizer: UITapGestureRecognizer
-}
+
 
 public extension Payrails {
     final class StoredInstruments: UIView {
         private weak var session: Payrails.Session?
         private let style: StoredInstrumentsStyle
         private let translations: StoredInstrumentsTranslations
-        private var instrumentViews: [InstrumentItemView] = []
+        private var instrumentViews: [Payrails.StoredInstrumentView] = []
         private var selectedInstrumentId: String?
         private let stackView: UIStackView
         
@@ -141,119 +135,29 @@ public extension Payrails {
         }
         
         private func createInstrumentView(for instrument: StoredInstrument) {
-            // Create container view
-            let containerView = UIView()
-            containerView.backgroundColor = style.itemBackgroundColor
-            containerView.layer.cornerRadius = style.itemCornerRadius
-            containerView.translatesAutoresizingMaskIntoConstraints = false
-            
-            // Create label
-            let label = UILabel()
-            label.text = getDisplayText(for: instrument)
-            label.textColor = style.labelTextColor
-            label.font = style.labelFont
-            label.translatesAutoresizingMaskIntoConstraints = false
-            
-            // Create payment button
-            let paymentButton = Payrails.StoredInstrumentPaymentButton(
-                storedInstrument: instrument,
-                session: session,
-                translations: translations.buttonTranslations,
-                style: style.buttonStyle
-            )
-            paymentButton.delegate = self
-            paymentButton.presenter = presenter
-            paymentButton.translatesAutoresizingMaskIntoConstraints = false
-            paymentButton.isHidden = true // Hidden by default
-            
-            // Create tap gesture
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(instrumentTapped(_:)))
-            containerView.addGestureRecognizer(tapGesture)
-            
-            // Add subviews
-            containerView.addSubview(label)
-            containerView.addSubview(paymentButton)
-            
-            // Setup constraints
-            NSLayoutConstraint.activate([
-                // Label constraints
-                label.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
-                label.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: style.itemPadding.left),
-                label.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
-                
-                // Payment button constraints
-                paymentButton.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 8),
-                paymentButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: style.itemPadding.left),
-                paymentButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
-                paymentButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -style.itemPadding.bottom)
-            ])
-            
-            // Create item view struct
-            let itemView = InstrumentItemView(
+            // Create StoredInstrumentView using the new component
+            let instrumentView = Payrails.StoredInstrumentView(
                 instrument: instrument,
-                containerView: containerView,
-                labelView: label,
-                paymentButton: paymentButton,
-                tapGestureRecognizer: tapGesture
+                session: session,
+                style: style,
+                translations: translations
             )
             
-            instrumentViews.append(itemView)
-            stackView.addArrangedSubview(containerView)
+            instrumentView.delegate = self
+            instrumentView.presenter = presenter
+            instrumentView.translatesAutoresizingMaskIntoConstraints = false
+            
+            instrumentViews.append(instrumentView)
+            stackView.addArrangedSubview(instrumentView)
         }
         
-        private func getDisplayText(for instrument: StoredInstrument) -> String {
-            switch instrument.type {
-            case .card:
-                if let description = instrument.description, !description.isEmpty {
-                    return "\(translations.cardPrefix) \(description)"
-                } else {
-                    return "Card"
-                }
-            case .payPal:
-                if let email = instrument.email, !email.isEmpty {
-                    return "\(translations.paypalPrefix) - \(email)"
-                } else {
-                    return translations.paypalPrefix
-                }
-            default:
-                return instrument.description ?? "Payment Method"
-            }
-        }
-        
-        @objc private func instrumentTapped(_ gesture: UITapGestureRecognizer) {
-            guard let containerView = gesture.view,
-                  let itemView = instrumentViews.first(where: { $0.containerView == containerView }) else {
-                return
-            }
-            
-            let instrument = itemView.instrument
-            let isCurrentlySelected = selectedInstrumentId == instrument.id
-            
-            // Hide all payment buttons and reset background colors
-            for view in instrumentViews {
-                view.paymentButton.isHidden = true
-                view.containerView.backgroundColor = style.itemBackgroundColor
-            }
-            
-            if !isCurrentlySelected {
-                // Show this instrument's payment button and highlight
-                itemView.paymentButton.isHidden = false
-                itemView.containerView.backgroundColor = style.selectedItemBackgroundColor
-                selectedInstrumentId = instrument.id
-                
-                // Notify delegate
-                delegate?.storedInstruments(self, didSelectInstrument: instrument)
-            } else {
-                // Deselect
-                selectedInstrumentId = nil
-            }
-        }
+
         
         public func refreshInstruments() {
             // Clear existing views
-            for itemView in instrumentViews {
-                stackView.removeArrangedSubview(itemView.containerView)
-                itemView.containerView.removeFromSuperview()
+            for instrumentView in instrumentViews {
+                stackView.removeArrangedSubview(instrumentView)
+                instrumentView.removeFromSuperview()
             }
             instrumentViews.removeAll()
             selectedInstrumentId = nil
@@ -264,21 +168,30 @@ public extension Payrails {
     }
 }
 
-// MARK: - PayrailsStoredInstrumentPaymentButtonDelegate
-extension Payrails.StoredInstruments: PayrailsStoredInstrumentPaymentButtonDelegate {
-    public func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton) {
-        Payrails.log("Payment button clicked for stored instrument")
+// MARK: - PayrailsStoredInstrumentViewDelegate
+extension Payrails.StoredInstruments: PayrailsStoredInstrumentViewDelegate {
+    public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didSelectInstrument instrument: StoredInstrument) {
+        // Deselect all other instrument views
+        for instrumentView in instrumentViews {
+            if instrumentView != view {
+                instrumentView.setSelected(false)
+            }
+        }
+        
+        selectedInstrumentId = instrument.id
+        delegate?.storedInstruments(self, didSelectInstrument: instrument)
     }
     
-    public func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton) {
-        let instrument = button.getStoredInstrument()
+    public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didDeselectInstrument instrument: StoredInstrument) {
+        selectedInstrumentId = nil
+        // Note: We don't forward deselection to the main delegate as it only has selection callback
+    }
+    
+    public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didCompletePaymentForInstrument instrument: StoredInstrument) {
         delegate?.storedInstruments(self, didCompletePaymentForInstrument: instrument)
     }
     
-    public func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton) {
-        let instrument = button.getStoredInstrument()
-        // Create a generic error since we don't have specific error details
-        let error = PayrailsError.authenticationError
+    public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError) {
         delegate?.storedInstruments(self, didFailPaymentForInstrument: instrument, error: error)
     }
 }
