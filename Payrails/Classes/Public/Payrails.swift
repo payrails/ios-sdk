@@ -320,6 +320,22 @@ public extension Payrails {
         
         return try await currentSession.deleteInstrument(instrumentId: instrumentId)
     }
+    
+    static func getStoredInstruments() -> [StoredInstrument] {
+        guard let currentSession = getCurrentSession() else {
+            Payrails.log("No active Payrails session available for getting stored instruments")
+            return []
+        }
+        
+        // Get all stored instruments (both card and PayPal)
+        let cardInstruments = currentSession.storedInstruments(for: .card)
+        let paypalInstruments = currentSession.storedInstruments(for: .payPal)
+        let allInstruments = cardInstruments + paypalInstruments
+        
+        Payrails.log("Retrieved \(allInstruments.count) stored instruments (\(cardInstruments.count) cards, \(paypalInstruments.count) PayPal)")
+        
+        return allInstruments
+    }
 }
 
 public extension Payrails {
