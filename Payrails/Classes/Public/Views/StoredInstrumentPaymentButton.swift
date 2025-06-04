@@ -134,6 +134,8 @@ public extension Payrails {
                 Payrails.log("Session not available")
                 return
             }
+            print("🧩🧩🧩🧩🧩🧩🧩🧩🧩🧩")
+            print("pay with stored instrument")
             
             paymentTask = Task { [weak self, weak session] in
                 await MainActor.run {

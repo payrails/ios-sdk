@@ -95,7 +95,10 @@ public extension Payrails {
         ) {
             isPaymentInProgress = true
             self.onResult = onResult
-
+            
+            print("🧩🧩🧩🧩🧩🧩🧩🧩🧩")
+            print("execute paymnet", instrument.type)
+            
             guard prepareHandler(
                 for: instrument.type,
                 saveInstrument: false,
@@ -104,14 +107,23 @@ public extension Payrails {
                 return
             }
 
+            print("🧩🧩🧩🧩🧩🧩🧩🧩🧩")
+            print("hanadle is ready")
+            
             currentTask = Task { [weak self] in
                 guard let strongSelf = self else { return }
                 let body = [
                     "paymentInstrumentId": instrument.id,
                     "integrationType": "api",
-                    "paymentMethodCode": instrument.type.rawValue
+                    "paymentMethodCode": instrument.type.rawValue,
+                    "amount": [
+                        "value": strongSelf.config.amount.value,
+                        "currency": strongSelf.config.amount.currency
+                    ],
+                    "storeInstrument": false
                 ]
                 do {
+                    print("calling make payment")
                     let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
                         type: instrument.type,
                         payload: body
@@ -134,9 +146,6 @@ public extension Payrails {
             
             isPaymentInProgress = true
             self.onResult = onResult
-            
-            print("Execute payment: ", saveInstrument)
-            Payrails.log("Execute payment: ", saveInstrument)
             
             guard prepareHandler(
                 for: type,

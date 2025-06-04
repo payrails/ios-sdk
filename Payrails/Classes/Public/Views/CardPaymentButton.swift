@@ -140,17 +140,3 @@ extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
         // Could notify delegate here if needed
     }
 }
-
-//now i need this component:
-//- name will be StoredInstuments
-//- this component will render card and paypal stored instrumtesn
-//- in payrasilsSession obejct as you see there is method called storedInstruments, use that
-//- this component will rende store instrumetns: if card it will rener dispalyName if paypal it will render data.em
-//- to create this component we need a static method like others in Payraisl objkect
-//- an item in the stored instrument list include two elemetns, display pary and CardPaymentButton
-//- by default CardPaymentButton will not be visible, when user clicks on the item paymen button will bre visible but all other payment buttons in storedinstrument list will be hidden (like accordigon)
-//- it is important to use our existing cardpaymentbutton, but as you see it is coded as working with cardform, so instead of modiftyg cardpaymnetbutton, let's create a storeisntrumentpaymentbutton which should be similar to cardpaymnetbutton
-//
-//if you need any more information or requirement ask me to clarify
-//
-//component should be under payrails/classes/view

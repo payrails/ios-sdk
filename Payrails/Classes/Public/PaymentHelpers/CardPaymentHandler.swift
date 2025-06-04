@@ -61,10 +61,6 @@ extension CardPaymentHandler: PaymentHandler {
     }
 
     func handlePendingState(with executionResult: GetExecutionResult) {
-        print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
-        print("handlepending state")
-        print(executionResult.links)
-        print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
         self.selfLink = executionResult.links.`self`
         
         guard let link = executionResult.links.threeDS,
@@ -161,10 +157,7 @@ extension CardPaymentHandler: WKNavigationDelegate {
         if urlString.hasPrefix(successPrefix) {
             finalAction = { [weak self] in
                 guard let self = self else { return }
-                print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
-                print("handlepending state sucess")
-                print(self.selfLink)
-                print("👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬👩‍🔬")
+
                 self.delegate?.paymentHandlerDidHandlePending(
                     handler: self,
                     type: .card,

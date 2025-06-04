@@ -15,6 +15,7 @@ public extension Payrails {
         private let style: StoredInstrumentsStyle
         private let translations: StoredInstrumentsTranslations
         private let showDeleteButton: Bool
+        private let showPayButton: Bool
         private let containerView: UIView
         private let labelView: UILabel
         private let paymentButton: Payrails.StoredInstrumentPaymentButton
@@ -31,13 +32,15 @@ public extension Payrails {
             session: Payrails.Session?,
             style: StoredInstrumentsStyle,
             translations: StoredInstrumentsTranslations,
-            showDeleteButton: Bool = false
+            showDeleteButton: Bool = false,
+            showPayButton: Bool = false
         ) {
             self.instrument = instrument
             self.session = session
             self.style = style
             self.translations = translations
             self.showDeleteButton = showDeleteButton
+            self.showPayButton = showPayButton
             self.containerView = UIView()
             self.labelView = UILabel()
             self.paymentButton = Payrails.StoredInstrumentPaymentButton(
@@ -77,6 +80,7 @@ public extension Payrails {
             paymentButton.delegate = self
             paymentButton.translatesAutoresizingMaskIntoConstraints = false
             paymentButton.isHidden = true // Hidden by default
+            paymentButton.presenter = self.presenter
             
             // Setup delete button
             setupDeleteButton()
@@ -88,7 +92,9 @@ public extension Payrails {
             // Add subviews
             addSubview(containerView)
             containerView.addSubview(labelView)
-            containerView.addSubview(paymentButton)
+            if showPayButton {
+                containerView.addSubview(paymentButton)
+            }
             if showDeleteButton {
                 containerView.addSubview(deleteButton)
             }
@@ -132,7 +138,9 @@ public extension Payrails {
         
         public func setSelected(_ selected: Bool) {
             isSelected = selected
-            paymentButton.isHidden = !selected
+            if showPayButton {
+                paymentButton.isHidden = !selected
+            }
             containerView.backgroundColor = selected ? style.selectedItemBackgroundColor : style.itemBackgroundColor
         }
         
@@ -166,14 +174,21 @@ public extension Payrails {
                 
                 // Label constraints
                 labelView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
-                labelView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: style.itemPadding.left),
-                
-                // Payment button constraints
-                paymentButton.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 8),
-                paymentButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: style.itemPadding.left),
-                paymentButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
-                paymentButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -style.itemPadding.bottom)
+                labelView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: style.itemPadding.left)
             ]
+            
+            // Payment button constraints (only if showPayButton is true)
+            if showPayButton {
+                constraints.append(contentsOf: [
+                    paymentButton.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 8),
+                    paymentButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: style.itemPadding.left),
+                    paymentButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
+                    paymentButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -style.itemPadding.bottom)
+                ])
+            } else {
+                // If no payment button, label should be connected to bottom
+                constraints.append(labelView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -style.itemPadding.bottom))
+            }
             
             if showDeleteButton {
                 // Adjust label trailing constraint to make room for delete button

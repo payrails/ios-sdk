@@ -272,7 +272,8 @@ public extension Payrails {
     static func createStoredInstruments(
         style: StoredInstrumentsStyle? = nil,
         translations: StoredInstrumentsTranslations? = nil,
-        showDeleteButton: Bool = false
+        showDeleteButton: Bool = false,
+        showPayButton: Bool = false
     ) -> Payrails.StoredInstruments {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstruments")
         
@@ -284,7 +285,8 @@ public extension Payrails {
             session: session,
             style: finalStyle,
             translations: finalTranslations,
-            showDeleteButton: showDeleteButton
+            showDeleteButton: showDeleteButton,
+            showPayButton: showPayButton
         )
         
         return storedInstruments
@@ -294,7 +296,8 @@ public extension Payrails {
         instrument: StoredInstrument,
         style: StoredInstrumentsStyle? = nil,
         translations: StoredInstrumentsTranslations? = nil,
-        showDeleteButton: Bool = false
+        showDeleteButton: Bool = false,
+        showPayButton: Bool = false
     ) -> Payrails.StoredInstrumentView {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstrumentView")
         
@@ -307,7 +310,8 @@ public extension Payrails {
             session: session,
             style: finalStyle,
             translations: finalTranslations,
-            showDeleteButton: showDeleteButton
+            showDeleteButton: showDeleteButton,
+            showPayButton: showPayButton
         )
         
         return storedInstrumentView

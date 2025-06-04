@@ -94,6 +94,7 @@ public extension Payrails {
         private let style: StoredInstrumentsStyle
         private let translations: StoredInstrumentsTranslations
         private let showDeleteButton: Bool
+        private let showPayButton: Bool
         private var instrumentViews: [Payrails.StoredInstrumentView] = []
         private var selectedInstrumentId: String?
         private let stackView: UIStackView
@@ -106,12 +107,14 @@ public extension Payrails {
             session: Payrails.Session?,
             style: StoredInstrumentsStyle,
             translations: StoredInstrumentsTranslations,
-            showDeleteButton: Bool = false
+            showDeleteButton: Bool = false,
+            showPayButton: Bool = false
         ) {
             self.session = session
             self.style = style
             self.translations = translations
             self.showDeleteButton = showDeleteButton
+            self.showPayButton = showPayButton
             self.stackView = UIStackView()
             
             super.init(frame: .zero)
@@ -161,18 +164,19 @@ public extension Payrails {
             
             // Create views for each instrument
             for instrument in allInstruments {
-                createInstrumentView(for: instrument, showDeleteButton: showDeleteButton)
+                createInstrumentView(for: instrument, showDeleteButton: showDeleteButton, showPayButton: showPayButton)
             }
         }
         
-        private func createInstrumentView(for instrument: StoredInstrument, showDeleteButton: Bool = false) {
+        private func createInstrumentView(for instrument: StoredInstrument, showDeleteButton: Bool = false, showPayButton: Bool = false) {
             // Create StoredInstrumentView using the new component
             let instrumentView = Payrails.StoredInstrumentView(
                 instrument: instrument,
                 session: session,
                 style: style,
                 translations: translations,
-                showDeleteButton: showDeleteButton
+                showDeleteButton: showDeleteButton,
+                showPayButton: showPayButton
             )
             
             instrumentView.delegate = self

@@ -201,14 +201,23 @@ class PayrailsAPI {
         let body = Body(
             amount: amount,
             returnInfo: .init(
-                success: "https://www.bootstrap.payrails.io/success",
-                cancel: "https://www.bootstrap.payrails.io/cancel",
-                error: "https://www.bootstrap.payrails.io/error"
+                success: "https://assets.payrails.io/html/payrails-success.html",
+                cancel: "https://assets.payrails.io/html/payrails-cancel.html",
+                error: "https://assets.payrails.io/html/payrails-error.html"
             ),
             paymentComposition: [paymentComposition]
         )
         let jsonEncoder = JSONEncoder()
-        let jsonData = convertToJSON(body: payload ?? [:])
+        
+        // Use proper encoding for stored instrument payments, fallback to convertToJSON for others
+        let jsonData: Data?
+        if payload?["paymentInstrumentId"] != nil {
+            // Stored instrument payment - use proper Body encoding
+            jsonData = try jsonEncoder.encode(body)
+        } else {
+            // Other payment types - use existing convertToJSON method
+            jsonData = convertToJSON(body: payload ?? [:])
+        }
 
         let authorizeResponse = try await call(
             url: authorizeURL.url,
