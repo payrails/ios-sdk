@@ -271,7 +271,8 @@ public extension Payrails {
     
     static func createStoredInstruments(
         style: StoredInstrumentsStyle? = nil,
-        translations: StoredInstrumentsTranslations? = nil
+        translations: StoredInstrumentsTranslations? = nil,
+        showDeleteButton: Bool = false
     ) -> Payrails.StoredInstruments {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstruments")
         
@@ -282,7 +283,8 @@ public extension Payrails {
         let storedInstruments = Payrails.StoredInstruments(
             session: session,
             style: finalStyle,
-            translations: finalTranslations
+            translations: finalTranslations,
+            showDeleteButton: showDeleteButton
         )
         
         return storedInstruments
@@ -291,7 +293,8 @@ public extension Payrails {
     static func createStoredInstrumentView(
         instrument: StoredInstrument,
         style: StoredInstrumentsStyle? = nil,
-        translations: StoredInstrumentsTranslations? = nil
+        translations: StoredInstrumentsTranslations? = nil,
+        showDeleteButton: Bool = false
     ) -> Payrails.StoredInstrumentView {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstrumentView")
         
@@ -303,10 +306,19 @@ public extension Payrails {
             instrument: instrument,
             session: session,
             style: finalStyle,
-            translations: finalTranslations
+            translations: finalTranslations,
+            showDeleteButton: showDeleteButton
         )
         
         return storedInstrumentView
+    }
+    
+    static func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+        guard let currentSession = getCurrentSession() else {
+            throw PayrailsError.missingData("No active Payrails session. Please initialize a session first.")
+        }
+        
+        return try await currentSession.deleteInstrument(instrumentId: instrumentId)
     }
 }
 

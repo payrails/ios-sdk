@@ -25,3 +25,7 @@ struct GetExecutionResult: Decodable {
     let links: ExecutionLinks
     let actionRequired: String?
 }
+
+public struct DeleteInstrumentResponse: Decodable {
+    public let success: Bool
+}

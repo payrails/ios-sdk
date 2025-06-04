@@ -6,6 +6,12 @@ struct SDKConfig: Decodable {
     let vaultConfiguration: VaultConfiguration?
     let execution: Execution?
     let amount: Amount
+    let links: SDKConfigLinks?
+}
+
+struct SDKConfigLinks: Decodable {
+    let instrumentDelete: Link?
+    let instrumentUpdate: Link?
 }
 
 struct VaultConfiguration: Decodable {

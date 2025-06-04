@@ -471,4 +471,8 @@ public extension Payrails.Session {
         guard let config = self.config else { return nil }
         return PublicSDKConfig(from: config)
     }
+    
+    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+        return try await payrailsAPI.deleteInstrument(instrumentId: instrumentId)
+    }
 }

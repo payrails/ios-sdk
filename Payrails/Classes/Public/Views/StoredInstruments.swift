@@ -4,6 +4,7 @@ public protocol PayrailsStoredInstrumentsDelegate: AnyObject {
     func storedInstruments(_ view: Payrails.StoredInstruments, didSelectInstrument instrument: StoredInstrument)
     func storedInstruments(_ view: Payrails.StoredInstruments, didCompletePaymentForInstrument instrument: StoredInstrument)
     func storedInstruments(_ view: Payrails.StoredInstruments, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError)
+    func storedInstruments(_ view: Payrails.StoredInstruments, didRequestDeleteInstrument instrument: StoredInstrument)
 }
 
 public struct StoredInstrumentsTranslations {
@@ -22,6 +23,30 @@ public struct StoredInstrumentsTranslations {
     }
 }
 
+public struct DeleteButtonStyle {
+    public let backgroundColor: UIColor
+    public let textColor: UIColor
+    public let font: UIFont
+    public let cornerRadius: CGFloat
+    public let size: CGSize
+    
+    public init(
+        backgroundColor: UIColor = .systemRed,
+        textColor: UIColor = .white,
+        font: UIFont = .systemFont(ofSize: 14),
+        cornerRadius: CGFloat = 4,
+        size: CGSize = CGSize(width: 32, height: 32)
+    ) {
+        self.backgroundColor = backgroundColor
+        self.textColor = textColor
+        self.font = font
+        self.cornerRadius = cornerRadius
+        self.size = size
+    }
+    
+    public static let defaultStyle = DeleteButtonStyle()
+}
+
 public struct StoredInstrumentsStyle {
     public let backgroundColor: UIColor
     public let itemBackgroundColor: UIColor
@@ -32,6 +57,7 @@ public struct StoredInstrumentsStyle {
     public let itemSpacing: CGFloat
     public let itemPadding: UIEdgeInsets
     public let buttonStyle: StoredInstrumentButtonStyle
+    public let deleteButtonStyle: DeleteButtonStyle
     
     public init(
         backgroundColor: UIColor = .clear,
@@ -42,7 +68,8 @@ public struct StoredInstrumentsStyle {
         itemCornerRadius: CGFloat = 8,
         itemSpacing: CGFloat = 8,
         itemPadding: UIEdgeInsets = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16),
-        buttonStyle: StoredInstrumentButtonStyle = .defaultStyle
+        buttonStyle: StoredInstrumentButtonStyle = .defaultStyle,
+        deleteButtonStyle: DeleteButtonStyle = .defaultStyle
     ) {
         self.backgroundColor = backgroundColor
         self.itemBackgroundColor = itemBackgroundColor
@@ -53,6 +80,7 @@ public struct StoredInstrumentsStyle {
         self.itemSpacing = itemSpacing
         self.itemPadding = itemPadding
         self.buttonStyle = buttonStyle
+        self.deleteButtonStyle = deleteButtonStyle
     }
     
     public static let defaultStyle = StoredInstrumentsStyle()
@@ -65,6 +93,7 @@ public extension Payrails {
         private weak var session: Payrails.Session?
         private let style: StoredInstrumentsStyle
         private let translations: StoredInstrumentsTranslations
+        private let showDeleteButton: Bool
         private var instrumentViews: [Payrails.StoredInstrumentView] = []
         private var selectedInstrumentId: String?
         private let stackView: UIStackView
@@ -76,11 +105,13 @@ public extension Payrails {
         internal init(
             session: Payrails.Session?,
             style: StoredInstrumentsStyle,
-            translations: StoredInstrumentsTranslations
+            translations: StoredInstrumentsTranslations,
+            showDeleteButton: Bool = false
         ) {
             self.session = session
             self.style = style
             self.translations = translations
+            self.showDeleteButton = showDeleteButton
             self.stackView = UIStackView()
             
             super.init(frame: .zero)
@@ -130,17 +161,18 @@ public extension Payrails {
             
             // Create views for each instrument
             for instrument in allInstruments {
-                createInstrumentView(for: instrument)
+                createInstrumentView(for: instrument, showDeleteButton: showDeleteButton)
             }
         }
         
-        private func createInstrumentView(for instrument: StoredInstrument) {
+        private func createInstrumentView(for instrument: StoredInstrument, showDeleteButton: Bool = false) {
             // Create StoredInstrumentView using the new component
             let instrumentView = Payrails.StoredInstrumentView(
                 instrument: instrument,
                 session: session,
                 style: style,
-                translations: translations
+                translations: translations,
+                showDeleteButton: showDeleteButton
             )
             
             instrumentView.delegate = self
@@ -193,5 +225,9 @@ extension Payrails.StoredInstruments: PayrailsStoredInstrumentViewDelegate {
     
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError) {
         delegate?.storedInstruments(self, didFailPaymentForInstrument: instrument, error: error)
+    }
+    
+    public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didRequestDeleteInstrument instrument: StoredInstrument) {
+        delegate?.storedInstruments(self, didRequestDeleteInstrument: instrument)
     }
 }

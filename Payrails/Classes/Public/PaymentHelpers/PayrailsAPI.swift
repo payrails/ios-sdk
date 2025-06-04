@@ -161,6 +161,30 @@ class PayrailsAPI {
         throw lastError ?? PayrailsError.unknown(error: nil)
     }
 
+    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+        guard let instrumentDeleteLink = config.links?.instrumentDelete,
+              let href = instrumentDeleteLink.href,
+              !href.isEmpty else {
+            throw PayrailsError.missingData("instrumentDelete link is missing or invalid")
+        }
+        
+        // Replace :instrumentId placeholder with actual instrumentId
+        let urlString = href.replacingOccurrences(of: ":instrumentId", with: instrumentId)
+        
+        guard let url = URL(string: urlString) else {
+            throw PayrailsError.missingData("Invalid instrumentDelete URL: \(urlString)")
+        }
+        
+        let method = Method(rawValue: instrumentDeleteLink.method ?? "DELETE") ?? .DELETE
+        
+        return try await call(
+            url: url,
+            method: method,
+            body: nil,
+            type: DeleteInstrumentResponse.self
+        )
+    }
+
     private func authorizePayment(
         type: Payrails.PaymentType,
         payload: [String: Any]?
@@ -328,7 +352,7 @@ class PayrailsAPI {
 
 fileprivate extension PayrailsAPI {
     enum Method: String {
-        case POST, GET
+        case POST, GET, DELETE
     }
 
     func call<T: Decodable>(
