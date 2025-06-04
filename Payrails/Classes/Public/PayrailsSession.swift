@@ -233,10 +233,6 @@ private extension Payrails.Session {
         guard let data = Data(base64Encoded: config.initData.data) else {
             throw(PayrailsError.invalidDataFormat)
         }
-
-        print("data")
-        print(String(data: data, encoding: .utf8))
-        print("data")
         
         let jsonDecoder = JSONDecoder.API()
         do {
