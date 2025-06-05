@@ -96,9 +96,6 @@ public extension Payrails {
             isPaymentInProgress = true
             self.onResult = onResult
             
-            print("🧩🧩🧩🧩🧩🧩🧩🧩🧩")
-            print("execute paymnet", instrument.type)
-            
             guard prepareHandler(
                 for: instrument.type,
                 saveInstrument: false,
@@ -107,9 +104,6 @@ public extension Payrails {
                 return
             }
 
-            print("🧩🧩🧩🧩🧩🧩🧩🧩🧩")
-            print("hanadle is ready")
-            
             currentTask = Task { [weak self] in
                 guard let strongSelf = self else { return }
                 let body = [
