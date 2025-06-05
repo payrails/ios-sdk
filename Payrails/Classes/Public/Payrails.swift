@@ -340,6 +340,18 @@ public extension Payrails {
         
         return allInstruments
     }
+    
+    static func getStoredInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
+        guard let currentSession = getCurrentSession() else {
+            Payrails.log("No active Payrails session available for getting stored instruments")
+            return []
+        }
+        
+        let instruments = currentSession.storedInstruments(for: type)
+        Payrails.log("Retrieved \(instruments.count) stored instruments for type: \(type.rawValue)")
+        
+        return instruments
+    }
 }
 
 public extension Payrails {
