@@ -143,7 +143,8 @@ public extension Payrails {
                 }
             } else {
                 // Card form mode - use card translations
-                setTitle(translations.label, for: .normal)
+                let title = isProcessing ? "" : translations.label
+                setTitle(title, for: .normal)
             }
         }
         
