@@ -30,7 +30,9 @@ public extension Payrails {
             self.option = configuration.option
             self.config = try parse(config: configuration)
 
+            print(self.config)
             self.payrailsAPI = PayrailsAPI(config: config)
+            
             if isPaymentAvailable(type: .card),
                   let vaultId = config.vaultConfiguration?.vaultId,
                   let vaultUrl = config.vaultConfiguration?.vaultUrl,
@@ -93,7 +95,7 @@ public extension Payrails {
         ) {
             isPaymentInProgress = true
             self.onResult = onResult
-
+            
             guard prepareHandler(
                 for: instrument.type,
                 saveInstrument: false,
@@ -107,9 +109,15 @@ public extension Payrails {
                 let body = [
                     "paymentInstrumentId": instrument.id,
                     "integrationType": "api",
-                    "paymentMethodCode": instrument.type.rawValue
+                    "paymentMethodCode": instrument.type.rawValue,
+                    "amount": [
+                        "value": strongSelf.config.amount.value,
+                        "currency": strongSelf.config.amount.currency
+                    ],
+                    "storeInstrument": false
                 ]
                 do {
+                    print("calling make payment")
                     let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
                         type: instrument.type,
                         payload: body
@@ -132,9 +140,6 @@ public extension Payrails {
             
             isPaymentInProgress = true
             self.onResult = onResult
-            
-            print("Execute payment: ", saveInstrument)
-            Payrails.log("Execute payment: ", saveInstrument)
             
             guard prepareHandler(
                 for: type,
@@ -231,7 +236,7 @@ private extension Payrails.Session {
         guard let data = Data(base64Encoded: config.initData.data) else {
             throw(PayrailsError.invalidDataFormat)
         }
-
+        
         let jsonDecoder = JSONDecoder.API()
         do {
             return try jsonDecoder.decode(SDKConfig.self, from: data)
@@ -464,5 +469,9 @@ public extension Payrails.Session {
     func getSDKConfiguration() -> PublicSDKConfig? {
         guard let config = self.config else { return nil }
         return PublicSDKConfig(from: config)
+    }
+    
+    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+        return try await payrailsAPI.deleteInstrument(instrumentId: instrumentId)
     }
 }

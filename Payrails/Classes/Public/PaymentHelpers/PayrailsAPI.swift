@@ -161,6 +161,30 @@ class PayrailsAPI {
         throw lastError ?? PayrailsError.unknown(error: nil)
     }
 
+    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+        guard let instrumentDeleteLink = config.links?.instrumentDelete,
+              let href = instrumentDeleteLink.href,
+              !href.isEmpty else {
+            throw PayrailsError.missingData("instrumentDelete link is missing or invalid")
+        }
+        
+        // Replace :instrumentId placeholder with actual instrumentId
+        let urlString = href.replacingOccurrences(of: ":instrumentId", with: instrumentId)
+        
+        guard let url = URL(string: urlString) else {
+            throw PayrailsError.missingData("Invalid instrumentDelete URL: \(urlString)")
+        }
+        
+        let method = Method(rawValue: instrumentDeleteLink.method ?? "DELETE") ?? .DELETE
+        
+        return try await call(
+            url: url,
+            method: method,
+            body: nil,
+            type: DeleteInstrumentResponse.self
+        )
+    }
+
     private func authorizePayment(
         type: Payrails.PaymentType,
         payload: [String: Any]?
@@ -177,14 +201,23 @@ class PayrailsAPI {
         let body = Body(
             amount: amount,
             returnInfo: .init(
-                success: "https://www.bootstrap.payrails.io/success",
-                cancel: "https://www.bootstrap.payrails.io/cancel",
-                error: "https://www.bootstrap.payrails.io/error"
+                success: "https://assets.payrails.io/html/payrails-success.html",
+                cancel: "https://assets.payrails.io/html/payrails-cancel.html",
+                error: "https://assets.payrails.io/html/payrails-error.html"
             ),
             paymentComposition: [paymentComposition]
         )
         let jsonEncoder = JSONEncoder()
-        let jsonData = convertToJSON(body: payload ?? [:])
+        
+        // Use proper encoding for stored instrument payments, fallback to convertToJSON for others
+        let jsonData: Data?
+        if payload?["paymentInstrumentId"] != nil {
+            // Stored instrument payment - use proper Body encoding
+            jsonData = try jsonEncoder.encode(body)
+        } else {
+            // Other payment types - use existing convertToJSON method
+            jsonData = convertToJSON(body: payload ?? [:])
+        }
 
         let authorizeResponse = try await call(
             url: authorizeURL.url,
@@ -328,7 +361,7 @@ class PayrailsAPI {
 
 fileprivate extension PayrailsAPI {
     enum Method: String {
-        case POST, GET
+        case POST, GET, DELETE
     }
 
     func call<T: Decodable>(

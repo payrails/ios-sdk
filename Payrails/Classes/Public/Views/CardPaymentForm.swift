@@ -77,7 +77,6 @@ public extension Payrails {
             self.clipsToBounds = true   // Optional: Needed if using cornerRadius to clip content
             
             self.layoutMargins = UIEdgeInsets(top: 15, left: 15, bottom:15, right: 15)
-            cardForm.delegate = self
 
             // Apply button styles from config
             let buttonStyle = self.stylesConfig.buttonStyle ?? CardButtonStyle.defaultStyle
@@ -195,24 +194,3 @@ public extension Payrails {
     }
 }
 
-extension Payrails.CardPaymentForm: PayrailsCardFormDelegate {
-    public func cardForm(_ view: Payrails.CardForm, didCollectCardData data: String) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            self.encryptedCardData = data
-            
-            // Update the encryptedCardData on the presenter if it implements the property
-            if let presenter = self.presenter as? (any PaymentPresenter) {
-                presenter.encryptedCardData = data
-            }
-            
-            // Automatically start the payment process
-            self.pay(with: .card)
-        }
-    }
-    
-    public func cardForm(_ view: Payrails.CardForm, didFailWithError error: Error) {
-        logMessage("Card collection failed: \(error.localizedDescription)")
-    }
-}

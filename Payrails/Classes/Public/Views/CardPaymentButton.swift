@@ -7,7 +7,9 @@ public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
 
 public extension Payrails {
     final class CardPaymentButton: ActionButton {
-        private let cardForm: Payrails.CardForm
+        // Optional properties for dual mode support
+        private let cardForm: Payrails.CardForm?
+        private let storedInstrument: StoredInstrument?
         private weak var session: Payrails.Session?
         private var paymentTask: Task<Void, Error>?
         private var encryptedCardData: String?
@@ -15,20 +17,45 @@ public extension Payrails {
             didSet {
                 self.isUserInteractionEnabled = !isProcessing
                 show(loading: isProcessing)
+                updateButtonTitle()
             }
         }
+        
+        // Mode detection
+        private var isStoredInstrumentMode: Bool {
+            return storedInstrument != nil
+        }
+        
+        // Translations for different modes
+        private let translations: CardPaymenButtonTranslations
+        private let storedInstrumentTranslations: StoredInstrumentButtonTranslations?
         
         public weak var delegate: PayrailsCardPaymentButtonDelegate?
         public weak var presenter: PaymentPresenter?
         
-        // Internal initializer used by factory method
-        internal init(cardForm: Payrails.CardForm, session: Payrails.Session?, translations: CardPaymenButtonTranslations) {
+        // Card form mode initializer (existing)
+        internal init(cardForm: Payrails.CardForm, session: Payrails.Session?, translations: CardPaymenButtonTranslations, buttonStyle: CardButtonStyle? = nil) {
             self.cardForm = cardForm
+            self.storedInstrument = nil
             self.session = session
+            self.translations = translations
+            self.storedInstrumentTranslations = nil
             super.init()
             
-            setupButton(translations: translations)
+            setupButton(style: buttonStyle)
             cardForm.delegate = self
+        }
+        
+        // Stored instrument mode initializer (new)
+        internal init(storedInstrument: StoredInstrument, session: Payrails.Session?, translations: CardPaymenButtonTranslations, storedInstrumentTranslations: StoredInstrumentButtonTranslations? = nil, buttonStyle: StoredInstrumentButtonStyle? = nil) {
+            self.cardForm = nil
+            self.storedInstrument = storedInstrument
+            self.session = session
+            self.translations = translations
+            self.storedInstrumentTranslations = storedInstrumentTranslations
+            super.init()
+            
+            setupButton(storedInstrumentStyle: buttonStyle)
         }
         
         // Required initializers with warnings
@@ -48,17 +75,89 @@ public extension Payrails {
             }
         }
         
-        private func setupButton(translations: CardPaymenButtonTranslations) {
-            setTitle(translations.label, for: .normal)
-            backgroundColor = .systemBlue
-            setTitleColor(.white, for: .normal)
-            layer.cornerRadius = 8
+        private func setupButton(style: CardButtonStyle? = nil) {
+            updateButtonTitle()
+            
+            // Use provided style or fall back to default
+            let buttonStyle = style ?? CardButtonStyle.defaultStyle
+            
+            // Apply style properties
+            if let bgColor = buttonStyle.backgroundColor {
+                backgroundColor = bgColor
+            }
+            if let textColor = buttonStyle.textColor {
+                setTitleColor(textColor, for: .normal)
+            }
+            if let font = buttonStyle.font {
+                titleLabel?.font = font
+            }
+            if let cornerRadius = buttonStyle.cornerRadius {
+                layer.cornerRadius = cornerRadius
+            }
+            if let borderWidth = buttonStyle.borderWidth {
+                layer.borderWidth = borderWidth
+            }
+            if let borderColor = buttonStyle.borderColor {
+                layer.borderColor = borderColor.cgColor
+            }
+            if let contentEdgeInsets = buttonStyle.contentEdgeInsets {
+                self.contentEdgeInsets = contentEdgeInsets
+            }
+            
             addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
+        }
+        
+        private func setupButton(storedInstrumentStyle: StoredInstrumentButtonStyle? = nil) {
+            updateButtonTitle()
+            
+            if let style = storedInstrumentStyle {
+                backgroundColor = style.backgroundColor
+                setTitleColor(style.textColor, for: .normal)
+                titleLabel?.font = style.font
+                layer.cornerRadius = style.cornerRadius
+                layer.borderWidth = style.borderWidth
+                layer.borderColor = style.borderColor.cgColor
+                contentEdgeInsets = style.contentEdgeInsets
+                
+                // Set height constraint
+                heightAnchor.constraint(equalToConstant: style.height).isActive = true
+            } else {
+                // Default styling
+                backgroundColor = .systemBlue
+                setTitleColor(.white, for: .normal)
+                layer.cornerRadius = 8
+            }
+            
+            addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
+        }
+        
+        private func updateButtonTitle() {
+            if isStoredInstrumentMode {
+                // Use stored instrument translations if available
+                if let storedTranslations = storedInstrumentTranslations {
+                    let title = isProcessing ? storedTranslations.processingLabel : storedTranslations.label
+                    setTitle(title, for: .normal)
+                } else {
+                    // Fallback to card translations
+                    setTitle(translations.label, for: .normal)
+                }
+            } else {
+                // Card form mode - use card translations
+                let title = isProcessing ? "" : translations.label
+                setTitle(title, for: .normal)
+            }
         }
         
         @objc private func payButtonTapped() {
             delegate?.onPaymentButtonClicked(self)
-            cardForm.collectFields()
+            
+            if let cardForm = cardForm {
+                // Card form mode: collect card data first
+                cardForm.collectFields()
+            } else if let storedInstrument = storedInstrument {
+                // Stored instrument mode: direct payment
+                pay(with: storedInstrument.type, storedInstrument: storedInstrument)
+            }
         }
         
         public func pay(with type: Payrails.PaymentType? = nil,
@@ -68,32 +167,46 @@ public extension Payrails {
                 return
             }
             
+            guard let session = session else {
+                Payrails.log("Session not available")
+                return
+            }
+            
             let paymentType = type ?? .card
             
-            print("-----------------------")
-            print("Save instrument:",  self.cardForm.saveInstrument)
-            print("-----------------------")
+            if isStoredInstrumentMode {
+                print("🧩🧩🧩🧩🧩🧩🧩🧩🧩🧩")
+                print("pay with stored instrument")
+            } else {
+                print("-----------------------")
+                print("Save instrument:",  self.cardForm?.saveInstrument ?? false)
+                print("-----------------------")
+            }
             
             paymentTask = Task { [weak self, weak session] in
-                self?.isProcessing = true
+                await MainActor.run {
+                    self?.isProcessing = true
+                }
                 
                 var result: OnPayResult?
                 if let session = session {
-                    if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {
-                        // Use the saveInstrument value from the CardForm
-                        let saveInstrument = self?.cardForm.saveInstrument ?? false
+                    if let storedInstrument = storedInstrument ?? self?.storedInstrument {
+                        // Stored instrument payment
+                        result = await session.executePayment(
+                            withStoredInstrument: storedInstrument,
+                            presenter: presenter
+                        )
+                    } else {
+                        // Card form payment
+                        let saveInstrument = self?.cardForm?.saveInstrument ?? false
                         result = await session.executePayment(
                             with: paymentType,
                             saveInstrument: saveInstrument,
                             presenter: presenter
                         )
                     }
-                } else if let storedInstrument = storedInstrument, let session = session {
-                    result = await session.executePayment(
-                        withStoredInstrument: storedInstrument
-                    )
                 } else {
-                    Payrails.log("Missing required payment data or session")
+                    Payrails.log("Session is no longer available")
                 }
                 
                 await MainActor.run {
@@ -118,6 +231,11 @@ public extension Payrails {
             default:
                 Payrails.log("Payment result: unknown state")
             }
+        }
+        
+        // Public method to get the stored instrument (for stored instrument mode)
+        public func getStoredInstrument() -> StoredInstrument? {
+            return storedInstrument
         }
     }
 }
