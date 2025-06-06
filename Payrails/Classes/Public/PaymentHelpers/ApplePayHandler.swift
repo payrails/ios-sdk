@@ -5,10 +5,12 @@ class ApplePayHandler: NSObject {
 
     private let request = PKPaymentRequest()
     private weak var delegate: PaymentHandlerDelegate?
+    private let saveInstrument: Bool
 
     init(
         config: PaymentOptions.ApplePayConfig,
-        delegate: PaymentHandlerDelegate?
+        delegate: PaymentHandlerDelegate?,
+        saveInstrument: Bool
     ) {
         request.merchantIdentifier = config.parameters.merchantIdentifier
         request.supportedNetworks = config.parameters.supportedNetworks.paymentNetworks
@@ -17,6 +19,7 @@ class ApplePayHandler: NSObject {
         }
         request.countryCode = config.parameters.countryCode
         self.delegate = delegate
+        self.saveInstrument = saveInstrument
     }
 }
 
@@ -46,6 +49,49 @@ extension ApplePayHandler: PaymentHandler {
     }
 
     func handlePendingState(with: GetExecutionResult) {}
+    
+    func processSuccessPayload(
+        payload: [String: Any]?,
+        amount: Amount,
+        completion: @escaping (Result<[String: Any], Error>) -> Void
+    ) {
+        guard let payload = payload,
+              let paymentInstrumentData = payload["paymentInstrumentData"] else {
+            Payrails.log("❌ Apple Pay payload missing required keys")
+            completion(.failure(PayrailsError.invalidDataFormat))
+            return
+        }
+        
+        let paymentComposition = PaymentComposition(
+            paymentMethodCode: Payrails.PaymentType.applePay.rawValue,
+            integrationType: "api",
+            amount: amount,
+            storeInstrument: self.saveInstrument,
+            paymentInstrumentData: paymentInstrumentData,
+            enrollInstrumentToNetworkOffers: false
+        )
+        
+        // TODO: this should be shared and place accordingly
+        let returnInfo: [String: String] = [
+            "success": "https://assets.payrails.io/html/payrails-success.html",
+            "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
+            "error": "https://assets.payrails.io/html/payrails-error.html",
+            "pending": "https://assets.payrails.io/html/payrails-pending.html"
+        ]
+        let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
+        let meta = ["risk": risk]
+        let amountDict = ["value": amount.value, "currency": amount.currency]
+        
+        let body: [String: Any] = [
+            "amount": amountDict,
+            "paymentComposition": [paymentComposition],
+            "returnInfo": returnInfo,
+            "meta": meta
+        ]
+        
+        completion(.success(body))
+    }
+
 }
 
 extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
@@ -61,17 +107,22 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         didAuthorizePayment payment: PKPayment,
         handler paymentCompletion: @escaping (PKPaymentAuthorizationResult) -> Void
     ) {
-
         guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
             paymentCompletion(.init(status: .failure, errors: nil))
             return
         }
 
+        // Create the restructured payload with paymentMethod object
         let payload: [String: Any] = [
             "paymentData": paymentData,
-            "paymentInstrumentName": payment.token.paymentMethod.displayName ?? "",
+            "paymentMethod": [
+                "displayName": payment.token.paymentMethod.displayName ?? "",
+                "network": payment.token.paymentMethod.network?.rawValue ?? "",
+                "type": "credit"
+            ],
+            "transactionIdentifier": payment.token.transactionIdentifier,
             "paymentNetwork": payment.token.paymentMethod.network?.rawValue ?? "",
-            "transactionIdentifier": payment.token.transactionIdentifier
+            "paymentInstrumentName": payment.token.paymentMethod.displayName ?? ""
         ]
 
         guard let payloadData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
@@ -90,10 +141,9 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
             type: .applePay,
             status: .success,
             payload: [
-                "paymentInstrumentData":
-                    [
-                        "paymentToken": String(data: payloadData, encoding: String.Encoding.utf8)
-                    ]
+                "paymentInstrumentData": [
+                    "paymentToken": String(data: payloadData, encoding: String.Encoding.utf8)
+                ]
             ]
         )
 

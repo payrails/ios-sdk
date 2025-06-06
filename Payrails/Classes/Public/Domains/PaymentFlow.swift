@@ -4,6 +4,7 @@ struct AuthorizeResponse: Decodable {
     let name: String
     let actionId: String
     let links: AuthorizeLinks
+    let executedAt: Date
 }
 
 struct AuthorizeLinks: Decodable {
@@ -22,4 +23,9 @@ struct GetExecutionResult: Decodable {
     let holderReference: String
     let workflow: Workflow
     let links: ExecutionLinks
+    let actionRequired: String?
+}
+
+public struct DeleteInstrumentResponse: Decodable {
+    public let success: Bool
 }

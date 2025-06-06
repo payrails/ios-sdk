@@ -4,6 +4,8 @@ class PayrailsAPI {
     let config: SDKConfig
 
     var isRunning = false
+    
+    var authorizeRequestDate  = Date()
 
     enum PaymentStatus {
         case success, failed, pending(GetExecutionResult)
@@ -20,7 +22,7 @@ class PayrailsAPI {
     ]
 
     private let statusesAfterPending: [PaymentAuthorizeStatus] = [
-        .authorizeSuccessful,
+        .authorizeSuccessful, 
         .authorizeFailed
     ]
 
@@ -69,6 +71,7 @@ class PayrailsAPI {
         payload: [String: Any]?
     ) async throws -> PayrailsAPI.PaymentStatus {
         isRunning = true
+        // authorization request
         let executionUrl = try await authorizePayment(type: type, payload: payload)
         guard isRunning else { throw PayrailsError.unknown(error: nil) }
         let status = try await checkExecutionStatus(url: executionUrl, targetStatuses: statusesAfterAuthorize)
@@ -77,8 +80,18 @@ class PayrailsAPI {
 
     func confirmPayment(
         link: Link,
-        payload: [String: Any]?
+        payload: [String: Any]?,
+        type: Payrails.PaymentType? = nil
     ) async throws -> PayrailsAPI.PaymentStatus {
+        // Card payments needs polling only
+        if (type == .card) {
+            let paymentStatus = try await checkExecutionStatus(
+                url: URL(string: link.href!)!,
+                targetStatuses: statusesAfterPending
+            )
+            return paymentStatus
+        }
+        
         isRunning = true
         guard let href = link.href,
         let method = Method(rawValue: link.method ?? ""),
@@ -98,18 +111,78 @@ class PayrailsAPI {
             body: data,
             type: AuthorizeResponse.self
         )
-
-        if let execution = authorizeResponse.links.execution,
-           let executionURL = URL(string: execution) {
-            let paymentStatus = try await checkExecutionStatus(
-                url: executionURL,
-                targetStatuses: statusesAfterPending
-            )
-            return paymentStatus
-        } else {
-            throw PayrailsError.missingData("Execution link is missing")
+        
+        // 1. Ensure 'execution' string exists
+        guard let execution = authorizeResponse.links.execution else {
+            #if DEBUG
+            Payrails.log("Error: Execution link string is missing from authorizeResponse.links.")
+            #endif
+            throw PayrailsError.missingData("Execution link string is missing from authorizeResponse.links")
         }
 
+        // 2. Ensure 'execution' string can be converted to a URL
+        guard let executionURL = URL(string: execution) else {
+            #if DEBUG
+            Payrails.log("Error: Could not create URL from execution string: '\(execution)'.")
+            #endif
+            throw PayrailsError.missingData("Execution link string is invalid and cannot form a URL: \(execution)")
+        }
+
+        let paymentStatus = try await checkExecutionStatus(
+            url: executionURL,
+            targetStatuses: statusesAfterPending
+        )
+        
+        return paymentStatus
+    }
+    
+    func confirmPaymentWithRetry(
+        link: Link,
+        payload: [String: Any]?,
+        maxRetries: Int = 2
+    ) async throws -> PayrailsAPI.PaymentStatus {
+        var lastError: Error?
+        
+        for attempt in 1...(maxRetries + 1) {
+            do {
+                return try await confirmPayment(link: link, payload: payload)
+            } catch {
+                lastError = error
+                if attempt <= maxRetries {
+                    #if DEBUG
+                    Payrails.log("Retrying PayPal confirmPayment (attempt \(attempt + 1))")
+                    #endif
+                    let delay = TimeInterval(attempt) // 1s, 2s delays
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+            }
+        }
+        
+        throw lastError ?? PayrailsError.unknown(error: nil)
+    }
+
+    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+        guard let instrumentDeleteLink = config.links?.instrumentDelete,
+              let href = instrumentDeleteLink.href,
+              !href.isEmpty else {
+            throw PayrailsError.missingData("instrumentDelete link is missing or invalid")
+        }
+        
+        // Replace :instrumentId placeholder with actual instrumentId
+        let urlString = href.replacingOccurrences(of: ":instrumentId", with: instrumentId)
+        
+        guard let url = URL(string: urlString) else {
+            throw PayrailsError.missingData("Invalid instrumentDelete URL: \(urlString)")
+        }
+        
+        let method = Method(rawValue: instrumentDeleteLink.method ?? "DELETE") ?? .DELETE
+        
+        return try await call(
+            url: url,
+            method: method,
+            body: nil,
+            type: DeleteInstrumentResponse.self
+        )
     }
 
     private func authorizePayment(
@@ -128,19 +201,33 @@ class PayrailsAPI {
         let body = Body(
             amount: amount,
             returnInfo: .init(
-                success: "https://www.bootstrap.payrails.io/success",
-                cancel: "https://www.bootstrap.payrails.io/cancel",
-                error: "https://www.bootstrap.payrails.io/error"
+                success: "https://assets.payrails.io/html/payrails-success.html",
+                cancel: "https://assets.payrails.io/html/payrails-cancel.html",
+                error: "https://assets.payrails.io/html/payrails-error.html"
             ),
             paymentComposition: [paymentComposition]
         )
         let jsonEncoder = JSONEncoder()
+        
+        // Use proper encoding for stored instrument payments, fallback to convertToJSON for others
+        let jsonData: Data?
+        if payload?["paymentInstrumentId"] != nil {
+            // Stored instrument payment - use proper Body encoding
+            jsonData = try jsonEncoder.encode(body)
+        } else {
+            // Other payment types - use existing convertToJSON method
+            jsonData = convertToJSON(body: payload ?? [:])
+        }
+
         let authorizeResponse = try await call(
             url: authorizeURL.url,
             method: authorizeURL.method,
-            body: try? jsonEncoder.encode(body),
+            body: jsonData,
             type: AuthorizeResponse.self
         )
+        
+        authorizeRequestDate = authorizeResponse.executedAt
+        
         if let execution = authorizeResponse.links.execution,
            let executionURL = URL(string: execution) {
             return executionURL
@@ -148,56 +235,103 @@ class PayrailsAPI {
             throw PayrailsError.missingData("Execution link is missing")
         }
     }
-
+    
+    private func isStatusValidForCompletion(_ status: Status, referenceTime: Date) -> Bool {
+        let timeTolerance: TimeInterval = 5.0 // 5 seconds tolerance for timing edge cases
+        return status.time >= referenceTime.addingTimeInterval(-timeTolerance)
+    }
+    
     private func checkExecutionStatus(
         url: URL,
         targetStatuses: [PaymentAuthorizeStatus]
-    ) async throws -> (PaymentStatus) {
-        var authorizeRequestedFound = false
-        var executionResult: GetExecutionResult!
-        var authorizeRequestedStatus: Status!
+    ) async throws -> PaymentStatus {
+        var finalExecutionResultContainingAuthorizeRequested: GetExecutionResult? // Will store the specific result
+        var dateOfAuthorizeRequested: Date?                                     // Will store the specific time
 
         var attempt = 0
-        while !authorizeRequestedFound && isRunning && attempt < 10 {
-            executionResult = try await getExecution(url: url)
-            authorizeRequestedStatus = executionResult.sortedStatus.first(where: { $0.code == "authorizeRequested" })
-            authorizeRequestedFound = authorizeRequestedStatus != nil
-            if !authorizeRequestedFound {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-            }
+        let maxAttempts = 10
+        var latestExecutionResult: GetExecutionResult? // To hold the most recent result for long polling starting point
+
+        while finalExecutionResultContainingAuthorizeRequested == nil && isRunning && attempt < maxAttempts {
             attempt += 1
+            do {
+                let currentExecutionResult = try await getExecution(url: url)
+                latestExecutionResult = currentExecutionResult // Always store the latest result
+
+                if let foundStatus = currentExecutionResult.sortedStatus.first(where: { $0.code == "authorizeRequested" }) {
+                    // This is the moment we found it. Capture this specific result and time.
+                    finalExecutionResultContainingAuthorizeRequested = currentExecutionResult
+                    dateOfAuthorizeRequested = foundStatus.time
+                    // Loop will now terminate because finalExecutionResultContainingAuthorizeRequested is no longer nil
+                } else if isRunning && attempt < maxAttempts {
+                    // Only sleep if not found and still within criteria
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+            } catch {
+                // Error during getExecution, break and let guard handle it
+                break
+            }
         }
 
-        guard authorizeRequestedFound,
-              executionResult != nil,
-              authorizeRequestedStatus != nil else {
-            throw PayrailsError.unknown(error: nil)
+        guard let validResultForAuth = finalExecutionResultContainingAuthorizeRequested,
+              let validDateForAuth = dateOfAuthorizeRequested else {
+            // If this guard fails, it means we never successfully found "authorizeRequested" within attempts,
+            // or isRunning became false, or getExecution continuously failed.
+            let reason = "Could not find 'authorizeRequested' status after \(attempt) attempts or polling was interrupted."
+            throw PayrailsError.pollingFailed(reason)
         }
 
-        if let finalState = executionResult.sortedStatus.first(where: { status in
-            targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestedStatus.time
+        // Check for immediate final state using the specific result and time with tolerance
+        if let finalState = validResultForAuth.sortedStatus.first(where: { status in
+            let isTargetStatus = targetStatuses.map { $0.rawValue }.contains(status.code)
+            let isValidTiming = isStatusValidForCompletion(status, referenceTime: validDateForAuth)
+            return isTargetStatus && isValidTiming
         }) {
-            if let paymentStatus = finalState.paymentStatus(with: executionResult) {
+            if let paymentStatus = finalState.paymentStatus(with: validResultForAuth) {
                 return paymentStatus
             } else {
-                throw PayrailsError.unknown(error: nil)
+                throw PayrailsError.failedToDerivePaymentStatus("Found final state but could not derive payment status.")
+            }
+        } else if let fallbackSuccess = validResultForAuth.sortedStatus.first(where: { status in
+            status.code == "authorizeSuccessful" // Fallback for PayPal timing edge cases
+        }) {
+            #if DEBUG
+            Payrails.log("⚠️ PayPal payment succeeded with timing discrepancy")
+            #endif
+            if let paymentStatus = fallbackSuccess.paymentStatus(with: validResultForAuth) {
+                return paymentStatus
+            } else {
+                throw PayrailsError.failedToDerivePaymentStatus("Found success state but could not derive payment status.")
             }
         } else {
-            // Start long polling
-            let currentStatuses = executionResult.sortedStatus.map { $0.code }
-            let longPollingExecutionResult = try await getExecution(
-                url: url,
-                statusesToWait: currentStatuses,
-                timeout: 300
-            )
-            let finalState = longPollingExecutionResult.sortedStatus.first(where: { status in
-                targetStatuses.map { $0.rawValue }.contains(status.code) && status.time > authorizeRequestedStatus.time
-            })
+            // No immediate final state, proceed to long polling
+            // Use latestExecutionResult for current statuses if available, otherwise validResultForAuth
+            let statusesForLongPoll = (latestExecutionResult ?? validResultForAuth).sortedStatus.map { $0.code }
+            let timeoutSeconds: Int = 300
 
-            if let paymentStatus = finalState?.paymentStatus(with: longPollingExecutionResult) {
-                return paymentStatus
-            } else {
-                throw PayrailsError.unknown(error: nil)
+            do {
+                let longPollingExecutionResult = try await getExecution(
+                    url: url,
+                    statusesToWait: statusesForLongPoll,
+                    timeout: timeoutSeconds
+                )
+
+                if let finalStateFromLongPoll = longPollingExecutionResult.sortedStatus.first(where: { status in
+                    let isTargetStatus = targetStatuses.map { $0.rawValue }.contains(status.code)
+                    let isValidTiming = isStatusValidForCompletion(status, referenceTime: validDateForAuth)
+                    return isTargetStatus && isValidTiming
+                }) {
+                    if let paymentStatus = finalStateFromLongPoll.paymentStatus(with: longPollingExecutionResult) {
+                        return paymentStatus
+                    } else {
+                        throw PayrailsError.failedToDerivePaymentStatus("Found final state after long poll but could not derive payment status.")
+                    }
+                } else {
+                    throw PayrailsError.finalStatusNotFoundAfterLongPoll("No target final status found after long polling that occurred after authorizeRequested.")
+                }
+            } catch {
+                if let payrailsError = error as? PayrailsError { throw payrailsError }
+                throw PayrailsError.longPollingFailed(underlyingError: error)
             }
         }
     }
@@ -227,7 +361,7 @@ class PayrailsAPI {
 
 fileprivate extension PayrailsAPI {
     enum Method: String {
-        case POST, GET
+        case POST, GET, DELETE
     }
 
     func call<T: Decodable>(
@@ -237,16 +371,18 @@ fileprivate extension PayrailsAPI {
         timeout: Int = 120,
         type: T.Type?
     ) async throws -> T {
-
+        
         var request = URLRequest(
             url: url,
             cachePolicy: .reloadIgnoringLocalAndRemoteCacheData
         )
+        
         request.httpMethod = method.rawValue
+        
         if let httpBody = body {
             request.httpBody = httpBody
         }
-
+        
         request.addValue(
             "application/json",
             forHTTPHeaderField: "Content-Type"
@@ -257,6 +393,10 @@ fileprivate extension PayrailsAPI {
             forHTTPHeaderField: "x-idempotency-key"
         )
 
+        request.addValue("no-cache, no-store, must-revalidate", forHTTPHeaderField: "Cache-Control")
+              request.addValue("no-cache", forHTTPHeaderField: "Pragma")
+              request.addValue("0", forHTTPHeaderField: "Expires")
+        
         request.addValue(
             (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "0",
             forHTTPHeaderField: "x-client-version"
@@ -268,14 +408,45 @@ fileprivate extension PayrailsAPI {
         )
         request.addValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         request.timeoutInterval = TimeInterval(timeout)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let status = (response as? HTTPURLResponse)?.statusCode,
-           (status == 401 || status == 403) {
-            throw PayrailsError.authenticationError
+        
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
+            
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            
+            if statusCode == 401 || statusCode == 403 {
+                #if DEBUG
+                Payrails.log("Authentication error: status code \(statusCode)")
+                #endif
+                throw PayrailsError.authenticationError
+            }
+            
+            // If status code is not successful (outside 200-299 range)
+            if statusCode < 200 || statusCode >= 300 {
+                #if DEBUG
+                Payrails.log("API error: status code \(statusCode)")
+                Payrails.log("Error response: \(responseString)")
+                #endif
+            }
+            
+            let jsonDecoder = JSONDecoder.API()
+            do {
+                let result = try jsonDecoder.decode(T.self, from: data)
+                return result
+            } catch {
+                #if DEBUG
+                Payrails.log("ERROR: Failed to decode response: \(error)")
+                #endif
+                throw error
+            }
+        } catch {
+            #if DEBUG
+            Payrails.log("ERROR: Network or decoding error: \(error)")
+            #endif
+            throw error
         }
-        let jsonDecoder = JSONDecoder.API()
-        let result = try jsonDecoder.decode(T.self, from: data)
-        return result
     }
 }
 
@@ -315,5 +486,59 @@ private extension Status {
         default:
            return nil
         }
+    }
+}
+
+func convertToJSON(body: [String: Any]) -> Data? {
+    // Create a mutable copy of the body
+    var jsonBody = body
+    
+    // Check if paymentComposition exists and is an array
+    if let paymentCompositions = body["paymentComposition"] as? [PaymentComposition],
+       !paymentCompositions.isEmpty {
+        
+        // Convert each PaymentComposition object to a dictionary
+        var paymentCompositionDicts: [[String: Any]] = []
+        
+        for composition in paymentCompositions {
+            var compositionDict: [String: Any] = [
+                "paymentMethodCode": composition.paymentMethodCode,
+                "integrationType": composition.integrationType,
+                "amount": [
+                    "value": composition.amount.value,
+                    "currency": composition.amount.currency
+                ],
+                "storeInstrument": composition.storeInstrument,
+                "enrollInstrumentToNetworkOffers": composition.enrollInstrumentToNetworkOffers
+            ]
+            
+            // Special handling for Apple Pay
+            if composition.paymentMethodCode == "applePay" {
+                // For Apple Pay, use the paymentInstrumentData directly
+                compositionDict["paymentInstrumentData"] = composition.paymentInstrumentData
+            } else {
+                // For other payment methods, use the standard structure
+                compositionDict["paymentInstrumentData"] = [
+                    "encryptedData": (composition.paymentInstrumentData as? PaymentInstrumentData)?.encryptedData,
+                    "vaultProviderConfigId": (composition.paymentInstrumentData as? PaymentInstrumentData)?.vaultProviderConfigId
+                ]
+            }
+            
+            paymentCompositionDicts.append(compositionDict)
+        }
+        
+        // Replace the PaymentComposition objects with their dictionary representations
+        jsonBody["paymentComposition"] = paymentCompositionDicts
+    }
+    
+    // Convert to JSON data
+    do {
+        let jsonData = try JSONSerialization.data(withJSONObject: jsonBody, options: [.prettyPrinted])
+        return jsonData
+    } catch {
+        #if DEBUG
+        Payrails.log("Error converting to JSON: \(error)")
+        #endif
+        return nil
     }
 }

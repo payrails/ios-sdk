@@ -21,6 +21,7 @@ class PayPalHandler: NSObject {
             clientID: config.clientId,
             environment: environment == .dev ? .sandbox : .live
         )
+
         Checkout.set(config: config)
     }
 }
@@ -72,7 +73,6 @@ extension PayPalHandler: PaymentHandler {
                     type: .payPal
                 )
             }
-
         }
 
         Checkout.setOnApproveCallback { [weak self] approval in
@@ -104,6 +104,7 @@ extension PayPalHandler: PaymentHandler {
             )
         }
 
+        // TODO: check this
         Checkout.setOnErrorCallback { _ in
 //            guard let self else { return }
 //            self.delegate?.paymentHandlerDidFail(
@@ -118,4 +119,48 @@ extension PayPalHandler: PaymentHandler {
             Checkout.start()
         }
     }
+    
+    func processSuccessPayload(
+        payload: [String: Any]?,
+        amount: Amount,
+        completion: @escaping (Result<[String: Any], Error>) -> Void
+    ) {
+        guard let payload = payload,
+              let storeInstrument = payload["storeInstrument"] as? Bool else {
+            print("❌ PayPal payload missing required keys (e.g., storeInstrument). Payload: \(String(describing: payload))")
+            completion(.failure(PayrailsError.invalidDataFormat))
+            return
+        }
+
+        // Create PayPal-specific payment composition
+        let payPalComposition = PaymentComposition(
+            paymentMethodCode: Payrails.PaymentType.payPal.rawValue,
+            integrationType: "api",
+            amount: amount,
+            storeInstrument: storeInstrument,
+            paymentInstrumentData: nil,
+            enrollInstrumentToNetworkOffers: false
+        )
+        
+        // Prepare the request body
+        let returnInfo: [String: String] = [
+            "success": "https://assets.payrails.io/html/payrails-success.html",
+            "cancel": "https://assets.payrails.io/html/payrails-cancel.html",
+            "error": "https://assets.payrails.io/html/payrails-error.html",
+            "pending": "https://assets.payrails.io/html/payrails-pending.html"
+        ]
+        let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
+        let meta = ["risk": risk]
+        let amountDict = ["value": amount.value, "currency": amount.currency]
+        
+        let body: [String: Any] = [
+            "amount": amountDict,
+            "paymentComposition": [payPalComposition],
+            "returnInfo": returnInfo,
+            "meta": meta
+        ]
+        
+        completion(.success(body))
+    }
+
 }

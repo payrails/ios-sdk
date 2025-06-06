@@ -1,6 +1,24 @@
 {
   "pins" : [
     {
+      "identity" : "ios-cse",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/payrails/ios-cse.git",
+      "state" : {
+        "revision" : "2a5a577d236449f9986f34f8555c24b7fb86bbb5",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "joseswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/airsidemobile/JOSESwift.git",
+      "state" : {
+        "revision" : "10ed3b6736def7c26eb87135466b1cb46ea7e37f",
+        "version" : "2.4.0"
+      }
+    },
+    {
       "identity" : "paypalcheckout-ios",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/paypal/paypalcheckout-ios",
