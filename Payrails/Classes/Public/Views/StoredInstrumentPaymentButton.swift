@@ -1,5 +1,6 @@
 import UIKit
 
+@available(*, deprecated, message: "Use PayrailsCardPaymentButtonDelegate with CardPaymentButton in stored instrument mode instead")
 public protocol PayrailsStoredInstrumentPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton)
@@ -50,6 +51,7 @@ public struct StoredInstrumentButtonStyle {
 }
 
 public extension Payrails {
+    @available(*, deprecated, message: "Use CardPaymentButton with storedInstrument parameter instead. Example: Payrails.createCardPaymentButton(storedInstrument: instrument, ...)")
     final class StoredInstrumentPaymentButton: ActionButton {
         private let storedInstrument: StoredInstrument
         private weak var session: Payrails.Session?

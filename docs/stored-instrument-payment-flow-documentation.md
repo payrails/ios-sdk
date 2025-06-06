@@ -38,7 +38,7 @@ graph TB
     A[TestViewController] --> B[StoredInstruments]
     A --> C[StoredInstrumentView]
     B --> D[Multiple StoredInstrumentView]
-    C --> E[StoredInstrumentPaymentButton]
+    C --> E[CardPaymentButton<br/>Stored Instrument Mode]
     D --> E
     E --> F[PayrailsSession]
     F --> G[PayrailsAPI]
@@ -55,12 +55,15 @@ graph TB
     style G fill:#c8e6c9
 ```
 
+### Unified Button Architecture
+As of the latest SDK version, the `CardPaymentButton` has been enhanced to support both card form payments and stored instrument payments. This unified approach simplifies the architecture and provides a consistent API across different payment scenarios.
+
 ## Component Architecture
 
 ### UI Layer
 - **StoredInstruments**: Container component for displaying multiple stored instruments
 - **StoredInstrumentView**: Individual stored instrument display with selection capability
-- **StoredInstrumentPaymentButton**: Payment execution button with loading states
+- **CardPaymentButton (Stored Instrument Mode)**: Unified payment button supporting both card form and stored instrument payments
 
 ### Business Logic Layer
 - **PayrailsSession**: Central session management with stored instrument payment execution
@@ -70,6 +73,13 @@ graph TB
 - **StoredInstrument Protocol**: Defines the structure for stored payment methods
 - **Configuration Models**: Styling and translation configurations
 
+### Unified Button Architecture
+The `CardPaymentButton` now operates in two modes:
+1. **Card Form Mode**: Traditional card data collection and payment
+2. **Stored Instrument Mode**: Direct payment using saved payment methods
+
+This unified approach reduces code duplication and provides a consistent API across different payment scenarios.
+
 ## Payment Flow Sequence
 
 ```mermaid
@@ -77,7 +87,7 @@ sequenceDiagram
     participant TV as TestViewController
     participant SI as StoredInstruments
     participant SIV as StoredInstrumentView
-    participant SIB as StoredInstrumentPaymentButton
+    participant CPB as CardPaymentButton<br/>(Stored Mode)
     participant PS as PayrailsSession
     participant API as PayrailsAPI
     participant BE as Backend
@@ -94,8 +104,9 @@ sequenceDiagram
     SIV->>SI: didSelectInstrument
     SI-->>TV: Delegate callback
     
-    TV->>SIB: User taps pay button
-    SIB->>PS: executePayment(withStoredInstrument)
+    TV->>CPB: User taps pay button
+    CPB->>CPB: Detect stored instrument mode
+    CPB->>PS: executePayment(withStoredInstrument)
     PS->>PS: Prepare payment payload
     PS->>API: makePayment(payload)
     API->>BE: POST /authorize
@@ -104,12 +115,12 @@ sequenceDiagram
     
     alt Payment Success
         API-->>PS: Success status
-        PS-->>SIB: Success result
-        SIB-->>TV: onAuthorizeSuccess
+        PS-->>CPB: Success result
+        CPB-->>TV: onAuthorizeSuccess
     else Payment Failed
         API-->>PS: Failed status
-        PS-->>SIB: Failure result
-        SIB-->>TV: onAuthorizeFailed
+        PS-->>CPB: Failure result
+        CPB-->>TV: onAuthorizeFailed
     end
 ```
 
@@ -168,30 +179,53 @@ protocol PayrailsStoredInstrumentViewDelegate: AnyObject {
 }
 ```
 
-### 3. StoredInstrumentPaymentButton
+### 3. CardPaymentButton (Unified Payment Button)
 
-**Location**: `Payrails/Classes/Public/Views/StoredInstrumentPaymentButton.swift`
+**Location**: `Payrails/Classes/Public/Views/CardPaymentButton.swift`
+
+**Note**: As of the latest SDK version, `CardPaymentButton` has been enhanced to support both card form payments and stored instrument payments. The separate `StoredInstrumentPaymentButton` is now deprecated.
 
 **Responsibilities**:
-- Execute stored instrument payments
+- Execute both card form and stored instrument payments
+- Detect payment mode automatically
 - Manage loading states
 - Handle payment results
 - Provide visual feedback
 
 **Key Methods**:
 ```swift
-func pay() // Execute payment with stored instrument
-func getStoredInstrument() -> StoredInstrument // Get associated instrument
+func pay(with type: PaymentType? = nil, storedInstrument: StoredInstrument? = nil)
+func getStoredInstrument() -> StoredInstrument? // Returns stored instrument if in stored mode
 ```
 
-**Delegate Protocol**:
+**Unified Delegate Protocol**:
 ```swift
-protocol PayrailsStoredInstrumentPaymentButtonDelegate: AnyObject {
-    func onPaymentButtonClicked(_ button: StoredInstrumentPaymentButton)
-    func onAuthorizeSuccess(_ button: StoredInstrumentPaymentButton)
-    func onAuthorizeFailed(_ button: StoredInstrumentPaymentButton)
+protocol PayrailsCardPaymentButtonDelegate: AnyObject {
+    func onPaymentButtonClicked(_ button: CardPaymentButton)
+    func onAuthorizeSuccess(_ button: CardPaymentButton)
+    func onThreeDSecureChallenge(_ button: CardPaymentButton) // Only for card form mode
+    func onAuthorizeFailed(_ button: CardPaymentButton)
 }
 ```
+
+**Factory Methods**:
+```swift
+// For card form mode (existing)
+Payrails.createCardPaymentButton(
+    buttonStyle: CardButtonStyle?,
+    translations: CardPaymenButtonTranslations
+) -> CardPaymentButton
+
+// For stored instrument mode (new)
+Payrails.createCardPaymentButton(
+    storedInstrument: StoredInstrument,
+    buttonStyle: StoredInstrumentButtonStyle?,
+    translations: CardPaymenButtonTranslations,
+    storedInstrumentTranslations: StoredInstrumentButtonTranslations?
+) -> CardPaymentButton
+```
+
+**Migration Note**: If you're currently using `StoredInstrumentPaymentButton`, migrate to the unified `CardPaymentButton` using the stored instrument factory method.
 
 ### 4. PayrailsSession Extensions
 
@@ -593,15 +627,85 @@ func handlePaymentError(_ error: PayrailsError) {
 - Offer retry options for failed payments
 - Fall back to manual payment entry when needed
 
+## Migration Guide: StoredInstrumentPaymentButton to CardPaymentButton
+
+### Overview
+The `StoredInstrumentPaymentButton` has been deprecated in favor of a unified `CardPaymentButton` that supports both card form and stored instrument payments. This migration guide will help you transition to the new approach.
+
+### Migration Steps
+
+#### 1. Update Factory Method Calls
+```swift
+// Old approach (deprecated)
+let oldButton = StoredInstrumentPaymentButton(
+    storedInstrument: instrument,
+    session: session,
+    translations: StoredInstrumentButtonTranslations(
+        label: "Pay",
+        processingLabel: "Processing..."
+    ),
+    style: StoredInstrumentButtonStyle(...)
+)
+
+// New unified approach
+let newButton = Payrails.createCardPaymentButton(
+    storedInstrument: instrument,
+    buttonStyle: StoredInstrumentButtonStyle(...),
+    translations: CardPaymenButtonTranslations(label: "Pay"),
+    storedInstrumentTranslations: StoredInstrumentButtonTranslations(
+        label: "Pay",
+        processingLabel: "Processing..."
+    )
+)
+```
+
+#### 2. Update Delegate Conformance
+```swift
+// Old delegate (deprecated)
+extension ViewController: PayrailsStoredInstrumentPaymentButtonDelegate {
+    func onPaymentButtonClicked(_ button: StoredInstrumentPaymentButton) { }
+    func onAuthorizeSuccess(_ button: StoredInstrumentPaymentButton) { }
+    func onAuthorizeFailed(_ button: StoredInstrumentPaymentButton) { }
+}
+
+// New unified delegate
+extension ViewController: PayrailsCardPaymentButtonDelegate {
+    func onPaymentButtonClicked(_ button: CardPaymentButton) { }
+    func onAuthorizeSuccess(_ button: CardPaymentButton) { }
+    func onThreeDSecureChallenge(_ button: CardPaymentButton) { 
+        // Not applicable for stored instruments, but required by protocol
+    }
+    func onAuthorizeFailed(_ button: CardPaymentButton) { }
+}
+```
+
+#### 3. Update StoredInstrumentView Integration
+The `StoredInstrumentView` now automatically uses the unified `CardPaymentButton` internally. No changes are required if you're using `StoredInstrumentView` or `StoredInstruments` components.
+
+#### 4. Benefits of Migration
+- **Unified API**: Single button component for all payment types
+- **Consistent Behavior**: Same loading states, error handling, and callbacks
+- **Future-Proof**: New features will be added to the unified button
+- **Reduced Complexity**: One less component to maintain
+
+### Deprecation Timeline
+- **Current**: `StoredInstrumentPaymentButton` is marked as deprecated
+- **Next Major Version**: Deprecation warnings will become errors
+- **Future Release**: `StoredInstrumentPaymentButton` will be removed
+
+### Need Help?
+If you encounter any issues during migration, please refer to the SDK documentation or contact the Payrails support team.
+
 ## Conclusion
 
-The Payrails iOS SDK's stored instrument payment flow provides a streamlined, secure, and user-friendly way to process payments with saved payment methods. The modular architecture ensures maintainability while the comprehensive delegate system provides flexibility for various integration scenarios.
+The Payrails iOS SDK's stored instrument payment flow provides a streamlined, secure, and user-friendly way to process payments with saved payment methods. With the introduction of the unified `CardPaymentButton`, the architecture has become even more maintainable and consistent across different payment scenarios.
 
 Key advantages:
+- **Unified Architecture**: Single button component for all payment scenarios
 - **Simplified Integration**: Easy-to-use components with minimal setup
 - **Enhanced UX**: One-tap payments improve conversion rates
 - **Multi-Method Support**: Unified interface for card and PayPal instruments
 - **Customization**: Extensive styling and translation options
 - **Security**: No sensitive data handling required by the integrator
 
-The stored instrument feature significantly enhances the payment experience by reducing friction and providing users with a fast, secure way to complete transactions using their preferred saved payment methods.
+The stored instrument feature, combined with the unified button architecture, significantly enhances the payment experience by reducing friction and providing users with a fast, secure way to complete transactions using their preferred saved payment methods.

@@ -18,7 +18,7 @@ public extension Payrails {
         private let showPayButton: Bool
         private let containerView: UIView
         private let labelView: UILabel
-        private let paymentButton: Payrails.StoredInstrumentPaymentButton
+        private let paymentButton: Payrails.CardPaymentButton
         private let deleteButton: UIButton
         private let tapGestureRecognizer: UITapGestureRecognizer
         private var isSelected: Bool = false
@@ -43,11 +43,13 @@ public extension Payrails {
             self.showPayButton = showPayButton
             self.containerView = UIView()
             self.labelView = UILabel()
-            self.paymentButton = Payrails.StoredInstrumentPaymentButton(
+            // Use unified CardPaymentButton in stored instrument mode
+            self.paymentButton = Payrails.CardPaymentButton(
                 storedInstrument: instrument,
                 session: session,
-                translations: translations.buttonTranslations,
-                style: style.buttonStyle
+                translations: CardPaymenButtonTranslations(label: translations.buttonTranslations.label),
+                storedInstrumentTranslations: translations.buttonTranslations,
+                buttonStyle: style.buttonStyle
             )
             self.deleteButton = UIButton(type: .custom)
             self.tapGestureRecognizer = UITapGestureRecognizer()
@@ -215,17 +217,22 @@ public extension Payrails {
     }
 }
 
-// MARK: - PayrailsStoredInstrumentPaymentButtonDelegate
-extension Payrails.StoredInstrumentView: PayrailsStoredInstrumentPaymentButtonDelegate {
-    public func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton) {
+// MARK: - PayrailsCardPaymentButtonDelegate
+extension Payrails.StoredInstrumentView: PayrailsCardPaymentButtonDelegate {
+    public func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {
         Payrails.log("Payment button clicked for stored instrument")
     }
     
-    public func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton) {
+    public func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {
         delegate?.storedInstrumentView(self, didCompletePaymentForInstrument: instrument)
     }
     
-    public func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton) {
+    public func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {
+        // 3DS is not applicable for stored instruments, but required by protocol
+        Payrails.log("3DS challenge called for stored instrument (unexpected)")
+    }
+    
+    public func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
         // Create a generic error since we don't have specific error details
         let error = PayrailsError.authenticationError
         delegate?.storedInstrumentView(self, didFailPaymentForInstrument: instrument, error: error)
