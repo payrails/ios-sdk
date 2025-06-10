@@ -163,12 +163,11 @@ class PayrailsAPI {
 
     func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
         guard let instrumentDeleteLink = config.links?.instrumentDelete,
-              let href = instrumentDeleteLink.href,
-              !href.isEmpty else {
+            let href = instrumentDeleteLink.href,
+            !href.isEmpty else {
             throw PayrailsError.missingData("instrumentDelete link is missing or invalid")
         }
         
-        // Replace :instrumentId placeholder with actual instrumentId
         let urlString = href.replacingOccurrences(of: ":instrumentId", with: instrumentId)
         
         guard let url = URL(string: urlString) else {
@@ -187,8 +186,8 @@ class PayrailsAPI {
     
     func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
         guard let instrumentUpdateLink = config.links?.instrumentUpdate,
-              let href = instrumentUpdateLink.href,
-              !href.isEmpty else {
+            let href = instrumentUpdateLink.href,
+            !href.isEmpty else {
             throw PayrailsError.missingData("instrumentUpdate link is missing or invalid")
         }
         
@@ -255,7 +254,7 @@ class PayrailsAPI {
         authorizeRequestDate = authorizeResponse.executedAt
         
         if let execution = authorizeResponse.links.execution,
-           let executionURL = URL(string: execution) {
+            let executionURL = URL(string: execution) {
             return executionURL
         } else {
             throw PayrailsError.missingData("Execution link is missing")
@@ -300,7 +299,7 @@ class PayrailsAPI {
         }
 
         guard let validResultForAuth = finalExecutionResultContainingAuthorizeRequested,
-              let validDateForAuth = dateOfAuthorizeRequested else {
+                let validDateForAuth = dateOfAuthorizeRequested else {
             // If this guard fails, it means we never successfully found "authorizeRequested" within attempts,
             // or isRunning became false, or getExecution continuously failed.
             let reason = "Could not find 'authorizeRequested' status after \(attempt) attempts or polling was interrupted."
