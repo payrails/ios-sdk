@@ -191,7 +191,6 @@ class PayrailsAPI {
             throw PayrailsError.missingData("instrumentUpdate link is missing or invalid")
         }
         
-        // Replace :instrumentId placeholder with actual instrumentId
         let urlString = href.replacingOccurrences(of: ":instrumentId", with: instrumentId)
         
         guard let url = URL(string: urlString) else {
