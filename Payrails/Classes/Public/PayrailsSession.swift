@@ -28,9 +28,8 @@ public extension Payrails {
             _ configuration: Payrails.Configuration
         ) throws {
             self.option = configuration.option
-            self.config = try parse(config: configuration)
+            self.config = try parse(config: configuration);
 
-            print(self.config)
             self.payrailsAPI = PayrailsAPI(config: config)
             
             if isPaymentAvailable(type: .card),
@@ -473,5 +472,9 @@ public extension Payrails.Session {
     
     func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
         return try await payrailsAPI.deleteInstrument(instrumentId: instrumentId)
+    }
+    
+    func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
+        return try await payrailsAPI.updateInstrument(instrumentId: instrumentId, body: body)
     }
 }
