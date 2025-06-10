@@ -86,3 +86,8 @@ public struct UpdateInstrumentResponse: Decodable {
         }
     }
 }
+
+public enum InstrumentAPIResponse {
+    case delete(DeleteInstrumentResponse)
+    case update(UpdateInstrumentResponse)
+}
