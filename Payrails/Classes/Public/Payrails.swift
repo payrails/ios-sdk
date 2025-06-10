@@ -322,6 +322,14 @@ public extension Payrails {
         return try await currentSession.deleteInstrument(instrumentId: instrumentId)
     }
     
+    static func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
+        guard let currentSession = getCurrentSession() else {
+            throw PayrailsError.missingData("No active Payrails session. Please initialize a session first.")
+        }
+        
+        return try await currentSession.updateInstrument(instrumentId: instrumentId, body: body)
+    }
+    
     static func getStoredInstruments() -> [StoredInstrument] {
         guard let currentSession = getCurrentSession() else {
             Payrails.log("No active Payrails session available for getting stored instruments")

@@ -648,6 +648,460 @@ class PaymentViewController: UIViewController, GenericRedirectPaymentButtonDeleg
 }
 ```
 
+## Stored Instruments
+
+The Payrails SDK allows you to securely store and manage customer payment instruments (like cards and PayPal accounts) for faster checkouts. The SDK provides UI components to display these stored instruments and handle payments.
+
+### Retrieving Stored Instruments
+
+Before displaying stored instruments, you need to fetch them. You can retrieve all stored instruments or filter by type (card or PayPal).
+
+**Using the Payrails Session (recommended for UI components):**
+After initializing the `Payrails.Session`, you can access stored instruments:
+
+```swift
+guard let payrailsSession = self.payrailsSession else { return }
+
+// Get all card instruments
+let cardInstruments = payrailsSession.storedInstruments(for: .card)
+
+// Get all PayPal instruments
+let payPalInstruments = payrailsSession.storedInstruments(for: .payPal)
+
+// Get all instruments (both card and PayPal)
+let allInstruments = cardInstruments + payPalInstruments
+```
+
+**Using Static Methods (e.g., for non-UI logic or if session is managed elsewhere):**
+
+```swift
+// Get all stored instruments
+let allInstruments = Payrails.getStoredInstruments()
+
+// Get stored instruments of a specific type
+let cardInstruments = Payrails.getStoredInstruments(for: .card)
+let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
+```
+
+Each instrument conforms to the `StoredInstrument` protocol:
+
+```swift
+public protocol StoredInstrument {
+    var id: String { get }          // Unique identifier for the instrument
+    var email: String? { get }       // Email (for PayPal)
+    var description: String? { get } // Masked card number or PayPal display name
+    var type: Payrails.PaymentType { get } // .card or .payPal
+}
+```
+
+### Displaying a List of Stored Instruments (`Payrails.StoredInstruments`)
+
+The `Payrails.StoredInstruments` component displays a list of available stored payment methods. It features an accordion-style interface where users can tap an instrument to reveal its payment button.
+
+#### Creating a StoredInstruments View
+
+```swift
+// Create with default style and translations
+let storedInstrumentsView = Payrails.createStoredInstruments()
+
+// Add to your view hierarchy
+view.addSubview(storedInstrumentsView)
+// Set up constraints...
+
+// Assign delegate and presenter
+storedInstrumentsView.delegate = self // Conforms to PayrailsStoredInstrumentsDelegate
+storedInstrumentsView.presenter = self // Conforms to PaymentPresenter
+```
+
+You can also create it with options to show delete and pay buttons directly in the list items:
+
+```swift
+let storedInstrumentsView = Payrails.createStoredInstruments(
+    showDeleteButton: true, // Shows a delete icon for each instrument
+    showPayButton: true     // Shows a "Pay" button directly for each instrument (alternative to accordion)
+)
+```
+
+#### Key Properties and Methods
+
+- `delegate: PayrailsStoredInstrumentsDelegate?`: Handles events like instrument selection, payment success/failure, and delete requests.
+- `presenter: PaymentPresenter?`: **Required** for payment processing.
+- `refreshInstruments()`: Call this to reload and update the list of instruments (e.g., after a new instrument is saved or one is deleted).
+
+#### Customization
+
+You can customize the appearance and text using `StoredInstrumentsStyle` and `StoredInstrumentsTranslations`.
+
+**Styling (`StoredInstrumentsStyle`):**
+
+```swift
+let customStyle = StoredInstrumentsStyle(
+    backgroundColor: .systemGroupedBackground,
+    itemBackgroundColor: .secondarySystemGroupedBackground,
+    selectedItemBackgroundColor: .systemBlue.withAlphaComponent(0.2),
+    labelTextColor: .label,
+    labelFont: .systemFont(ofSize: 17, weight: .medium),
+    itemCornerRadius: 10,
+    itemSpacing: 10,
+    itemPadding: UIEdgeInsets(top: 15, left: 15, bottom: 15, right: 15),
+    buttonStyle: StoredInstrumentButtonStyle( // Style for the "Pay" button
+        backgroundColor: .systemGreen,
+        textColor: .white,
+        font: .systemFont(ofSize: 16, weight: .semibold),
+        cornerRadius: 8,
+        height: 44
+    ),
+    deleteButtonStyle: DeleteButtonStyle( // Style for the delete icon/button
+        backgroundColor: .clear,
+        textColor: .systemRed,
+        font: .systemFont(ofSize: 20), // For SF Symbols or text
+        size: CGSize(width: 30, height: 30)
+    )
+)
+```
+
+**Translations (`StoredInstrumentsTranslations`):**
+
+```swift
+let customTranslations = StoredInstrumentsTranslations(
+    cardPrefix: "Use Card:",
+    paypalPrefix: "Use PayPal:",
+    buttonTranslations: StoredInstrumentButtonTranslations(
+        label: "Pay with this method",
+        processingLabel: "Authorizing..."
+    )
+)
+
+// Create the component with custom style and translations
+let styledStoredInstrumentsView = Payrails.createStoredInstruments(
+    style: customStyle,
+    translations: customTranslations,
+    showDeleteButton: true
+)
+```
+
+#### Delegate (`PayrailsStoredInstrumentsDelegate`)
+
+Implement this delegate to respond to user interactions:
+
+```swift
+protocol PayrailsStoredInstrumentsDelegate: AnyObject {
+    // Called when a user taps on an instrument in the list.
+    func storedInstruments(_ view: Payrails.StoredInstruments, didSelectInstrument instrument: StoredInstrument)
+    
+    // Called when a payment initiated from this component succeeds.
+    func storedInstruments(_ view: Payrails.StoredInstruments, didCompletePaymentForInstrument instrument: StoredInstrument)
+    
+    // Called when a payment initiated from this component fails.
+    func storedInstruments(_ view: Payrails.StoredInstruments, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError)
+    
+    // Called when the user taps the delete button for an instrument (if showDeleteButton is true).
+    // You are responsible for confirming and calling Payrails.deleteInstrument().
+    func storedInstruments(_ view: Payrails.StoredInstruments, didRequestDeleteInstrument instrument: StoredInstrument)
+}
+```
+
+### Displaying a Single Stored Instrument (`Payrails.StoredInstrumentView`)
+
+If you want to display individual stored instruments outside of the `StoredInstruments` list component (e.g., in a custom layout), you can use `Payrails.StoredInstrumentView`.
+
+#### Creating a StoredInstrumentView
+
+```swift
+// Assume 'myStoredCard' is a StoredInstrument object you've retrieved
+guard let firstCard = Payrails.getStoredInstruments(for: .card).first else { return }
+
+let singleInstrumentView = Payrails.createStoredInstrumentView(
+    instrument: firstCard,
+    showDeleteButton: true,
+    showPayButton: true // Shows a payment button for this specific instrument
+)
+
+// Add to your view hierarchy
+view.addSubview(singleInstrumentView)
+// Set up constraints...
+
+// Assign delegate and presenter
+singleInstrumentView.delegate = self // Conforms to PayrailsStoredInstrumentViewDelegate
+singleInstrumentView.setPresenter(self) // Conforms to PaymentPresenter
+```
+
+#### Customization
+
+`StoredInstrumentView` uses the same `StoredInstrumentsStyle` and `StoredInstrumentsTranslations` objects for consistency.
+
+```swift
+let customStyle = StoredInstrumentsStyle(...) // Define as above
+let customTranslations = StoredInstrumentsTranslations(...) // Define as above
+
+let styledSingleInstrumentView = Payrails.createStoredInstrumentView(
+    instrument: firstCard,
+    style: customStyle,
+    translations: customTranslations,
+    showDeleteButton: true,
+    showPayButton: true
+)
+```
+
+#### Delegate (`PayrailsStoredInstrumentViewDelegate`)
+
+This delegate is specific to the single instrument view:
+
+```swift
+public protocol PayrailsStoredInstrumentViewDelegate: AnyObject {
+    // Called when the instrument view is tapped and selected.
+    func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didSelectInstrument instrument: StoredInstrument)
+    
+    // Called when the instrument view is tapped again and deselected.
+    func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didDeselectInstrument instrument: StoredInstrument)
+    
+    // Called on successful payment.
+    func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didCompletePaymentForInstrument instrument: StoredInstrument)
+    
+    // Called on payment failure.
+    func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError)
+    
+    // Called when the delete button (if shown) is tapped.
+    func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didRequestDeleteInstrument instrument: StoredInstrument)
+}
+```
+
+### Deleting a Stored Instrument
+
+The SDK provides a method to delete stored instruments. This is typically called after the user confirms the deletion (e.g., in response to `didRequestDeleteInstrument` delegate calls).
+
+```swift
+func deleteInstrument(instrumentId: String) async {
+    do {
+        let response = try await Payrails.deleteInstrument(instrumentId: instrumentId)
+        if response.success {
+            print("Instrument \(instrumentId) deleted successfully.")
+            // Refresh your UI (e.g., call storedInstrumentsView.refreshInstruments())
+        } else {
+            print("Failed to delete instrument \(instrumentId).")
+            // Handle server-side deletion failure
+        }
+    } catch {
+        print("Error deleting instrument \(instrumentId): \(error.localizedDescription)")
+        // Handle error (e.g., network issue)
+    }
+}
+
+// Example usage within a delegate method:
+func storedInstruments(_ view: Payrails.StoredInstruments, didRequestDeleteInstrument instrument: StoredInstrument) {
+    // Present an alert to confirm deletion
+    let alert = UIAlertController(title: "Delete Payment Method", message: "Are you sure?", preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
+        Task {
+            await self.deleteInstrument(instrumentId: instrument.id)
+            // After deletion, refresh the StoredInstruments view
+            self.storedInstrumentsView?.refreshInstruments() 
+        }
+    })
+    self.present(alert, animated: true)
+}
+```
+
+### Updating a Stored Instrument
+
+The SDK provides a method to update properties of stored instruments, such as enabling/disabling them, setting them as default, or updating metadata.
+
+```swift
+func updateInstrument(instrumentId: String, updateBody: UpdateInstrumentBody) async {
+    do {
+        let response = try await Payrails.updateInstrument(instrumentId: instrumentId, body: updateBody)
+        print("Instrument \(instrumentId) updated successfully.")
+        print("New status: \(response.status)")
+        print("Payment method: \(response.paymentMethod)")
+        // Refresh your UI if needed
+    } catch {
+        print("Error updating instrument \(instrumentId): \(error.localizedDescription)")
+        // Handle error (e.g., network issue, validation error)
+    }
+}
+```
+
+#### Available Update Fields
+
+The `UpdateInstrumentBody` supports the following optional fields:
+
+- `status`: Set to "enabled" or "disabled"
+- `networkTransactionReference`: Update network transaction reference
+- `merchantReference`: Update merchant reference
+- `paymentMethod`: Update payment method ("applepay", "card", "googlepay", "paypal")
+- `default`: Set as default payment instrument (true/false)
+
+#### Common Update Operations
+
+**Enable/Disable an Instrument:**
+
+```swift
+// Disable an instrument
+let disableBody = UpdateInstrumentBody(status: "disabled")
+await updateInstrument(instrumentId: "instrument_123", updateBody: disableBody)
+
+// Enable an instrument
+let enableBody = UpdateInstrumentBody(status: "enabled")
+await updateInstrument(instrumentId: "instrument_123", updateBody: enableBody)
+```
+
+**Set as Default Payment Method:**
+
+```swift
+let defaultBody = UpdateInstrumentBody(default: true)
+await updateInstrument(instrumentId: "instrument_123", updateBody: defaultBody)
+```
+
+**Update Multiple Properties:**
+
+```swift
+let updateBody = UpdateInstrumentBody(
+    status: "enabled",
+    default: true,
+    merchantReference: "updated_ref_123"
+)
+await updateInstrument(instrumentId: "instrument_123", updateBody: updateBody)
+```
+
+#### Response Structure
+
+The `UpdateInstrumentResponse` contains detailed information about the updated instrument:
+
+- `id`: Instrument ID
+- `createdAt`: Creation timestamp
+- `holderId`: Holder ID
+- `paymentMethod`: Payment method type
+- `status`: Current status ("enabled" or "disabled")
+- `data`: Instrument data (card details, network info, etc.)
+- `fingerprint`: Instrument fingerprint (optional)
+- `futureUsage`: Future usage settings (optional)
+
+#### Example: Toggle Instrument Status
+
+```swift
+func toggleInstrumentStatus(instrument: StoredInstrument) async {
+    // Assume we have access to current status from the instrument
+    let currentStatus = "enabled" // This would come from your instrument data
+    let newStatus = currentStatus == "enabled" ? "disabled" : "enabled"
+    
+    let updateBody = UpdateInstrumentBody(status: newStatus)
+    
+    do {
+        let response = try await Payrails.updateInstrument(
+            instrumentId: instrument.id,
+            body: updateBody
+        )
+        print("Instrument status changed to: \(response.status)")
+        // Refresh your stored instruments UI
+        self.storedInstrumentsView?.refreshInstruments()
+    } catch {
+        print("Failed to update instrument status: \(error)")
+        // Show error to user
+    }
+}
+```
+
+### Example: Using StoredInstruments Component
+
+```swift
+import UIKit
+import Payrails
+
+class CheckoutViewController: UIViewController, PayrailsStoredInstrumentsDelegate, PaymentPresenter {
+
+    var payrailsSession: Payrails.Session? // Assume this is initialized
+    var storedInstrumentsComponent: Payrails.StoredInstruments?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Assuming payrailsSession is already initialized
+        setupStoredInstrumentsUI()
+    }
+
+    func setupStoredInstrumentsUI() {
+        guard self.payrailsSession != nil else {
+            print("Payrails session not initialized.")
+            return
+        }
+
+        let customStyle = StoredInstrumentsStyle(itemBackgroundColor: .lightGray)
+        let customTranslations = StoredInstrumentsTranslations(cardPrefix: "Saved Card:")
+
+        storedInstrumentsComponent = Payrails.createStoredInstruments(
+            style: customStyle,
+            translations: customTranslations,
+            showDeleteButton: true, // Allow users to delete instruments
+            showPayButton: false    // Use accordion style for payment
+        )
+        
+        guard let storedInstrumentsComponent = storedInstrumentsComponent else { return }
+
+        storedInstrumentsComponent.delegate = self
+        storedInstrumentsComponent.presenter = self // Self conforms to PaymentPresenter
+        
+        view.addSubview(storedInstrumentsComponent)
+        storedInstrumentsComponent.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            storedInstrumentsComponent.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            storedInstrumentsComponent.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            storedInstrumentsComponent.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+        ])
+    }
+
+    // MARK: - PayrailsStoredInstrumentsDelegate
+
+    func storedInstruments(_ view: Payrails.StoredInstruments, didSelectInstrument instrument: StoredInstrument) {
+        print("Selected instrument: \(instrument.description ?? instrument.id)")
+    }
+
+    func storedInstruments(_ view: Payrails.StoredInstruments, didCompletePaymentForInstrument instrument: StoredInstrument) {
+        print("Payment successful with: \(instrument.description ?? instrument.id)")
+        // Navigate to success screen
+    }
+
+    func storedInstruments(_ view: Payrails.StoredInstruments, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError) {
+        print("Payment failed for \(instrument.description ?? instrument.id): \(error.localizedDescription)")
+        // Show error message
+    }
+
+    func storedInstruments(_ view: Payrails.StoredInstruments, didRequestDeleteInstrument instrument: StoredInstrument) {
+        let alert = UIAlertController(
+            title: "Confirm Deletion",
+            message: "Delete \(instrument.description ?? "this payment method")?",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
+            Task {
+                await self.deleteInstrument(instrumentId: instrument.id)
+            }
+        })
+        present(alert, animated: true)
+    }
+    
+    private func deleteInstrument(instrumentId: String) async {
+        do {
+            let response = try await Payrails.deleteInstrument(instrumentId: instrumentId)
+            if response.success {
+                print("Instrument deleted.")
+                self.storedInstrumentsComponent?.refreshInstruments() // Refresh the list
+            } else {
+                print("Deletion failed on server.")
+            }
+        } catch {
+            print("Deletion error: \(error)")
+        }
+    }
+
+    // MARK: - PaymentPresenter
+    func presentPayment(_ viewController: UIViewController) {
+        present(viewController, animated: true)
+    }
+    var encryptedCardData: String? // Not used for stored instruments flow directly
+}
+```
+
 ## Event Handling with UI Component Delegates
 
 The Payrails SDK uses delegate patterns to notify your app about events related to UI components. Each UI component has its own delegate protocol.
