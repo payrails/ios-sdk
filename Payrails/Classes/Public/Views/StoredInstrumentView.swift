@@ -6,6 +6,7 @@ public protocol PayrailsStoredInstrumentViewDelegate: AnyObject {
     func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didCompletePaymentForInstrument instrument: StoredInstrument)
     func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError)
     func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didRequestDeleteInstrument instrument: StoredInstrument)
+    func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didRequestUpdateInstrument instrument: StoredInstrument)
 }
 
 public extension Payrails {
@@ -15,11 +16,13 @@ public extension Payrails {
         private let style: StoredInstrumentsStyle
         private let translations: StoredInstrumentsTranslations
         private let showDeleteButton: Bool
+        private let showUpdateButton: Bool
         private let showPayButton: Bool
         private let containerView: UIView
         private let labelView: UILabel
         private let paymentButton: Payrails.CardPaymentButton
         private let deleteButton: UIButton
+        private let updateButton: UIButton
         private let tapGestureRecognizer: UITapGestureRecognizer
         private var isSelected: Bool = false
         
@@ -33,6 +36,7 @@ public extension Payrails {
             style: StoredInstrumentsStyle,
             translations: StoredInstrumentsTranslations,
             showDeleteButton: Bool = false,
+            showUpdateButton: Bool = false,
             showPayButton: Bool = false
         ) {
             self.instrument = instrument
@@ -40,6 +44,7 @@ public extension Payrails {
             self.style = style
             self.translations = translations
             self.showDeleteButton = showDeleteButton
+            self.showUpdateButton = showUpdateButton
             self.showPayButton = showPayButton
             self.containerView = UIView()
             self.labelView = UILabel()
@@ -52,6 +57,7 @@ public extension Payrails {
                 buttonStyle: style.buttonStyle
             )
             self.deleteButton = UIButton(type: .custom)
+            self.updateButton = UIButton(type: .custom)
             self.tapGestureRecognizer = UITapGestureRecognizer()
             
             super.init(frame: .zero)
@@ -87,6 +93,9 @@ public extension Payrails {
             // Setup delete button
             setupDeleteButton()
             
+            // Setup update button
+            setupUpdateButton()
+            
             // Setup tap gesture
             tapGestureRecognizer.addTarget(self, action: #selector(instrumentTapped))
             containerView.addGestureRecognizer(tapGestureRecognizer)
@@ -96,6 +105,9 @@ public extension Payrails {
             containerView.addSubview(labelView)
             if showPayButton {
                 containerView.addSubview(paymentButton)
+            }
+            if showUpdateButton {
+                containerView.addSubview(updateButton)
             }
             if showDeleteButton {
                 containerView.addSubview(deleteButton)
@@ -166,6 +178,17 @@ public extension Payrails {
             deleteButton.isHidden = !showDeleteButton
         }
         
+        private func setupUpdateButton() {
+            updateButton.setTitle("✏️", for: .normal)
+            updateButton.titleLabel?.font = style.updateButtonStyle.font
+            updateButton.backgroundColor = style.updateButtonStyle.backgroundColor
+            updateButton.setTitleColor(style.updateButtonStyle.textColor, for: .normal)
+            updateButton.layer.cornerRadius = style.updateButtonStyle.cornerRadius
+            updateButton.translatesAutoresizingMaskIntoConstraints = false
+            updateButton.addTarget(self, action: #selector(updateButtonTapped), for: .touchUpInside)
+            updateButton.isHidden = !showUpdateButton
+        }
+        
         private func setupConstraints() {
             var constraints: [NSLayoutConstraint] = [
                 // Container view constraints
@@ -192,8 +215,39 @@ public extension Payrails {
                 constraints.append(labelView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -style.itemPadding.bottom))
             }
             
-            if showDeleteButton {
-                // Adjust label trailing constraint to make room for delete button
+            // Handle button positioning: update button (left) -> delete button (right)
+            if showUpdateButton && showDeleteButton {
+                // Both buttons: update button left of delete button
+                constraints.append(labelView.trailingAnchor.constraint(equalTo: updateButton.leadingAnchor, constant: -8))
+                
+                // Update button constraints
+                constraints.append(contentsOf: [
+                    updateButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
+                    updateButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -8),
+                    updateButton.widthAnchor.constraint(equalToConstant: style.updateButtonStyle.size.width),
+                    updateButton.heightAnchor.constraint(equalToConstant: style.updateButtonStyle.size.height)
+                ])
+                
+                // Delete button constraints
+                constraints.append(contentsOf: [
+                    deleteButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
+                    deleteButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
+                    deleteButton.widthAnchor.constraint(equalToConstant: style.deleteButtonStyle.size.width),
+                    deleteButton.heightAnchor.constraint(equalToConstant: style.deleteButtonStyle.size.height)
+                ])
+            } else if showUpdateButton {
+                // Only update button
+                constraints.append(labelView.trailingAnchor.constraint(equalTo: updateButton.leadingAnchor, constant: -8))
+                
+                // Update button constraints
+                constraints.append(contentsOf: [
+                    updateButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
+                    updateButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
+                    updateButton.widthAnchor.constraint(equalToConstant: style.updateButtonStyle.size.width),
+                    updateButton.heightAnchor.constraint(equalToConstant: style.updateButtonStyle.size.height)
+                ])
+            } else if showDeleteButton {
+                // Only delete button
                 constraints.append(labelView.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -8))
                 
                 // Delete button constraints
@@ -204,7 +258,7 @@ public extension Payrails {
                     deleteButton.heightAnchor.constraint(equalToConstant: style.deleteButtonStyle.size.height)
                 ])
             } else {
-                // No delete button, label can use full width
+                // No buttons, label can use full width
                 constraints.append(labelView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right))
             }
             
@@ -213,6 +267,10 @@ public extension Payrails {
         
         @objc private func deleteButtonTapped() {
             delegate?.storedInstrumentView(self, didRequestDeleteInstrument: instrument)
+        }
+        
+        @objc private func updateButtonTapped() {
+            delegate?.storedInstrumentView(self, didRequestUpdateInstrument: instrument)
         }
     }
 }
