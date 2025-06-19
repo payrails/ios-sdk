@@ -23,6 +23,8 @@ public extension Payrails {
         private let paymentButton: Payrails.CardPaymentButton
         private let deleteButton: UIButton
         private let updateButton: UIButton
+        private let deleteButtonTitle: String
+        private let updateButtonTitle: String
         private let tapGestureRecognizer: UITapGestureRecognizer
         private var isSelected: Bool = false
         
@@ -37,13 +39,17 @@ public extension Payrails {
             translations: StoredInstrumentsTranslations,
             showDeleteButton: Bool = false,
             showUpdateButton: Bool = false,
-            showPayButton: Bool = false
+            showPayButton: Bool = false,
+            deleteButtonTitle: String = "🗑️",
+            updateButtonTitle: String = "✏️"
         ) {
             self.instrument = instrument
             self.session = session
             self.style = style
             self.translations = translations
             self.showDeleteButton = showDeleteButton
+            self.deleteButtonTitle = deleteButtonTitle
+            self.updateButtonTitle = updateButtonTitle
             self.showUpdateButton = showUpdateButton
             self.showPayButton = showPayButton
             self.containerView = UIView()
@@ -167,7 +173,7 @@ public extension Payrails {
         }
         
         private func setupDeleteButton() {
-            deleteButton.setTitle("🗑️", for: .normal)
+            deleteButton.setTitle(self.deleteButtonTitle, for: .normal)
             deleteButton.titleLabel?.font = style.deleteButtonStyle.font
             deleteButton.backgroundColor = style.deleteButtonStyle.backgroundColor
             deleteButton.setTitleColor(style.deleteButtonStyle.textColor, for: .normal)
@@ -178,7 +184,7 @@ public extension Payrails {
         }
         
         private func setupUpdateButton() {
-            updateButton.setTitle("✏️", for: .normal)
+            updateButton.setTitle(self.updateButtonTitle, for: .normal)
             updateButton.titleLabel?.font = style.updateButtonStyle.font
             updateButton.backgroundColor = style.updateButtonStyle.backgroundColor
             updateButton.setTitleColor(style.updateButtonStyle.textColor, for: .normal)
