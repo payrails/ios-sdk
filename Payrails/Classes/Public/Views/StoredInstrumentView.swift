@@ -93,7 +93,6 @@ public extension Payrails {
             // Setup delete button
             setupDeleteButton()
             
-            // Setup update button
             setupUpdateButton()
             
             // Setup tap gesture
@@ -215,12 +214,9 @@ public extension Payrails {
                 constraints.append(labelView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -style.itemPadding.bottom))
             }
             
-            // Handle button positioning: update button (left) -> delete button (right)
             if showUpdateButton && showDeleteButton {
-                // Both buttons: update button left of delete button
                 constraints.append(labelView.trailingAnchor.constraint(equalTo: updateButton.leadingAnchor, constant: -8))
                 
-                // Update button constraints
                 constraints.append(contentsOf: [
                     updateButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
                     updateButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -8),
@@ -228,7 +224,6 @@ public extension Payrails {
                     updateButton.heightAnchor.constraint(equalToConstant: style.updateButtonStyle.size.height)
                 ])
                 
-                // Delete button constraints
                 constraints.append(contentsOf: [
                     deleteButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
                     deleteButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
@@ -236,10 +231,8 @@ public extension Payrails {
                     deleteButton.heightAnchor.constraint(equalToConstant: style.deleteButtonStyle.size.height)
                 ])
             } else if showUpdateButton {
-                // Only update button
                 constraints.append(labelView.trailingAnchor.constraint(equalTo: updateButton.leadingAnchor, constant: -8))
                 
-                // Update button constraints
                 constraints.append(contentsOf: [
                     updateButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
                     updateButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
@@ -247,10 +240,8 @@ public extension Payrails {
                     updateButton.heightAnchor.constraint(equalToConstant: style.updateButtonStyle.size.height)
                 ])
             } else if showDeleteButton {
-                // Only delete button
                 constraints.append(labelView.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -8))
                 
-                // Delete button constraints
                 constraints.append(contentsOf: [
                     deleteButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: style.itemPadding.top),
                     deleteButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right),
@@ -258,7 +249,6 @@ public extension Payrails {
                     deleteButton.heightAnchor.constraint(equalToConstant: style.deleteButtonStyle.size.height)
                 ])
             } else {
-                // No buttons, label can use full width
                 constraints.append(labelView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -style.itemPadding.right))
             }
             
