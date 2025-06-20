@@ -270,6 +270,7 @@ public extension Payrails {
         style: StoredInstrumentsStyle? = nil,
         translations: StoredInstrumentsTranslations? = nil,
         showDeleteButton: Bool = false,
+        showUpdateButton: Bool = false,
         showPayButton: Bool = false
     ) -> Payrails.StoredInstruments {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstruments")
@@ -283,6 +284,7 @@ public extension Payrails {
             style: finalStyle,
             translations: finalTranslations,
             showDeleteButton: showDeleteButton,
+            showUpdateButton: showUpdateButton,
             showPayButton: showPayButton
         )
         
@@ -294,6 +296,7 @@ public extension Payrails {
         style: StoredInstrumentsStyle? = nil,
         translations: StoredInstrumentsTranslations? = nil,
         showDeleteButton: Bool = false,
+        showUpdateButton: Bool = false,
         showPayButton: Bool = false
     ) -> Payrails.StoredInstrumentView {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstrumentView")
@@ -308,18 +311,31 @@ public extension Payrails {
             style: finalStyle,
             translations: finalTranslations,
             showDeleteButton: showDeleteButton,
+            showUpdateButton: showUpdateButton,
             showPayButton: showPayButton
         )
         
         return storedInstrumentView
     }
     
-    static func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+    static func api(_ operation: String, _ instrumentId: String, _ body: UpdateInstrumentBody? = nil) async throws -> InstrumentAPIResponse {
         guard let currentSession = getCurrentSession() else {
             throw PayrailsError.missingData("No active Payrails session. Please initialize a session first.")
         }
         
-        return try await currentSession.deleteInstrument(instrumentId: instrumentId)
+        switch operation {
+        case "deleteInstrument":
+            let response = try await currentSession.deleteInstrument(instrumentId: instrumentId)
+            return .delete(response)
+        case "updateInstrument":
+            guard let body = body else {
+                throw PayrailsError.missingData("UpdateInstrumentBody is required for updateInstrument operation")
+            }
+            let response = try await currentSession.updateInstrument(instrumentId: instrumentId, body: body)
+            return .update(response)
+        default:
+            throw PayrailsError.invalidDataFormat
+        }
     }
     
     static func getStoredInstruments() -> [StoredInstrument] {
