@@ -270,6 +270,7 @@ public extension Payrails {
         style: StoredInstrumentsStyle? = nil,
         translations: StoredInstrumentsTranslations? = nil,
         showDeleteButton: Bool = false,
+        showUpdateButton: Bool = false,
         showPayButton: Bool = false
     ) -> Payrails.StoredInstruments {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstruments")
@@ -283,6 +284,7 @@ public extension Payrails {
             style: finalStyle,
             translations: finalTranslations,
             showDeleteButton: showDeleteButton,
+            showUpdateButton: showUpdateButton,
             showPayButton: showPayButton
         )
         
@@ -294,6 +296,7 @@ public extension Payrails {
         style: StoredInstrumentsStyle? = nil,
         translations: StoredInstrumentsTranslations? = nil,
         showDeleteButton: Bool = false,
+        showUpdateButton: Bool = false,
         showPayButton: Bool = false
     ) -> Payrails.StoredInstrumentView {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstrumentView")
@@ -308,6 +311,7 @@ public extension Payrails {
             style: finalStyle,
             translations: finalTranslations,
             showDeleteButton: showDeleteButton,
+            showUpdateButton: showUpdateButton,
             showPayButton: showPayButton
         )
         
