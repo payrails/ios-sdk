@@ -29,8 +29,7 @@ let package = Package(
             ],
             path: "Payrails",
             resources: [
-                .process("Classes/Public/Assets/Media.xcassets"),
-                .process("Classes/Public/Media.xcassets")
+                .process("Classes/Public/Assets/Media.xcassets")
             ]
         ),
     ]

@@ -48,11 +48,10 @@ These unhandled files caused warnings and contributed to resolution failures.
 2. **Added Resource Declarations**
    ```swift
    resources: [
-       .process("Classes/Public/Assets/Media.xcassets"),
-       .process("Classes/Public/Media.xcassets")
+       .process("Classes/Public/Assets/Media.xcassets")
    ]
    ```
-   This properly declares the asset catalogs as processed resources, ensuring they're included in the package and handled correctly by Swift Package Manager.
+   This properly declares the asset catalog as a processed resource, ensuring it's included in the package and handled correctly by Swift Package Manager. Note: Only the Assets/Media.xcassets path is included to match the CocoaPods configuration and avoid duplicate resource names.
 
 ### Complete Updated Package.swift Structure
 
@@ -84,8 +83,7 @@ let package = Package(
             ],
             path: "Payrails",
             resources: [
-                .process("Classes/Public/Assets/Media.xcassets"),
-                .process("Classes/Public/Media.xcassets")
+                .process("Classes/Public/Assets/Media.xcassets")
             ]
         ),
     ]
