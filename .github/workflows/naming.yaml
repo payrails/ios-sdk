@@ -23,6 +23,6 @@ jobs:
       # Check that PR title starts with a ticket number
       # e.g. PAY-123: some commit message
       # see: https://github.com/marketplace/actions/check-pull-request-title
-      - uses: Slashgear/action-check-pr-title@v4.3.0
+      - uses: Slashgear/action-check-pr-title@v5.0.1
         with:
           regexp: '^[A-Z]+-[0-9]+:.*$'
