@@ -3,6 +3,9 @@ import PackageDescription
 
 let package = Package(
     name: "PayrailsCheckout",
+    platforms: [
+        .iOS(.v14)
+    ],
     products: [
         .library(
             name: "PayrailsCheckout",
@@ -24,7 +27,11 @@ let package = Package(
                 // Reference the product from paypalcheckout-ios
                 .product(name: "PayPalCheckout", package: "paypalcheckout-ios")
             ],
-            path: "Payrails"
+            path: "Payrails",
+            resources: [
+                // Bundle asset catalog so SPM clients can load images
+                .process("Classes/Public/Assets/Media.xcassets")
+            ]
         ),
     ]
 )
