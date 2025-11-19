@@ -5,6 +5,9 @@
 //  Created by Mustafa Dikici on 15.05.25.
 //
 
+import Foundation
+import UIKit
+
 public protocol GenericRedirectPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.GenericRedirectButton)
     func onAuthorizeSuccess(_ button: Payrails.GenericRedirectButton)
