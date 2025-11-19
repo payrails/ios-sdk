@@ -2,8 +2,8 @@
 //  CardFormConfig.swift
 //  Pods
 //
-//  Created by Mustafa Dikici on 23.04.25.
 //
+
 //
 public struct CardFormConfig {
     public let showNameField: Bool

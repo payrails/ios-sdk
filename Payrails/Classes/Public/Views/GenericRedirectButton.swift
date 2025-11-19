@@ -2,8 +2,8 @@
 //  GenericRedirectButton.swift
 //  Pods
 //
-//  Created by Mustafa Dikici on 15.05.25.
 //
+
 
 import Foundation
 import UIKit
