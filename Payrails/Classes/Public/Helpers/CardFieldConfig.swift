@@ -2,8 +2,8 @@
 //  CardFieldConfig.swift
 //  Pods
 //
-//  Created by Mustafa Dikici on 23.04.25.
 //
+
 
 public struct CardFieldConfig {
     public let type: CardFieldType

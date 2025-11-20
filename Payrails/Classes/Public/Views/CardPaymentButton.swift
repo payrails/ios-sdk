@@ -1,3 +1,6 @@
+import Foundation
+import UIKit
+
 public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton)
