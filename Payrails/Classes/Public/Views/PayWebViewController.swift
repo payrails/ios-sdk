@@ -2,8 +2,8 @@
 //  PayWebViewController.swift
 //  Pods
 //
-//  Created by Mustafa Dikici on 15.05.25.
 //
+
 import WebKit
 
 internal class PayWebViewController: UIViewController {

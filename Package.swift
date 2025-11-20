@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "PayrailsCheckout",
+    name: "Payrails",
     platforms: [
         .iOS(.v14)
     ],
     products: [
         .library(
-            name: "PayrailsCheckout",
-            targets: ["PayrailsCheckout"]
+            name: "Payrails",
+            targets: ["Payrails"]
         ),
     ],
     dependencies: [
@@ -20,7 +20,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PayrailsCheckout",
+            name: "Payrails",
             dependencies: [
                 // Reference the product "PayrailsCSE" from the package identified as "ios-cse"
                 .product(name: "PayrailsCSE", package: "ios-cse"),
