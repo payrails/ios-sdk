@@ -4,19 +4,23 @@ import WebKit
 class CardPaymentHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
+    private let vaultProviderConfigId: String?
     private let saveInstrument: Bool
     public weak var presenter: PaymentPresenter?
     private var webViewController: PayWebViewController?
     private var selfLink: String
+    private var confirmLink: Link?
 
     init(
         delegate: PaymentHandlerDelegate?,
         saveInstrument: Bool,
-        presenter: PaymentPresenter?
+        presenter: PaymentPresenter?,
+        vaultProviderConfigId: String?
     ) {
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
+        self.vaultProviderConfigId = vaultProviderConfigId
         self.selfLink = ""
     }
 }
@@ -43,9 +47,19 @@ extension CardPaymentHandler: PaymentHandler {
             return
         }
 
+        guard let vaultProviderConfigId = vaultProviderConfigId, !vaultProviderConfigId.isEmpty else {
+            print("Error: Missing vaultProviderConfigId for card payments.")
+            delegate?.paymentHandlerDidFail(
+                handler: self,
+                error: .missingData("vaultProviderConfigId is required for card payments."),
+                type: .card
+            )
+            return
+        }
+
         var data: [String: Any] = [:]
         data["card"] = [
-            "vaultProviderConfigId": "0077318a-5dd2-47fb-b709-e475d2172d32",
+            "vaultProviderConfigId": vaultProviderConfigId,
             "encryptedData": encryptedCardData
         ]
 
@@ -62,6 +76,7 @@ extension CardPaymentHandler: PaymentHandler {
 
     func handlePendingState(with executionResult: GetExecutionResult) {
         self.selfLink = executionResult.links.`self`
+        self.confirmLink = executionResult.links.confirm
         
         guard let link = executionResult.links.threeDS,
             let url = URL(string: link) else {
@@ -101,13 +116,9 @@ extension CardPaymentHandler: PaymentHandler {
             return
         }
 
-        let country = Country(code: "DE", fullName: "Germany", iso3: "DEU") // TODO: Review hardcoded country
-        let billingAddress = BillingAddress(country: country)
-
         let instrumentData = PaymentInstrumentData(
             encryptedData: encryptedData,
-            vaultProviderConfigId: vaultProviderConfigId,
-            billingAddress: billingAddress
+            vaultProviderConfigId: vaultProviderConfigId
         )
 
         let paymentComposition = PaymentComposition(
@@ -125,15 +136,12 @@ extension CardPaymentHandler: PaymentHandler {
              "error": "https://assets.payrails.io/html/payrails-error.html",
              "pending": "https://assets.payrails.io/html/payrails-pending.html"
         ]
-        let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
-        let meta = ["risk": risk]
         let amountDict = ["value": amount.value, "currency": amount.currency]
 
         let body: [String: Any] = [
             "amount": amountDict,
             "paymentComposition": [paymentComposition],
-            "returnInfo": returnInfo,
-            "meta": meta
+            "returnInfo": returnInfo
         ]
         
         completion(.success(body))
@@ -164,11 +172,6 @@ extension CardPaymentHandler: WKNavigationDelegate {
                     link: Link(
                         method: "GET",
                         href: selfLink,
-                        action: LinkAction(
-                            redirectMethod: "",
-                            redirectUrl: "",
-                            parameters:  LinkAction.Parameters(orderId: "orderId", tokenId: "tokenId"),
-                            type: "")
                     ),
                     payload: [:]
                 )
