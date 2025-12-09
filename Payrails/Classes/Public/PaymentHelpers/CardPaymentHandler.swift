@@ -172,7 +172,13 @@ extension CardPaymentHandler: WKNavigationDelegate {
                     link: Link(
                         method: "GET",
                         href: selfLink,
-                    ),
+                        action: LinkAction(
+                                    redirectMethod: "",
+                                    redirectUrl: "",
+                                    parameters:  LinkAction.Parameters(orderId: "orderId", tokenId: "tokenId"),
+                                    type: ""
+                                )                   
+                        ),
                     payload: [:]
                 )
             }
