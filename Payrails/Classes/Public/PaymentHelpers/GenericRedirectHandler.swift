@@ -107,8 +107,6 @@ extension GenericRedirectHandler: PaymentHandler {
              "error": "https://assets.payrails.io/html/payrails-error.html",
              "pending": "https://assets.payrails.io/html/payrails-pending.html"
         ]
-        let risk = ["sessionId": "03bf5b74-d895-48d9-a871-dcd35e609db8"]
-        let meta = ["risk": risk]
         let amountDict = ["value": amount.value, "currency": amount.currency]
         
         let paymentComposition = PaymentComposition(
@@ -123,7 +121,6 @@ extension GenericRedirectHandler: PaymentHandler {
         let body: [String: Any] = [
             "amount": amountDict,
             "returnInfo": returnInfo,
-            "meta": meta,
             "paymentComposition": [paymentComposition]
         ]
         

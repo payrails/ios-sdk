@@ -17,15 +17,4 @@ struct PaymentComposition {
 struct PaymentInstrumentData {
     let encryptedData: String
     let vaultProviderConfigId: String
-    let billingAddress: BillingAddress
-}
-
-struct BillingAddress {
-    let country: Country
-}
-
-struct Country {
-    let code: String
-    let fullName: String
-    let iso3: String
 }

@@ -208,10 +208,18 @@ public extension Payrails {
                     return false
                 }
             case .card:
+                guard let providerConfigId = config.vaultConfiguration?.providerConfigId,
+                      !providerConfigId.isEmpty else {
+                    isPaymentInProgress = false
+                    onResult?(.error(.missingData("Vault configuration with providerConfigId is required for card payments.")))
+                    return false
+                }
+
                 let cardPaymentHandler = CardPaymentHandler(
                     delegate: self,
                     saveInstrument: saveInstrument,
-                    presenter: presenter
+                    presenter: presenter,
+                    vaultProviderConfigId: providerConfigId
                 )
                 self.paymentHandler = cardPaymentHandler
                 return true
