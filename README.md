@@ -1,346 +1,264 @@
 # Payrails iOS SDK
 
-Payrails iOS SDK provides you with the building blocks to create a checkout experience for your customers.
+Payrails iOS SDK provides UI components and payment flows for card payments, Apple Pay, PayPal, and redirect-based methods.
 
-## Installation with Cocoapods
+## Documentation
 
-```(rb)
-pod 'Payrails/Checkout'
+This README is the canonical integration guide. The `docs/` folder contains supplemental examples and flow-specific notes.
+
+## Installation
+
+### CocoaPods
+
+```ruby
+pod "Payrails/Checkout"
 ```
 
-## Installation with Swift Package Manager
+```bash
+pod install
+```
 
-Use `https://github.com/payrails/ios-sdk` as the repository URL.
+### Swift Package Manager
 
-### Enabling Apple Pay capability
+Use `https://github.com/payrails/ios-sdk` as the repository URL and select the `Payrails` product.
 
-To enable Apple Pay in your app, you need to add the merchant ID in `Signing & Capabilities` in your project's target's settings.
+### Apple Pay capability
 
-## Initializing Payrails SDK
+Enable Apple Pay in your target's Signing & Capabilities and configure a Merchant ID.
 
-Use the `Payrails` component to initialize a Payrails client context as shown below.
+## SDK Initialization
 
-Async Await
+### Async/await
 
 ```swift
 import Payrails
 
-private var payrails: Payrails.Session?
-
-payrails = try await Payrails.configure(
- with: .init(
-     version: version,
-  data: data,
-   option: .init(env: .dev)
-   )
-)
-```
-
-Callback
-
-```swift
-Payrails.configure(with: .init(
-        version: version,
-                    data: data,
-                    option: .init(env: .dev)
-                )) { [weak self] result in
-                    switch result {
-                    case let .success(session):
-                        self?.payrails = session
-                    case let .failure(error):
-                        print(error)
-                    }
-                }
-```
-
-Where `data` is base64 string and version is SDK version, you both receive from your backend.
-
-Once your SDK is initialized, it is now allowed to interact directly with Payrails from your client.
-
-## UI elemenents
-
-Payrails iOS SDK provides you buttons for Apple Pay, PayPal and Stored instuments (card buttons).
-
-1. Initialize Tokenization context:
-
-```swift
-private let applePayButton = ApplePayButton(
-        paymentButtonType: .checkout,
-        paymentButtonStyle: .black
+// 1) Fetch InitData from your backend
+let initData = try await Api()
+    .call(
+        endpoint: .initSdk(settings: settings, token: authentication.accessToken),
+        type: Payrails.InitData.self
     )
-applePayButton.onTap = { [weak self] in
-    // Make payment
-}
 
-private let payPalButton = PayPalButton()
-payPalButton.onTap = { [weak self] in
-    // Make payment
-}
+// 2) Build configuration
+let configuration = Payrails.Configuration(
+    initData: initData,
+    option: Payrails.Options(env: .dev) // .prod in production
+)
 
-private let cardButton = CardSubmitButton()
-cardButton.onTap = { [weak self] in
-    // Make payment
-}
+// 3) Initialize the SDK
+let session = try await Payrails.createSession(with: configuration)
+
+// 4) Store the session if you need a direct reference
+self.payrailsSession = session
 ```
 
-## Check for available payments
+Notes:
+- `Payrails.createSession(with:)` is the public entry point for SDK initialization.
+- `Payrails.InitData` is just `version` and `data`; pass it as provided by your backend.
+- Creating UI components should happen on the main thread after initialization.
 
-Payrails iOS SDK allows you to easily check if particular payment is available:
-
-```swift
-applePayButton.isHidden = !payrails.isPaymentAvailable(type: .applePay)
-payPalButton.isHidden = !payrails.isPaymentAvailable(type: .payPal)
-```
-
-## Make new payment
-
-Payrails iOS SDK allows you to easily perform payment using:
-
-Async Await
+### Callback
 
 ```swift
-import Payrails
-
-Task { [weak self, weak payrails] in
-            let result = await payrails?.executePayment(
-                with: type, //.applePay or .payPal
-                saveInstrument: false, //set to true if you want to store payment
-                presenter: self
-            )
-
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
-                    self?.log("Payment was successful!")
-                case .authorizationFailed:
-                    self?.log("Payment failed due to authorization")
-                case .failure:
-                    self?.log("Payment failed")
-                case let .error(error):
-                    self?.log(
-                        format: "Payment failed due to error: %@",
-                        error.localizedDescription
-                    )
-                case .cancelledByUser:
-                    self?.log("Payment was cancelled by user")
-                }
-            }
-        }
-```
-
-Callback
-
-```swift
-payrails.executePayment(
-            with: type, //.applePay or .payPal
-            saveInstrument: false, //set to true if you want to store payment
-            presenter: self) { [weak self] result in
-                switch result {
-                case .success:
-                    self?.log("Payment was successful!")
-                case .authorizationFailed:
-                    self?.log("Payment failed due to authorization")
-                case .failure:
-                    self?.log("Payment failed (failure state)")
-                case let .error(error):
-                    self?.log(
-                        format: "Payment failed due to error: %@",
-                        error.localizedDescription
-                    )
-                case .cancelledByUser:
-                    self?.log("Payment was cancelled by user")
-                }
-        }
-```
-
-Where
-
-```swift
-extension YourPaymentViewController: PaymentPresenter {
-    func presentPayment(_ viewController: UIViewController) {
-        DispatchQueue.main.async {
-            self.present(viewController, animated: true)
-        }
-    }
-}
-```
-
-### Stored payments
-
-Payrails iOS SDK allows you to retrieve and reuse stored payments:
-
-```swift
- payrails.storedInstruments.forEach { storedElement in
-            switch storedElement.type {
-            case .payPal:
-                let storedPayPalButton = PayPalButton()
-                storedPayPalButton.onTap = { [weak self] in
-                    self?.pay(storedInstrument: storedElement)
-                }
-            default:
-                break
-            }
-        }
-
-private func pay(
-        storedInstrument: StoredInstrument
-    ) {
-        Task { [weak self, weak payrails] in
-            let result = await payrails?.executePayment(
-                withStoredInstrument: storedInstrument,
-                presenter: self
-            )
-
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
-                    self?.log("Payment was successful!")
-                case .authorizationFailed:
-                    self?.log("Payment failed due to authorization")
-                case .failure:
-                    self?.log("Payment failed (failure state)")
-                case let .error(error):
-                    self?.log(
-                        format: "Payment failed due to error: %@",
-                        error.localizedDescription
-                    )
-                case .cancelledByUser:
-                    self?.log("Payment was cancelled by user")
-                default:
-                    break
-                }
-            }
-        }
-    }
-```
-
-## Card Form Acceptance
-
-After initializing your payrails SDK. You get a `session` object we use to interact with the payment controller.
-There are 3 ways to integrate the Payrails SDK
-
-1. Drop-in: an all-in-one payment form to accept payments on your website.
-2. Elements: modular payment UI components you can assemble to build a modular payment form.
-3. Secure fields: secure input fields for PCI-compliant cardholder data collection. **(not supported yet)**
-
-### 1.Drop-in
-
-#### Initilizing the drop-in view
-
-```swift
-
-let controller = try? DropInViewController(configuration: .init(
-    initData: response,
-    option: .init(env: .dev)
-))
-```
-
-#### Handling events
-
-Handle events by setting the callback function of your controller.
-Allowed result types:
-| Result | Description |
-| --------------------- | --------------------------------------------------------------- |
-| .authorizationFailed | Couldn't authroize the payment |
-| .cancelledByUser | User cancelled the execution |
-| .failure | Payment failed |  
-| .success | Payment was successful |
-| .error | An error occured with error values [here](Payrails/Classes/Public/Domains/PayrailsError.swift) |
-
-```swift
-controller?.callback = { [weak self] result in
-    let message: String
+Payrails.createSession(with: configuration) { result in
     switch result {
-    case .authorizationFailed:
-        message = "Authorization Failed"
-    case .cancelledByUser:
-        message = "Cancelled by user"
-    case .failure:
-        message = "Failure"
-    case .success:
-        message = "Success"
-    case let .error(error):
-        switch error {
-        case .invalidCardData:
-            return
-        default:
-            message = "Error " + error.localizedDescription
-        }
-    }
-    self?.showResultAlert(message)
-}
-```
-
-#### Render your drop-in form
-
-The controller exposes the drop-in view object, you can render it by adding it as a subview to your view controller
-
-```swift
-view.addSubview(controller.view)
-```
-
-### 2. Elements
-
-### Element Types
-
-Before we integrate our secure fields form you need to be fimiliar with the Card Element types.
-| Result | Description |
-| --------------------- | --------------------------------------------------------------- |
-| CARDHOLDER_NAME | Field type that requires Cardholder Name input formatting and validation |
-| CARD_NUMBER | Field type that requires Credit Card Number input formatting and validation |
-| EXPIRATION_DATE | Field type that requires Card Expiration Date input formatting and validation, format can be set through CollectElementOptions, defaul is MM/YY |  
-| CVV | Field type that requires Card CVV input formatting and validation |
-| EXPIRATION_MONTH | Field type that requires Card Expiration Month formatting and validation (format: MM)|
-| EXPIRATION_YEAR | Field type that requires Card Expiration Year formatting and validation, format can be set through CollectElementOptions for YY, defaul is YYYY |
-
-They can be accessed as follows:
-
-```swift
-let type = CardFieldType.CARDHOLDER_NAME
-```
-
-### Initilize your secure fields view
-
-```swift
-func buildCardView {
-
-    guard let payrails, // This is your Payrails.Session object
-        payrails.isPaymentAvailable(type: .card) else { return }
-
-
-    if let cardView = payrails.buildCardView(
-        with: .init(
-            style: .defaultStyle,
-            showNameField: true,
-        )
-    ) {
-        view.addSubview(cardView)
-    } else {
-        log("Payment card is enabled but view was not generated")
+    case .success(let session):
+        print("Session created: \(String(describing: session.executionId))")
+    case .failure(let error):
+        print("Initialization failed: \(error)")
     }
 }
 ```
 
-### Configure your view
+### Session lifetime guidance
 
-You can pass a `fieldConfigs` parameter to your view, allowing you to customize specific elements
+- Create **one** session and reuse it during the app lifecycle.
+- `Payrails.createSession(with:)` sets an internal `currentSession` used by the factory methods.
+
+## Payment Presenter
+
+Some payment methods require presenting additional UI (3DS, PayPal login, redirects). Implement `PaymentPresenter` in the view controller that owns the checkout UI.
 
 ```swift
-let cardView = payrails.buildCardView(
-    with: .init(
-        style: .defaultStyle,
-        showNameField: true,
-        fieldConfigs: [
-            CardFieldConfig.init(
-                type: CardFieldType.CARDHOLDER_NAME,
-                placeholder: "Enter name as it appears on your credit card",
-                title: "Card holder name",
-                style: .defaultStyle
-            )
-        ]
-    )
+final class CheckoutViewController: UIViewController, PaymentPresenter {
+    func presentPayment(_ viewController: UIViewController) {
+        present(viewController, animated: true)
+    }
+
+    // Used by the SDK for card payments
+    var encryptedCardData: String?
+}
+```
+
+## Card Payments
+
+Card payments use two components:
+
+1. `Payrails.CardForm` to collect and encrypt card data
+2. `Payrails.CardPaymentButton` to submit the payment
+
+### Create a Card Form
+
+```swift
+let cardForm = Payrails.createCardForm(
+    config: nil,
+    showSaveInstrument: false
+)
+
+view.addSubview(cardForm)
+```
+
+You can customize styles and translations using `CardFormConfig`:
+
+```swift
+let customConfig = CardFormConfig(
+    showNameField: true,
+    showSaveInstrument: true,
+    styles: customStyles, // Optional CardFormStylesConfig
+    translations: customTranslations // Optional CardTranslations
+)
+
+let cardForm = Payrails.createCardForm(config: customConfig, showSaveInstrument: true)
+```
+
+### Create a Card Payment Button
+
+`createCardPaymentButton` requires a session **and** a card form to exist. Call `createCardForm(...)` first.
+
+```swift
+let buttonTranslations = CardPaymenButtonTranslations(label: "Pay Now")
+let payButton = Payrails.createCardPaymentButton(
+    buttonStyle: nil,
+    translations: buttonTranslations
+)
+
+payButton.delegate = self
+payButton.presenter = self
+```
+
+Notes:
+- When using `CardPaymentButton`, **do not set** `cardForm.delegate` manually. The button sets itself as the delegate to receive encrypted card data.
+- Use `PayrailsCardPaymentButtonDelegate` for success/failure callbacks.
+
+## Apple Pay
+
+```swift
+let applePayButton = Payrails.createApplePayButton(
+    type: .checkout,
+    style: .black,
+    showSaveInstrument: false
+)
+
+applePayButton.delegate = self
+applePayButton.presenter = self
+```
+
+## PayPal
+
+```swift
+let payPalButton = Payrails.createPayPalButton(showSaveInstrument: true)
+payPalButton.delegate = self
+payPalButton.presenter = self
+```
+
+## Redirect Payment Methods
+
+For redirect-based methods (e.g., iDEAL), use a generic redirect button and the payment method code from your backend configuration:
+
+```swift
+let buttonTranslations = CardPaymenButtonTranslations(label: "Pay with iDEAL")
+let buttonStyle = CardButtonStyle(
+    backgroundColor: .systemBlue,
+    textColor: .white,
+    cornerRadius: 8
+)
+
+let idealButton = Payrails.createGenericRedirectButton(
+    buttonStyle: buttonStyle,
+    translations: buttonTranslations,
+    paymentMethodCode: "ideal"
 )
 ```
+
+## Stored Instruments
+
+### Accessing stored instruments
+
+```swift
+let cards = session.storedInstruments(for: .card)
+let paypals = session.storedInstruments(for: .payPal)
+```
+
+Or via the static helper (uses the current session):
+
+```swift
+let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
+```
+
+### Displaying stored instruments
+
+```swift
+let storedInstrumentsView = Payrails.createStoredInstruments(
+    showDeleteButton: true,
+    showUpdateButton: true,
+    showPayButton: true
+)
+
+storedInstrumentsView.delegate = self
+storedInstrumentsView.presenter = self
+```
+
+### Displaying a single stored instrument
+
+```swift
+let instrumentView = Payrails.createStoredInstrumentView(
+    instrument: instrument,
+    showDeleteButton: true,
+    showUpdateButton: true,
+    showPayButton: true
+)
+
+instrumentView.delegate = self
+instrumentView.setPresenter(self)
+```
+
+### Managing stored instruments
+
+Use `Payrails.api` to delete or update a stored instrument:
+
+```swift
+// Delete
+let result = try await Payrails.api("deleteInstrument", instrumentId)
+
+// Update (set as default)
+let body = UpdateInstrumentBody(default: true)
+let result = try await Payrails.api("updateInstrument", instrumentId, body)
+```
+
+## Debugging
+
+```swift
+// Toggle the SDK on-screen log overlay
+Payrails.DebugManager.shared.toggleLogView()
+
+// Present a SwiftUI viewer with the parsed SDK config
+let debugView = Payrails.Debug.configViewer(session: session)
+let hostingController = UIHostingController(rootView: debugView)
+present(hostingController, animated: true)
+
+// Log entries to the SDK log store
+Payrails.log("Some message")
+```
+
+## Customization Notes
+
+The current implementation exposes styling, fonts, colors, and text labels, but has these limitations:
+
+- Field order and placement are fixed (`[1, 1, 3]` with name, `[1, 3]` without name).
+- Field dimensions are applied internally; custom Auto Layout constraints are limited.
+- The save-instrument toggle layout is not configurable.
+- Some low-level styling (card-brand icon, asterisk visibility) is not exposed via `CardFormConfig`.
 
 ## Security Policy
 
