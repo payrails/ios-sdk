@@ -179,6 +179,9 @@ let idealButton = Payrails.createGenericRedirectButton(
     translations: buttonTranslations,
     paymentMethodCode: "ideal"
 )
+
+idealButton.presenter = self
+idealButton.delegate = self
 ```
 
 ## Stored Instruments
