@@ -55,7 +55,7 @@ self.payrailsSession = session
 
 Notes:
 - `Payrails.createSession(with:)` is the public entry point for SDK initialization.
-- `Payrails.InitData` is just `version` and `data`; pass it as provided by your backend.
+- `initData` is just `version` and `data`; pass it as provided by your backend.
 - Creating UI components should happen on the main thread after initialization.
 
 ### Callback
