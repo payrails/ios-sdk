@@ -9,7 +9,7 @@
 Pod::Spec.new do |spec|
 
   spec.name         = "Payrails"
-  spec.version      = "1.0.0"
+  spec.version      = "1.25.0"
   spec.swift_version = "5.0"
   spec.summary      = "Payrails Checkout SDK for iOS - Seamless Payment Integration"
   spec.description  = "Payrails Checkout ensures seamless payment integration within iOS applications, providing developers with the means to create versatile payment solutions."
@@ -25,9 +25,9 @@ Pod::Spec.new do |spec|
   spec.source       = { :git => "https://github.com/payrails/ios-sdk.git", :tag => "#{spec.version}" }
   
   spec.subspec 'Checkout' do |checkout|
-  	checkout.source_files  = "Payrails/Classes/Public/**/*.{swift}"
-  	checkout.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
-  	checkout.dependency 'PayPalCheckout'
+      checkout.source_files  = "Payrails/Classes/Public/**/*.{swift}"
+      checkout.resources  = "Payrails/Classes/Public/Assets/*.xcassets"
+      checkout.dependency 'PayPalCheckout'
     checkout.dependency 'PayrailsCSE'
   end
 end

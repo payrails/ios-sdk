@@ -28,34 +28,56 @@ Enable Apple Pay in your target's Signing & Capabilities and configure a Merchan
 
 ## SDK Initialization
 
+### Creating InitData
+
+You can create `InitData` directly using the public initializer. This gives you full control over how you fetch and parse the initialization payload from your backend:
+
+```swift
+import Payrails
+
+- pass the client `init` call response to the frontend 
+
+// Create InitData directly
+let initData = Payrails.InitData(version: version, data: payload)
+```
+
+This approach:
+- **Avoids coupling** your response parsing to Payrails SDK objects.
+- **Gives flexibility** — your backend doesn't need to follow a specific naming or response structure.
+
+Alternatively, if your backend returns a response matching the SDK's expected structure, you can decode it directly:
+
+```swift
+let initData = try JSONDecoder().decode(Payrails.InitData.self, from: responseData)
+```
+
 ### Async/await
 
 ```swift
 import Payrails
 
-// 1) Fetch InitData from your backend
-let initData = try await Api()
-    .call(
-        endpoint: .initSdk(settings: settings, token: authentication.accessToken),
-        type: Payrails.InitData.self
-    )
+// 1) Fetch version and payload from your backend
+let (version, payload) = try await fetchInitDataFromBackend()
 
-// 2) Build configuration
+// 2) Create InitData
+let initData = Payrails.InitData(version: version, data: payload)
+
+// 3) Build configuration
 let configuration = Payrails.Configuration(
     initData: initData,
     option: Payrails.Options(env: .dev) // .prod in production
 )
 
-// 3) Initialize the SDK
+// 4) Initialize the SDK
 let session = try await Payrails.createSession(with: configuration)
 
-// 4) Store the session if you need a direct reference
+// 5) Store the session if you need a direct reference
 self.payrailsSession = session
 ```
 
 Notes:
 - `Payrails.createSession(with:)` is the public entry point for SDK initialization.
-- `initData` is just `version` and `data`; pass it as provided by your backend.
+- `initData` requires `version` (String) and `data` (String); extract these from your backend response however you prefer.
 - Creating UI components should happen on the main thread after initialization.
 
 ### Callback
