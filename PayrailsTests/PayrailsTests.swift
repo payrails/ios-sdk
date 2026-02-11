@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import Payrails
+import Payrails
 
 final class PayrailsTests: XCTestCase {
 
@@ -27,3 +27,4 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(initData.data, payload)
     }
 }
+
