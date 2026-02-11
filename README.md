@@ -35,9 +35,7 @@ You can create `InitData` directly using the public initializer. This gives you 
 ```swift
 import Payrails
 
-// Fetch version and data from your backend (in any format you prefer)
-let version = "1"
-let payload = "your-init-data-payload-from-backend"
+- pass the client `init` call response to the frontend 
 
 // Create InitData directly
 let initData = Payrails.InitData(version: version, data: payload)
