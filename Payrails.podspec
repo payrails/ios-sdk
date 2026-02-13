@@ -9,7 +9,7 @@
 Pod::Spec.new do |spec|
 
   spec.name         = "Payrails"
-  spec.version      = "1.25.0"
+  spec.version      = "1.25.1"
   spec.swift_version = "5.0"
   spec.summary      = "Payrails Checkout SDK for iOS - Seamless Payment Integration"
   spec.description  = "Payrails Checkout ensures seamless payment integration within iOS applications, providing developers with the means to create versatile payment solutions."
