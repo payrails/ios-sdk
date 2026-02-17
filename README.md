@@ -285,6 +285,42 @@ The current implementation exposes styling, fonts, colors, and text labels, but 
 - The save-instrument toggle layout is not configurable.
 - Some low-level styling (card-brand icon, asterisk visibility) is not exposed via `CardFormConfig`.
 
+## Card Form Customization (Iteration 1)
+
+The SDK now supports advanced customization for the card form, including:
+- Show/hide card brand icon (`showCardIcon`)
+- Card icon alignment (`cardIconAlignment`)
+- Show/hide required asterisk (`showRequiredAsterisk`)
+- Configurable button height (`CardButtonStyle.height`)
+- Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
+
+### Example Usage
+
+```swift
+let config = CardFormConfig(
+    showNameField: true,
+    showSaveInstrument: false,
+    showCardIcon: true,              // NEW
+    cardIconAlignment: .right,       // NEW
+    showRequiredAsterisk: false,     // NEW
+    styles: CardFormStylesConfig(
+        fieldSpacing: 12,            // NEW
+        sectionSpacing: 20,          // NEW
+        buttonStyle: CardButtonStyle(
+            height: 50,              // NEW
+            backgroundColor: .systemBlue,
+            textColor: .white,
+            font: .boldSystemFont(ofSize: 16),
+            cornerRadius: 8
+        )
+    )
+)
+```
+
+- `buttonStyle.height`: Sets the pay button height (default is 44pt if not set)
+- `sectionSpacing`: Sets the vertical spacing between the card form and the pay button (default is 16pt if not set)
+- `fieldSpacing`: Sets the spacing between input fields (see CardForm)
+
 ## Security Policy
 
 ### Reporting a Vulnerability
