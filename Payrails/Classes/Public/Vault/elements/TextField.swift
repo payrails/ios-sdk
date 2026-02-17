@@ -998,8 +998,8 @@ internal extension TextField {
                 leftAstriskPadding-=1
             }
             
-            // Only add asterisk if required AND label text is not empty
-            if self.isRequired && !text.isEmpty
+            // Only add asterisk if required AND label text is not empty AND options.showRequiredAsterisk is true
+            if self.isRequired && !text.isEmpty && self.options.showRequiredAsterisk
             {
                 
                 attributedString.append(asterisk)
@@ -1079,3 +1079,4 @@ extension TextField {
         return uuid;
     }
 }
+

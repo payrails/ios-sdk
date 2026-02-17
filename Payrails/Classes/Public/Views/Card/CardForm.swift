@@ -101,7 +101,10 @@ public extension Payrails {
 
             // Get the shared error text style
             let containerErrorStyle = stylesConfig.errorTextStyle ?? defaultErrorStyle
-
+            
+            // Helper for icon alignment style
+            let iconAlignment = config.cardIconAlignment
+            
             guard let container = self.containerClient.container(
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
@@ -125,7 +128,8 @@ public extension Payrails {
                 return (placeholder, label, errorText)
             }
             
-            let requiredOption = CollectElementOptions(required: true, enableCardIcon: false, enableCopy: true)
+            // Changed per instructions: enableCardIcon from config.showCardIcon
+            let requiredOption = CollectElementOptions(required: true, enableCardIcon: config.showCardIcon, enableCopy: true, showRequiredAsterisk: config.showRequiredAsterisk)
             
             do {
                 let fieldType = CardFieldType.CARD_NUMBER
@@ -140,6 +144,7 @@ public extension Payrails {
                     inputStyles: inputStyle.skyflowStyles,
                     labelStyles: Styles(base: labelStyle),
                     errorTextStyles: Styles(base: containerErrorStyle),
+                    iconStyles: Styles(base: CardStyle(cardIconAlignment: iconAlignment)),
                     label: translation.label ?? "",
                     placeholder: translation.placeholder ?? "•••• •••• •••• ••••",
                     type: .CARD_NUMBER,
@@ -258,7 +263,7 @@ public extension Payrails {
             
             // --- StackView Configuration ---
             self.axis = .vertical
-            self.spacing = 10
+            self.spacing = stylesConfig.fieldSpacing ?? 10
 
             // --- Add Composable View ---
             do {
