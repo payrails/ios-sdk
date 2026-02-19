@@ -79,7 +79,7 @@ public extension Payrails {
             self.layoutMargins = UIEdgeInsets(top: 15, left: 15, bottom:15, right: 15)
 
             // Apply button styles from config
-            let buttonStyle = self.stylesConfig.buttonStyle ?? CardButtonStyle.defaultStyle
+            let buttonStyle = CardButtonStyle.defaultStyle
             payButton.setTitle(buttonTitle, for: .normal)
             
             if let bgColor = buttonStyle.backgroundColor {
@@ -193,3 +193,4 @@ public extension Payrails {
         }
     }
 }
+

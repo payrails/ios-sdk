@@ -162,7 +162,6 @@ public struct CardFormStylesConfig {
     public let allInputFieldStyles: CardFieldSpecificStyles?
     public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]?
     public let labelStyles: [CardFieldType: CardStyle]?
-    public let buttonStyle: CardButtonStyle?
     public let fieldSpacing: CGFloat?
     public let sectionSpacing: CGFloat?
 
@@ -172,7 +171,6 @@ public struct CardFormStylesConfig {
         allInputFieldStyles: CardFieldSpecificStyles? = nil,
         inputFieldStyles: [CardFieldType : CardFieldSpecificStyles]? = nil,
         labelStyles: [CardFieldType : CardStyle]? = nil,
-        buttonStyle: CardButtonStyle? = nil,
         fieldSpacing: CGFloat? = nil,
         sectionSpacing: CGFloat? = nil
     ) {
@@ -181,7 +179,6 @@ public struct CardFormStylesConfig {
         self.allInputFieldStyles = allInputFieldStyles
         self.inputFieldStyles = inputFieldStyles
         self.labelStyles = labelStyles
-        self.buttonStyle = buttonStyle
         self.fieldSpacing = fieldSpacing
         self.sectionSpacing = sectionSpacing
     }
@@ -192,7 +189,6 @@ public struct CardFormStylesConfig {
         let defaultLabelStyle = CardStyle(textColor: .darkGray)
         let defaultErrorStyle = CardStyle(textColor: UIColor.red)
         let defaultWrapperStyle = CardWrapperStyle.defaultStyle
-        let defaultButtonStyle = CardButtonStyle.defaultStyle
 
         let defaultFieldSpacing: CGFloat = 10
         let defaultSectionSpacing: CGFloat = 16
@@ -211,7 +207,6 @@ public struct CardFormStylesConfig {
             allInputFieldStyles: defaultAllInputStyle,
             inputFieldStyles: nil,
             labelStyles: defaultLabelStylesDict,
-            buttonStyle: defaultButtonStyle,
             fieldSpacing: defaultFieldSpacing,
             sectionSpacing: defaultSectionSpacing
         )
@@ -250,7 +245,6 @@ public struct CardFormStylesConfig {
              allInputFieldStyles: finalAllInputFieldStyles,
              inputFieldStyles: finalInputFieldStyles.isEmpty ? nil : finalInputFieldStyles,
              labelStyles: finalLabelStyles.isEmpty ? nil : finalLabelStyles,
-             buttonStyle: self.buttonStyle?.merged(over: baseConfig.buttonStyle) ?? baseConfig.buttonStyle,
              fieldSpacing: self.fieldSpacing ?? baseConfig.fieldSpacing,
              sectionSpacing: self.sectionSpacing ?? baseConfig.sectionSpacing
          )

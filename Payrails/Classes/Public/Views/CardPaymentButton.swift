@@ -14,6 +14,7 @@ public extension Payrails {
         private let cardForm: Payrails.CardForm?
         private let storedInstrument: StoredInstrument?
         private weak var session: Payrails.Session?
+        private var heightConstraint: NSLayoutConstraint?
         private var paymentTask: Task<Void, Error>?
         private var encryptedCardData: String?
         private var isProcessing: Bool = false {
@@ -60,6 +61,18 @@ public extension Payrails {
             
             setupButton(storedInstrumentStyle: buttonStyle)
         }
+
+        // Internal initializer used by unit tests to validate card-form button styling logic.
+        internal init(translations: CardPaymenButtonTranslations = CardPaymenButtonTranslations(), buttonStyle: CardButtonStyle? = nil) {
+            self.cardForm = nil
+            self.storedInstrument = nil
+            self.session = nil
+            self.translations = translations
+            self.storedInstrumentTranslations = nil
+            super.init()
+
+            setupButton(style: buttonStyle)
+        }
         
         // Required initializers with warnings
         public required init() {
@@ -80,33 +93,12 @@ public extension Payrails {
         
         private func setupButton(style: CardButtonStyle? = nil) {
             updateButtonTitle()
-            
-            // Use provided style or fall back to default
-            let buttonStyle = style ?? CardButtonStyle.defaultStyle
-            
-            // Apply style properties
-            if let bgColor = buttonStyle.backgroundColor {
-                backgroundColor = bgColor
-            }
-            if let textColor = buttonStyle.textColor {
-                setTitleColor(textColor, for: .normal)
-            }
-            if let font = buttonStyle.font {
-                titleLabel?.font = font
-            }
-            if let cornerRadius = buttonStyle.cornerRadius {
-                layer.cornerRadius = cornerRadius
-            }
-            if let borderWidth = buttonStyle.borderWidth {
-                layer.borderWidth = borderWidth
-            }
-            if let borderColor = buttonStyle.borderColor {
-                layer.borderColor = borderColor.cgColor
-            }
-            if let contentEdgeInsets = buttonStyle.contentEdgeInsets {
-                self.contentEdgeInsets = contentEdgeInsets
-            }
-            
+
+            let effectiveStyle = style?.merged(over: CardButtonStyle.defaultStyle) ?? CardButtonStyle.defaultStyle
+            apply(style: effectiveStyle)
+            updateHeightConstraint(to: effectiveStyle.height ?? 44)
+
+            removeTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
             addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
         }
         
@@ -121,17 +113,52 @@ public extension Payrails {
                 layer.borderWidth = style.borderWidth
                 layer.borderColor = style.borderColor.cgColor
                 contentEdgeInsets = style.contentEdgeInsets
-                
-                // Set height constraint
-                heightAnchor.constraint(equalToConstant: style.height).isActive = true
+                updateHeightConstraint(to: style.height)
             } else {
                 // Default styling
                 backgroundColor = .systemBlue
                 setTitleColor(.white, for: .normal)
                 layer.cornerRadius = 8
             }
-            
+
+            removeTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
             addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
+        }
+
+        private func apply(style: CardButtonStyle) {
+            if let bgColor = style.backgroundColor {
+                backgroundColor = bgColor
+            }
+            if let textColor = style.textColor {
+                setTitleColor(textColor, for: .normal)
+            }
+            if let font = style.font {
+                titleLabel?.font = font
+            }
+            if let cornerRadius = style.cornerRadius {
+                layer.cornerRadius = cornerRadius
+                layer.masksToBounds = cornerRadius > 0
+            }
+            if let borderWidth = style.borderWidth {
+                layer.borderWidth = borderWidth
+            }
+            if let borderColor = style.borderColor {
+                layer.borderColor = borderColor.cgColor
+            }
+            if let insets = style.contentEdgeInsets {
+                contentEdgeInsets = insets
+            }
+        }
+
+        private func updateHeightConstraint(to constant: CGFloat) {
+            if let existingConstraint = heightConstraint {
+                existingConstraint.constant = constant
+                return
+            }
+
+            let constraint = heightAnchor.constraint(equalToConstant: constant)
+            constraint.isActive = true
+            heightConstraint = constraint
         }
         
         private func updateButtonTitle() {
