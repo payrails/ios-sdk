@@ -152,7 +152,7 @@ public extension Payrails {
         
         return button
     }
-    
+
     // New factory method for stored instrument mode
     static func createCardPaymentButton(
         storedInstrument: StoredInstrument,

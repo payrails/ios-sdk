@@ -66,7 +66,7 @@ public extension Payrails {
         
         private func setupUI(buttonTitle: String) {
             self.axis = .vertical
-            self.spacing = 16
+            self.spacing = stylesConfig.sectionSpacing ?? 16
             self.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 16, right: 0)
             self.isLayoutMarginsRelativeArrangement = true
             
@@ -79,8 +79,7 @@ public extension Payrails {
             self.layoutMargins = UIEdgeInsets(top: 15, left: 15, bottom:15, right: 15)
 
             // Apply button styles from config
-            let buttonStyle = self.stylesConfig.buttonStyle ?? CardButtonStyle.defaultStyle
-            
+            let buttonStyle = CardButtonStyle.defaultStyle
             payButton.setTitle(buttonTitle, for: .normal)
             
             if let bgColor = buttonStyle.backgroundColor {
@@ -105,9 +104,10 @@ public extension Payrails {
             if let insets = buttonStyle.contentEdgeInsets {
                 payButton.contentEdgeInsets = insets
             }
-            
-            // Keep height constraint and target
-            payButton.heightAnchor.constraint(equalToConstant: 44).isActive = true // Keep default height or make configurable? For now, keep.
+
+            // Apply configurable button height
+            let buttonHeight = buttonStyle.height ?? 44
+            payButton.heightAnchor.constraint(equalToConstant: buttonHeight).isActive = true
             payButton.addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
             
             // Add subviews
