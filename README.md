@@ -281,12 +281,11 @@ Payrails.log("Some message")
 
 ## Customization Notes
 
-The current implementation exposes styling, fonts, colors, and text labels, but has these limitations:
+The current implementation exposes styling, fonts, colors, and text labels, with these remaining limitations:
 
-- Field order and placement are fixed (`[1, 1, 3]` with name, `[1, 3]` without name).
 - Field dimensions are applied internally; custom Auto Layout constraints are limited.
 - The save-instrument toggle layout is not configurable.
-- Some low-level styling (card-brand icon, asterisk visibility) is not exposed via `CardFormConfig`.
+- Advanced constraint-based composition is not yet available.
 
 ## Card Form Customization (Iteration 1)
 
@@ -327,6 +326,34 @@ let payButton = Payrails.createCardPaymentButton(
 - `createCardPaymentButton(... buttonStyle: ...)`: Styles the pay button and supports `height`
 - `sectionSpacing`: Sets the vertical spacing between the card form and the pay button (default is 16pt if not set)
 - `fieldSpacing`: Sets the spacing between input fields (see CardForm)
+
+## Card Form Layout Customization (Iteration 2 / Phase 2)
+
+The SDK now supports configurable field arrangement and ordering via `CardLayoutConfig`.
+
+### Layout presets
+
+```swift
+let standard = CardLayoutConfig.standard
+let compact = CardLayoutConfig.compact
+let minimal = CardLayoutConfig.minimal
+```
+
+### Custom rows and field order
+
+```swift
+let config = CardFormConfig(
+    showNameField: true,
+    layout: .custom(
+        [[.CARD_NUMBER], [.CARDHOLDER_NAME], [.EXPIRATION_DATE, .CVV]],
+        fieldOrder: [.CARD_NUMBER, .EXPIRATION_DATE, .CVV, .CARDHOLDER_NAME]
+    )
+)
+```
+
+- Use `.EXPIRATION_DATE` to render a single combined `MM/YY` field.
+- `fieldOrder` reorders fields across the configured rows while preserving row sizes.
+- If `layout` is omitted, legacy rows remain the default (`[1, 1, 3]` with name, `[1, 3]` without name).
 
 ## Security Policy
 
