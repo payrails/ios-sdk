@@ -108,6 +108,46 @@ final class PayrailsTests: XCTestCase {
         XCTAssertFalse(config.showCardIcon, "Default showCardIcon should be false")
         XCTAssertTrue(config.showRequiredAsterisk, "Default showRequiredAsterisk should be true")
         XCTAssertEqual(config.cardIconAlignment, .left, "Default cardIconAlignment should be .left")
+        XCTAssertNil(config.layout, "Default layout should remain nil for backward compatibility")
+    }
+
+    func testCardFormConfigStoresLayoutConfig() throws {
+        let layout = CardLayoutConfig.compact
+        let config = CardFormConfig(layout: layout)
+        XCTAssertEqual(config.layout, layout)
+    }
+
+    func testCardLayoutStandardPresetMatchesLegacyRows() throws {
+        let rowsWithName = CardLayoutConfig.standard.resolvedRows(showNameField: true)
+        XCTAssertEqual(rowsWithName, [[.CARD_NUMBER], [.CARDHOLDER_NAME], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]])
+
+        let rowsWithoutName = CardLayoutConfig.standard.resolvedRows(showNameField: false)
+        XCTAssertEqual(rowsWithoutName, [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]])
+    }
+
+    func testCardLayoutCompactPresetUsesCombinedExpiry() throws {
+        let rows = CardLayoutConfig.compact.resolvedRows(showNameField: true)
+        XCTAssertEqual(rows, [[.CARD_NUMBER], [.EXPIRATION_DATE, .CVV], [.CARDHOLDER_NAME]])
+    }
+
+    func testCardLayoutCustomFieldOrderRearrangesRows() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.CARD_NUMBER, .CARDHOLDER_NAME], [.EXPIRATION_DATE, .CVV]],
+            fieldOrder: [.CARD_NUMBER, .EXPIRATION_DATE, .CVV, .CARDHOLDER_NAME]
+        )
+
+        let rows = layout.resolvedRows(showNameField: true)
+        XCTAssertEqual(rows, [[.CARD_NUMBER, .EXPIRATION_DATE], [.CVV, .CARDHOLDER_NAME]])
+    }
+
+    func testCardLayoutCustomCanUseCombinedExpiryField() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]],
+            useCombinedExpiryDateField: true
+        )
+
+        let rows = layout.resolvedRows(showNameField: false)
+        XCTAssertEqual(rows, [[.CARD_NUMBER], [.EXPIRATION_DATE, .CVV]])
     }
 
     func testCardFormStylesConfigDefaults() throws {
