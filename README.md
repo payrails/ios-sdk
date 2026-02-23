@@ -353,7 +353,12 @@ let config = CardFormConfig(
 
 - Use `.EXPIRATION_DATE` to render a single combined `MM/YY` field.
 - `fieldOrder` reorders fields across the configured rows while preserving row sizes.
-- If `layout` is omitted, legacy rows remain the default (`[1, 1, 3]` with name, `[1, 3]` without name).
+- Custom layouts must include `CARD_NUMBER`, `CVV`, and expiry (`EXPIRATION_DATE` or both `EXPIRATION_MONTH` + `EXPIRATION_YEAR`) to be submittable.
+- Unsupported field types in custom rows are ignored.
+- If all configured fields are unsupported, or required card fields are missing after sanitization, the SDK falls back to legacy default rows.
+- If `layout` is omitted, legacy rows remain the default:
+  - With `showNameField: true`: `[[.CARD_NUMBER], [.CARDHOLDER_NAME], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]]`
+  - With `showNameField: false`: `[[.CARD_NUMBER], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]]`
 
 ## Security Policy
 
