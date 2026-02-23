@@ -171,6 +171,12 @@ public extension Payrails {
             if supportedRows.isEmpty {
                 return CardLayoutConfig.defaultRows(showNameField: config.showNameField)
             }
+
+            if !CardLayoutConfig.containsRequiredSubmissionFields(in: supportedRows) {
+                print("Card form layout is missing required fields; falling back to default layout")
+                return CardLayoutConfig.defaultRows(showNameField: config.showNameField)
+            }
+
             return supportedRows
         }
 

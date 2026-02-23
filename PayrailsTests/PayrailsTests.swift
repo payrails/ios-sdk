@@ -119,10 +119,10 @@ final class PayrailsTests: XCTestCase {
 
     func testCardLayoutStandardPresetMatchesLegacyRows() throws {
         let rowsWithName = CardLayoutConfig.standard.resolvedRows(showNameField: true)
-        XCTAssertEqual(rowsWithName, [[.CARD_NUMBER], [.CARDHOLDER_NAME], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]])
+        XCTAssertEqual(rowsWithName, [[.CARD_NUMBER], [.CARDHOLDER_NAME], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]])
 
         let rowsWithoutName = CardLayoutConfig.standard.resolvedRows(showNameField: false)
-        XCTAssertEqual(rowsWithoutName, [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]])
+        XCTAssertEqual(rowsWithoutName, [[.CARD_NUMBER], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]])
     }
 
     func testCardLayoutCompactPresetUsesCombinedExpiry() throws {
@@ -148,6 +148,33 @@ final class PayrailsTests: XCTestCase {
 
         let rows = layout.resolvedRows(showNameField: false)
         XCTAssertEqual(rows, [[.CARD_NUMBER], [.EXPIRATION_DATE, .CVV]])
+    }
+
+    func testCardLayoutCustomMissingCVVFallsBackToDefaultRows() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR]]
+        )
+
+        let rows = layout.resolvedRows(showNameField: false)
+        XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
+    }
+
+    func testCardLayoutCustomMissingCardNumberFallsBackToDefaultRows() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]]
+        )
+
+        let rows = layout.resolvedRows(showNameField: false)
+        XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
+    }
+
+    func testCardLayoutCustomMissingExpiryFallsBackToDefaultRows() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.CARD_NUMBER], [.CVV]]
+        )
+
+        let rows = layout.resolvedRows(showNameField: false)
+        XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
     }
 
     func testCardFormStylesConfigDefaults() throws {

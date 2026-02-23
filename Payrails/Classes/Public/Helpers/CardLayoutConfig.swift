@@ -70,6 +70,10 @@ public struct CardLayoutConfig: Equatable {
             return CardLayoutConfig.defaultRows(showNameField: showNameField)
         }
 
+        guard CardLayoutConfig.containsRequiredSubmissionFields(in: sanitizedRows) else {
+            return CardLayoutConfig.defaultRows(showNameField: showNameField)
+        }
+
         let rowSizes = sanitizedRows.map { $0.count }
         let flattenedFields = sanitizedRows.flatMap { $0 }
         let orderedFields = applyFieldOrder(to: flattenedFields)
@@ -78,9 +82,19 @@ public struct CardLayoutConfig: Equatable {
 
     static func defaultRows(showNameField: Bool) -> [[CardFieldType]] {
         if showNameField {
-            return [[.CARD_NUMBER], [.CARDHOLDER_NAME], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]]
+            return [[.CARD_NUMBER], [.CARDHOLDER_NAME], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]]
         }
-        return [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]]
+        return [[.CARD_NUMBER], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]]
+    }
+
+    static func containsRequiredSubmissionFields(in rows: [[CardFieldType]]) -> Bool {
+        let fields = Set(rows.flatMap { $0 })
+        let hasCardNumber = fields.contains(.CARD_NUMBER)
+        let hasCVV = fields.contains(.CVV)
+        let hasCombinedExpiry = fields.contains(.EXPIRATION_DATE)
+        let hasSplitExpiry = fields.contains(.EXPIRATION_MONTH) && fields.contains(.EXPIRATION_YEAR)
+
+        return hasCardNumber && hasCVV && (hasCombinedExpiry || hasSplitExpiry)
     }
 
     private func baseRows(showNameField: Bool) -> [[CardFieldType]] {
