@@ -6,6 +6,7 @@
 //
 
 import XCTest
+import UIKit
 @testable import Payrails
 
 final class PayrailsTests: XCTestCase {
@@ -17,11 +18,13 @@ final class PayrailsTests: XCTestCase {
     }
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        TextField.resetCardIconTestingState()
+        UIView.setAnimationsEnabled(true)
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        TextField.resetCardIconTestingState()
+        UIView.setAnimationsEnabled(true)
     }
 
     func testInitDataPublicInitializer() {
@@ -280,5 +283,112 @@ final class PayrailsTests: XCTestCase {
 
         XCTAssertNotNil(heightConstraint, "Stored-instrument mode should still create a height constraint")
         XCTAssertEqual(heightConstraint?.constant, 72, "Stored-instrument mode height behavior should remain unchanged")
+    }
+
+    func testCardNetworkIconURLMapping() {
+        XCTAssertEqual(CardNetwork.VISA.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
+        XCTAssertEqual(CardNetwork.MASTERCARD.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/mastercard.png")
+        XCTAssertEqual(CardNetwork.AMEX.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
+        XCTAssertEqual(CardNetwork.DISCOVER.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/discover.png")
+        XCTAssertNil(CardNetwork.UNKNOWN.iconURL)
+    }
+
+    func testCardNetworkDetectionWithAndroidParityPrefixes() {
+        XCTAssertEqual(CardNetwork.detect(pan: "4"), .VISA)
+        XCTAssertEqual(CardNetwork.detect(pan: "51"), .MASTERCARD)
+        XCTAssertEqual(CardNetwork.detect(pan: "2221"), .MASTERCARD)
+        XCTAssertEqual(CardNetwork.detect(pan: "2720"), .MASTERCARD)
+        XCTAssertEqual(CardNetwork.detect(pan: "34"), .AMEX)
+        XCTAssertEqual(CardNetwork.detect(pan: "37"), .AMEX)
+        XCTAssertEqual(CardNetwork.detect(pan: "6011"), .DISCOVER)
+        XCTAssertEqual(CardNetwork.detect(pan: "65"), .DISCOVER)
+        XCTAssertEqual(CardNetwork.detect(pan: "644"), .DISCOVER)
+        XCTAssertEqual(CardNetwork.detect(pan: "622"), .DISCOVER)
+        XCTAssertEqual(CardNetwork.detect(pan: "4-abc"), .VISA)
+        XCTAssertEqual(CardNetwork.detect(pan: "9"), .UNKNOWN)
+        XCTAssertEqual(CardNetwork.detect(pan: ""), .UNKNOWN)
+    }
+
+    func testCardIconIntegrationRightAlignmentUpdatesFromVisaToAmex() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: true, alignment: .right)
+        field.setValue(value: "4")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .VISA)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+        XCTAssertNotNil(field.textField.rightView)
+
+        field.clearValue()
+        flushMainQueue()
+        field.setValue(value: "37")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .AMEX)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
+        XCTAssertNotEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+    }
+
+    func testCardIconDoesNotAppearWhenDisabled() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: false, alignment: .right)
+        field.setValue(value: "4")
+        flushMainQueue()
+
+        XCTAssertFalse(field.isCardIconVisibleForTesting)
+        XCTAssertNil(field.resolvedCardIconURL)
+    }
+
+    private func makeCardNumberField(showCardIcon: Bool, alignment: CardIconAlignment) -> TextField {
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            inputStyles: Styles(base: Style()),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            iconStyles: Styles(base: Style(cardIconAlignment: alignment)),
+            label: "Card Number",
+            placeholder: "•••• •••• •••• ••••",
+            type: .CARD_NUMBER
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: showCardIcon,
+            enableCopy: false
+        )
+        return TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+    }
+
+    private func makeCardIconImage() -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 20, height: 20))
+        return renderer.image { context in
+            UIColor.black.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 20, height: 20))
+        }
+    }
+
+    private func flushMainQueue() {
+        let expectation = expectation(description: "flush-main-queue")
+        DispatchQueue.main.async {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
     }
 }
