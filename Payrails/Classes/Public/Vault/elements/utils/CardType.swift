@@ -147,3 +147,65 @@ public enum CardIconAlignment {
   case left
   case right
 }
+
+internal enum CardNetwork: Equatable {
+    case VISA
+    case MASTERCARD
+    case AMEX
+    case DISCOVER
+    case UNKNOWN
+
+    private static let visaRegex = "^4\\d*"
+    private static let mastercardRegex = "^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)\\d*"
+    private static let amexRegex = "^3[47]\\d*"
+    private static let discoverRegex = "^(6011|65|64[4-9]|622)\\d*"
+    private static let baseIconURL = "https://assets.payrails.io/img/integrations"
+
+    internal static func detect(pan: String) -> CardNetwork {
+        let normalizedPAN = normalize(pan: pan)
+        guard !normalizedPAN.isEmpty else {
+            return .UNKNOWN
+        }
+
+        if matches(normalizedPAN, regex: visaRegex) {
+            return .VISA
+        }
+
+        if matches(normalizedPAN, regex: mastercardRegex) {
+            return .MASTERCARD
+        }
+
+        if matches(normalizedPAN, regex: amexRegex) {
+            return .AMEX
+        }
+
+        if matches(normalizedPAN, regex: discoverRegex) {
+            return .DISCOVER
+        }
+
+        return .UNKNOWN
+    }
+
+    internal var iconURL: URL? {
+        switch self {
+        case .VISA:
+            return URL(string: "\(Self.baseIconURL)/visa.png")
+        case .MASTERCARD:
+            return URL(string: "\(Self.baseIconURL)/mastercard.png")
+        case .AMEX:
+            return URL(string: "\(Self.baseIconURL)/amex.png")
+        case .DISCOVER:
+            return URL(string: "\(Self.baseIconURL)/discover.png")
+        case .UNKNOWN:
+            return nil
+        }
+    }
+
+    private static func normalize(pan: String) -> String {
+        pan.filter(\.isNumber)
+    }
+
+    private static func matches(_ value: String, regex: String) -> Bool {
+        value.range(of: regex, options: .regularExpression) != nil
+    }
+}

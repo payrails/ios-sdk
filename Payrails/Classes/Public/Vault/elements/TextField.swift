@@ -31,7 +31,32 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var rightViewForIcons = UIView()
     internal var copyContainerView = UIView()
     internal var cardIconContainerView = UIView()
+    internal var cardIconImageView = UIImageView()
+    internal var detectedCardNetwork: CardNetwork = .UNKNOWN
+    internal var resolvedCardIconURL: URL?
+    internal var isCardIconVisibleForTesting: Bool {
+        cardIconContainerView.alpha > 0.01 && cardIconImageView.image != nil
+    }
+    private var cardIconImageTask: URLSessionDataTask?
     private var customErrorMessage: String?
+    private static let cardIconCache = NSCache<NSURL, UIImage>()
+    private let cardIconSize: CGFloat = 24
+    private let copyIconSize: CGFloat = 24
+    private let cardIconSpacing: CGFloat = 8
+    private let rightIconTrailingInset: CGFloat = 3
+    private let cardIconAnimationDuration: TimeInterval = 0.2
+    private static let defaultCardIconImageFetcher: (URL, @escaping (UIImage?) -> Void) -> URLSessionDataTask? = { url, completion in
+        let task = URLSession.shared.dataTask(with: url) { data, _, error in
+            guard error == nil, let data, let image = UIImage(data: data) else {
+                completion(nil)
+                return
+            }
+            completion(image)
+        }
+        task.resume()
+        return task
+    }
+    internal static var cardIconImageFetcher: (URL, @escaping (UIImage?) -> Void) -> URLSessionDataTask? = defaultCardIconImageFetcher
     
     internal var textFieldDelegate: UITextFieldDelegate? = nil
     
@@ -271,13 +296,11 @@ public class TextField: SkyflowElement, Element, BaseElement {
                         }
                     }
                 }
-                let t = self.textField.secureText!.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
-                let card = CardType.forCardNumber(cardNumber: t).instance
-                updateImage(name: card.imageName, cardNumber: t)
+                let t = self.textField.secureText ?? ""
+                updateImage(name: "", cardNumber: t)
             }
-            let t = self.textField.secureText!.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
-            let card = CardType.forCardNumber(cardNumber: t).instance
-            updateImage(name: card.imageName, cardNumber: t)
+            let t = self.textField.secureText ?? ""
+            updateImage(name: "", cardNumber: t)
         }
         
     }
@@ -350,6 +373,9 @@ public class TextField: SkyflowElement, Element, BaseElement {
         if(contextOptions.env == .DEV){
             actualValue = ""
             textField.secureText = ""
+            if self.fieldType == .CARD_NUMBER {
+                updateImage(name: "", cardNumber: "")
+            }
         } else {
             var context = self.contextOptions
             context?.interface = .COLLECT_CONTAINER
@@ -408,50 +434,50 @@ public class TextField: SkyflowElement, Element, BaseElement {
         self.errorMessage.font = collectInput.errorTextStyles.base?.font ?? .none
         self.errorMessage.textAlignment = collectInput.errorTextStyles.base?.textAlignment ?? .left
         self.errorMessage.insets = collectInput.errorTextStyles.base?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        
-        if self.fieldType == .CARD_NUMBER, self.options.enableCardIcon {
-            let imageView = UIImageView(frame: CGRect(x: 0, y: 0, width: 20, height: 20))
-            #if SWIFT_PACKAGE
-            var image = UIImage(named: "Unknown-Card", in: Bundle.module, compatibleWith: nil)
-            #else
-            let frameworkBundle = Bundle(for: TextField.self)
-            var bundleURL = frameworkBundle.resourceURL
-            bundleURL!.appendPathComponent("Skyflow.bundle")
-            let resourceBundle = Bundle(url: bundleURL!)
-            var image = UIImage(named: "Unknown-Card", in: resourceBundle, compatibleWith: nil)
-            #endif
-            imageView.image = image
-            imageView.contentMode = .center
-            cardIconContainerView = UIView(frame: CGRect(x: 0, y: 0, width: 20 , height: 24))
-            cardIconContainerView.addSubview(imageView)
-            
-            if(cardIconAlignment == .left){
-                textField.leftViewMode = UITextField.ViewMode.always
-                textField.leftView = cardIconContainerView
-            } else {
-                rightViewForIcons.addSubview(cardIconContainerView)
-                textField.rightViewMode =  UITextField.ViewMode.always
-                textField.rightView = rightViewForIcons
-            }
-        } else if self.fieldType == .CARD_NUMBER, !self.options.enableCardIcon {
-            cardIconContainerView.isHidden = true
+
+        if self.fieldType == .CARD_NUMBER {
+            setupCardIconViews()
         }
+
         if self.options.enableCopy {
             textField.rightViewMode =  UITextField.ViewMode.always
             addCopyIcon()
             if (self.fieldType == .CARD_NUMBER) {
-                if self.options.enableCardIcon && cardIconAlignment == .left{
+                if self.options.enableCardIcon && cardIconAlignment == .left {
                     textField.rightView = copyContainerView
                     textField.rightView?.isHidden = true
                 } else if self.options.enableCardIcon && cardIconAlignment == .right {
                     copyContainerView.isHidden = true
-                    copyContainerView.frame = CGRect(x: 65, y: 6, width: 30, height: Int(copyContainerView.frame.height))
+                    let rightAccessoryHeight = max(cardIconSize, copyIconSize)
+                    copyContainerView.frame = CGRect(
+                        x: 0,
+                        y: (rightAccessoryHeight - copyIconSize) / 2,
+                        width: copyIconSize,
+                        height: copyIconSize
+                    )
+                    cardIconContainerView.frame = CGRect(
+                        x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                        y: 0,
+                        width: cardIconSize,
+                        height: rightAccessoryHeight
+                    )
+                    cardIconImageView.center = CGPoint(
+                        x: cardIconContainerView.bounds.midX,
+                        y: cardIconContainerView.bounds.midY
+                    )
                     rightViewForIcons.addSubview(copyContainerView)
+                    rightViewForIcons.frame = CGRect(
+                        x: 0,
+                        y: 0,
+                        width: copyIconSize + cardIconSpacing + cardIconSize + rightIconTrailingInset,
+                        height: rightAccessoryHeight
+                    )
+                    textField.rightView = rightViewForIcons
                 } else {
                     textField.rightViewMode =  UITextField.ViewMode.always
                     copyContainerView.isHidden = true
                     textField.rightView = copyContainerView
-                    cardIconContainerView.isHidden = true
+                    cardIconContainerView.alpha = 0.0
                 }
             } else {
                 textField.rightView = copyContainerView
@@ -461,13 +487,60 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
         
         if self.fieldType == .CARD_NUMBER {
-            let t = self.textField.secureText!.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
-            let card = CardType.forCardNumber(cardNumber: t).instance
-            updateImage(name: card.imageName, cardNumber: t)
+            updateImage(name: "", cardNumber: self.textField.secureText ?? "")
         }
         
         setFormatPattern()
         
+    }
+
+    private func setupCardIconViews() {
+        cardIconContainerView.subviews.forEach { $0.removeFromSuperview() }
+        rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
+
+        cardIconImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: cardIconSize))
+        cardIconImageView.contentMode = .scaleAspectFit
+        cardIconImageView.layer.cornerRadius = self.collectInput.iconStyles.base?.cornerRadius ?? 0
+        cardIconImageView.layer.borderColor = self.collectInput.iconStyles.base?.borderColor?.cgColor
+        cardIconImageView.layer.borderWidth = self.collectInput.iconStyles.base?.borderWidth ?? 0
+        cardIconImageView.clipsToBounds = true
+
+        cardIconContainerView = UIView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: max(cardIconSize, 24)))
+        cardIconContainerView.alpha = 0.0
+        cardIconContainerView.addSubview(cardIconImageView)
+        cardIconImageView.center = CGPoint(x: cardIconContainerView.bounds.midX, y: cardIconContainerView.bounds.midY)
+
+        if self.options.enableCardIcon {
+            if cardIconAlignment == .left {
+                textField.leftViewMode = .always
+                textField.leftView = cardIconContainerView
+            } else {
+                rightViewForIcons.frame = CGRect(
+                    x: 0,
+                    y: 0,
+                    width: cardIconSize + rightIconTrailingInset,
+                    height: max(cardIconSize, 24)
+                )
+                cardIconContainerView.frame = CGRect(
+                    x: rightIconTrailingInset,
+                    y: 0,
+                    width: cardIconSize,
+                    height: max(cardIconSize, 24)
+                )
+                cardIconImageView.center = CGPoint(
+                    x: cardIconContainerView.bounds.midX,
+                    y: cardIconContainerView.bounds.midY
+                )
+                rightViewForIcons.addSubview(cardIconContainerView)
+                textField.rightViewMode = .always
+                textField.rightView = rightViewForIcons
+            }
+        } else {
+            textField.leftView = nil
+            if !self.options.enableCopy {
+                textField.rightView = nil
+            }
+        }
     }
     
     private func addCopyIcon(){
@@ -523,97 +596,72 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
             
     }
-    internal func updateImage(name: String, cardNumber: String){
-        var name = name
-        if self.options.enableCardIcon == false {
+    internal func updateImage(name: String, cardNumber: String) {
+        _ = name
+        guard self.options.enableCardIcon, self.fieldType == .CARD_NUMBER else {
+            self.detectedCardNetwork = .UNKNOWN
+            self.resolvedCardIconURL = nil
+            hideCardIcon(clearImage: true)
             return
         }
-        if (selectedCardBrand != nil && cardNumber.isEmpty) {
-            selectedCardBrand = nil
-        } else if (selectedCardBrand != nil ){
-            name = selectedCardBrand?.instance.imageName ?? CardType.forCardNumber(cardNumber: cardNumber).instance.imageName
+
+        let network = CardNetwork.detect(pan: cardNumber)
+        let iconURL = network.iconURL
+        self.detectedCardNetwork = network
+        self.resolvedCardIconURL = iconURL
+
+        guard let iconURL else {
+            hideCardIcon(clearImage: true)
+            return
         }
 
-        let imageView = UIImageView(frame: CGRect(x: 0, y: 5, width: 40 + (0), height: 24))
-        #if SWIFT_PACKAGE
-        let image = UIImage(named: name, in: Bundle.module, compatibleWith: nil)
-        #else
-        let frameworkBundle = Bundle(for: TextField.self)
-        var bundleURL = frameworkBundle.resourceURL
-        bundleURL!.appendPathComponent("Skyflow.bundle")
-        let resourceBundle = Bundle(url: bundleURL!)
-        let image = UIImage(named: name, in: resourceBundle, compatibleWith: nil)
-        #endif
-        imageView.image = image
-        imageView.layer.cornerRadius = self.collectInput!.iconStyles.base?.cornerRadius ?? 0
-        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: 60, height: 40))
-        containerView.addSubview(imageView)
-        imageView.bounds = imageView.frame.inset(by: self.collectInput!.iconStyles.base?.padding ?? UIEdgeInsets(top: .zero, left: .zero, bottom: .zero, right: .zero))
-        imageView.layer.borderColor = self.collectInput!.iconStyles.base?.borderColor?.cgColor
-        imageView.layer.borderWidth = self.collectInput!.iconStyles.base?.borderWidth ?? 0
-        imageView.layer.cornerRadius = self.collectInput!.iconStyles.base?.cornerRadius ?? 0
-    
-//        dropdownIcon.frame = CGRect(x: imageView.frame.width + 7, y: containerView.frame.height / 3, width: 12, height: 15)
+        if let cachedImage = TextField.cardIconCache.object(forKey: iconURL as NSURL) {
+            setCardIconImage(cachedImage)
+            return
+        }
 
-        if (listCardTypes?.count == 0 || listCardTypes == nil) {
-            selectedCardBrand = nil
-            dropdownButton.isHidden = true
-            dropdownButton.removeFromSuperview()
-            imageView.center = containerView.center
-        } else if (listCardTypes != nil){
-            if (listCardTypes!.count >= 2){
-                imageView.frame = CGRect(x: 0, y: 0, width: 40, height: 24)
-
-                // uimenu code
-                if #available(iOS 14.0, *) {
-                    if (cardIconAlignment == .left){
-                        textField.padding.left = 70
-                    }
-                    dropdownButton.frame = CGRect(x: imageView.frame.maxX + 10, y: (containerView.frame.height / 2) - 5, width: 12, height: 15)
-                    imageView.center = CGPoint(x: containerView.frame.width / 2 - dropdownButton.frame.width / 2,
-                                               y: containerView.frame.height / 2)
-                    containerView.frame = CGRect(x: 0, y: 0, width: max(imageView.frame.maxX, dropdownButton.frame.maxX), height: 40)
-                    containerView.addSubview(dropdownButton)
-                }
-            } else {
-                if #available(iOS 14.0, *) {
-                    dropdownButton.isHidden = true
-                }
-                if (cardIconAlignment == .left){
-                    textField.padding.left = 60
+        cardIconImageTask?.cancel()
+        cardIconImageTask = TextField.cardIconImageFetcher(iconURL) { [weak self] image in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                guard self.resolvedCardIconURL == iconURL else {
+                    return
                 }
 
-                imageView.center = containerView.center
+                guard let image else {
+                    self.hideCardIcon(clearImage: true)
+                    return
+                }
+
+                TextField.cardIconCache.setObject(image, forKey: iconURL as NSURL)
+                self.setCardIconImage(image)
             }
         }
-        cardIconContainerView = containerView
+    }
 
-        if self.options.enableCopy {
-            if(cardIconAlignment == .left && self.options.enableCardIcon){
-                textField.leftViewMode = .always
-                textField.leftView = cardIconContainerView
-            } else {
-                cardIconContainerView.frame = CGRect(x: 0, y: 0, width: 100, height: 40)
-                cardIconContainerView.addSubview(copyContainerView)
-                textField.rightView = cardIconContainerView
-                textField.rightViewMode = .always
-                
-            }
-        } else {
-            if(cardIconAlignment == .left && self.options.enableCardIcon){
-                textField.leftViewMode = .always
-                textField.leftView = cardIconContainerView
-            } else {
-                if (dropdownButton.isHidden){
-                    cardIconContainerView.frame = CGRect(x: 0, y: 0, width: containerView.frame.width + 5, height: 40)
-                } else {
-                    cardIconContainerView.frame = CGRect(x: 0, y: 0, width: containerView.frame.width + dropdownButton.frame.width + 5, height: 40)
-                }
-                textField.rightView = cardIconContainerView
-                textField.rightViewMode = .always
-            }
-            
+    private func setCardIconImage(_ image: UIImage) {
+        UIView.transition(with: cardIconImageView, duration: cardIconAnimationDuration, options: .transitionCrossDissolve, animations: {
+            self.cardIconImageView.image = image
+        })
+        UIView.animate(withDuration: cardIconAnimationDuration) {
+            self.cardIconContainerView.alpha = 1.0
         }
+    }
+
+    private func hideCardIcon(clearImage: Bool) {
+        cardIconImageTask?.cancel()
+        UIView.animate(withDuration: cardIconAnimationDuration) {
+            self.cardIconContainerView.alpha = 0.0
+        } completion: { _ in
+            if clearImage {
+                self.cardIconImageView.image = nil
+            }
+        }
+    }
+
+    internal static func resetCardIconTestingState() {
+        cardIconImageFetcher = defaultCardIconImageFetcher
+        cardIconCache.removeAllObjects()
     }
     
     private func getDropDownIcon(){
@@ -642,9 +690,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 self.selectedCardBrand = matchingCardType
             }
             if self.fieldType == .CARD_NUMBER {
-                let t = self.textField.secureText!.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
-                let card = CardType.forCardNumber(cardNumber: t).instance
-                self.updateImage(name: self.selectedCardBrand?.instance.imageName ?? card.imageName, cardNumber: t)
+                let t = self.textField.secureText ?? ""
+                self.updateImage(name: "", cardNumber: t)
                 self.onChangeHandler?((self.state as! StateforText).getStateForListener())
             }
             
@@ -678,9 +725,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
                         self.selectedCardBrand = matchingCardType
                     }
                     if self.fieldType == .CARD_NUMBER {
-                        let t = self.textField.secureText!.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
-                        let card = CardType.forCardNumber(cardNumber: t).instance
-                        self.updateImage(name: self.selectedCardBrand?.instance.imageName ?? card.imageName, cardNumber: t)
+                        let t = self.textField.secureText ?? ""
+                        self.updateImage(name: "", cardNumber: t)
                         self.onChangeHandler?((self.state as! StateforText).getStateForListener())
                     }
                     self.updateMenuView()
@@ -792,12 +838,7 @@ extension TextField {
         self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? UIColor.black
         var p = style?.padding ?? fallbackStyle?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         if self.fieldType == .CARD_NUMBER, self.options.enableCardIcon, cardIconAlignment == .left {
-            p.left = 60
-            if (listCardTypes != nil){
-                if (listCardTypes!.count >= 2){
-                    p.left = 70
-                }
-            }
+            p.left = cardIconSize + 12
         }
         
         if style?.width != nil {
@@ -860,9 +901,7 @@ extension TextField {
         
         onChangeHandler?((self.state as! StateforText).getStateForListener())
         if self.fieldType == .CARD_NUMBER {
-            let t = self.textField.secureText!.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
-            let card = CardType.forCardNumber(cardNumber: t).instance
-            updateImage(name: card.imageName, cardNumber: t)
+            updateImage(name: "", cardNumber: self.textField.secureText ?? "")
         }
         setFormatPattern()
         onBeginEditing?()
@@ -1079,4 +1118,3 @@ extension TextField {
         return uuid;
     }
 }
-
