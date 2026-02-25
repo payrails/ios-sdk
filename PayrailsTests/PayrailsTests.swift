@@ -290,6 +290,9 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(CardNetwork.MASTERCARD.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/mastercard.png")
         XCTAssertEqual(CardNetwork.AMEX.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
         XCTAssertEqual(CardNetwork.DISCOVER.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/discover.png")
+        XCTAssertEqual(CardNetwork.JCB.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/jcb.png")
+        XCTAssertEqual(CardNetwork.DINERS.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/diners.png")
+        XCTAssertEqual(CardNetwork.UNIONPAY.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/unionpay.png")
         XCTAssertNil(CardNetwork.UNKNOWN.iconURL)
     }
 
@@ -304,6 +307,13 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(CardNetwork.detect(pan: "65"), .DISCOVER)
         XCTAssertEqual(CardNetwork.detect(pan: "644"), .DISCOVER)
         XCTAssertEqual(CardNetwork.detect(pan: "622"), .DISCOVER)
+        XCTAssertEqual(CardNetwork.detect(pan: "3528"), .JCB)
+        XCTAssertEqual(CardNetwork.detect(pan: "3589"), .JCB)
+        XCTAssertEqual(CardNetwork.detect(pan: "305"), .DINERS)
+        XCTAssertEqual(CardNetwork.detect(pan: "36"), .DINERS)
+        XCTAssertEqual(CardNetwork.detect(pan: "38"), .DINERS)
+        XCTAssertEqual(CardNetwork.detect(pan: "62"), .UNIONPAY)
+        XCTAssertEqual(CardNetwork.detect(pan: "621234"), .UNIONPAY)
         XCTAssertEqual(CardNetwork.detect(pan: "4-abc"), .VISA)
         XCTAssertEqual(CardNetwork.detect(pan: "9"), .UNKNOWN)
         XCTAssertEqual(CardNetwork.detect(pan: ""), .UNKNOWN)
@@ -314,13 +324,19 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(CardNetwork.from(cardType: .MASTERCARD), .MASTERCARD)
         XCTAssertEqual(CardNetwork.from(cardType: .AMEX), .AMEX)
         XCTAssertEqual(CardNetwork.from(cardType: .DISCOVER), .DISCOVER)
+        XCTAssertEqual(CardNetwork.from(cardType: .JCB), .JCB)
+        XCTAssertEqual(CardNetwork.from(cardType: .DINERS_CLUB), .DINERS)
+        XCTAssertEqual(CardNetwork.from(cardType: .UNIONPAY), .UNIONPAY)
         XCTAssertNil(CardNetwork.from(cardType: .CARTES_BANCAIRES))
         XCTAssertEqual(CardNetwork.from(schemeName: "Master card"), .MASTERCARD)
         XCTAssertEqual(CardNetwork.from(schemeName: "American Express"), .AMEX)
+        XCTAssertEqual(CardNetwork.from(schemeName: "Diners Club"), .DINERS)
+        XCTAssertEqual(CardNetwork.from(schemeName: "Jcb"), .JCB)
+        XCTAssertEqual(CardNetwork.from(schemeName: "Unionpay"), .UNIONPAY)
         XCTAssertNil(CardNetwork.from(schemeName: "Cartes Bancaires"))
     }
 
-    func testCardIconIntegrationRightAlignmentUpdatesFromVisaToAmex() {
+    func testCardIconIntegrationRightAlignmentUpdatesFromVisaToAmexToJcb() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
             completion(self.makeCardIconImage())
@@ -345,6 +361,38 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
         XCTAssertNotEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
         XCTAssertTrue(field.isCardIconVisibleForTesting)
+
+        field.clearValue()
+        flushMainQueue()
+        field.setValue(value: "3528")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .JCB)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/jcb.png")
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+    }
+
+    func testCardIconHidesForUnknownNetwork() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: true, alignment: .right)
+        field.setValue(value: "4")
+        flushMainQueue()
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+        XCTAssertEqual(field.detectedCardNetwork, .VISA)
+
+        field.clearValue()
+        flushMainQueue()
+        field.setValue(value: "9")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .UNKNOWN)
+        XCTAssertNil(field.resolvedCardIconURL)
+        XCTAssertFalse(field.isCardIconVisibleForTesting)
     }
 
     func testCardIconManualSchemeSelectionOverridesPanDetection() {

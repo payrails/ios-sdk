@@ -153,12 +153,18 @@ internal enum CardNetwork: Equatable {
     case MASTERCARD
     case AMEX
     case DISCOVER
+    case JCB
+    case DINERS
+    case UNIONPAY
     case UNKNOWN
 
     private static let visaRegex = "^4\\d*"
     private static let mastercardRegex = "^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)\\d*"
     private static let amexRegex = "^3[47]\\d*"
     private static let discoverRegex = "^(6011|65|64[4-9]|622)\\d*"
+    private static let jcbRegex = "^35(2[89]|[3-8]\\d)\\d*"
+    private static let dinersRegex = "^3(0[0-5]|[68])\\d*"
+    private static let unionPayRegex = "^62\\d*"
     private static let baseIconURL = "https://assets.payrails.io/img/integrations"
 
     internal static func detect(pan: String) -> CardNetwork {
@@ -183,6 +189,18 @@ internal enum CardNetwork: Equatable {
             return .DISCOVER
         }
 
+        if matches(normalizedPAN, regex: jcbRegex) {
+            return .JCB
+        }
+
+        if matches(normalizedPAN, regex: dinersRegex) {
+            return .DINERS
+        }
+
+        if matches(normalizedPAN, regex: unionPayRegex) {
+            return .UNIONPAY
+        }
+
         return .UNKNOWN
     }
 
@@ -200,6 +218,12 @@ internal enum CardNetwork: Equatable {
             return .AMEX
         case .DISCOVER:
             return .DISCOVER
+        case .JCB:
+            return .JCB
+        case .DINERS_CLUB:
+            return .DINERS
+        case .UNIONPAY:
+            return .UNIONPAY
         default:
             return nil
         }
@@ -229,6 +253,8 @@ internal enum CardNetwork: Equatable {
             return .MASTERCARD
         case "american express":
             return .AMEX
+        case "diners club":
+            return .DINERS
         default:
             return nil
         }
@@ -244,6 +270,12 @@ internal enum CardNetwork: Equatable {
             return URL(string: "\(Self.baseIconURL)/amex.png")
         case .DISCOVER:
             return URL(string: "\(Self.baseIconURL)/discover.png")
+        case .JCB:
+            return URL(string: "\(Self.baseIconURL)/jcb.png")
+        case .DINERS:
+            return URL(string: "\(Self.baseIconURL)/diners.png")
+        case .UNIONPAY:
+            return URL(string: "\(Self.baseIconURL)/unionpay.png")
         case .UNKNOWN:
             return nil
         }
