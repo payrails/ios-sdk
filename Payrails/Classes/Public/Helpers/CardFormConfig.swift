@@ -11,6 +11,7 @@ public struct CardFormConfig {
     public let showCardIcon: Bool
     public let showRequiredAsterisk: Bool
     public let cardIconAlignment: CardIconAlignment
+    public let layout: CardLayoutConfig?
     public let translations: CardTranslations?
     
     public let styles: CardFormStylesConfig?
@@ -21,6 +22,7 @@ public struct CardFormConfig {
         showCardIcon: Bool = false,
         showRequiredAsterisk: Bool = true,
         cardIconAlignment: CardIconAlignment = .left,
+        layout: CardLayoutConfig? = nil,
         styles: CardFormStylesConfig? = nil,
         translations: CardTranslations? = nil
     ) {
@@ -29,6 +31,7 @@ public struct CardFormConfig {
         self.showCardIcon = showCardIcon
         self.showRequiredAsterisk = showRequiredAsterisk
         self.cardIconAlignment = cardIconAlignment
+        self.layout = layout
         self.translations = translations
         self.styles = styles?.merged(over: CardFormStylesConfig.defaultConfig) ?? CardFormStylesConfig.defaultConfig
     }
