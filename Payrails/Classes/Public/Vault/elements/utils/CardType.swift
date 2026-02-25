@@ -186,6 +186,54 @@ internal enum CardNetwork: Equatable {
         return .UNKNOWN
     }
 
+    internal static func from(cardType: CardType?) -> CardNetwork? {
+        guard let cardType else {
+            return nil
+        }
+
+        switch cardType {
+        case .VISA:
+            return .VISA
+        case .MASTERCARD:
+            return .MASTERCARD
+        case .AMEX:
+            return .AMEX
+        case .DISCOVER:
+            return .DISCOVER
+        default:
+            return nil
+        }
+    }
+
+    internal static func from(schemeName: String?) -> CardNetwork? {
+        guard let schemeName else {
+            return nil
+        }
+
+        let normalizedScheme = schemeName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard !normalizedScheme.isEmpty else {
+            return nil
+        }
+
+        if let cardType = CardType.allCases.first(where: {
+            $0.instance.defaultName.lowercased() == normalizedScheme
+        }) {
+            return from(cardType: cardType)
+        }
+
+        switch normalizedScheme {
+        case "master card":
+            return .MASTERCARD
+        case "american express":
+            return .AMEX
+        default:
+            return nil
+        }
+    }
+
     internal var iconURL: URL? {
         switch self {
         case .VISA:

@@ -309,6 +309,17 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(CardNetwork.detect(pan: ""), .UNKNOWN)
     }
 
+    func testCardNetworkManualSchemeMapping() {
+        XCTAssertEqual(CardNetwork.from(cardType: .VISA), .VISA)
+        XCTAssertEqual(CardNetwork.from(cardType: .MASTERCARD), .MASTERCARD)
+        XCTAssertEqual(CardNetwork.from(cardType: .AMEX), .AMEX)
+        XCTAssertEqual(CardNetwork.from(cardType: .DISCOVER), .DISCOVER)
+        XCTAssertNil(CardNetwork.from(cardType: .CARTES_BANCAIRES))
+        XCTAssertEqual(CardNetwork.from(schemeName: "Master card"), .MASTERCARD)
+        XCTAssertEqual(CardNetwork.from(schemeName: "American Express"), .AMEX)
+        XCTAssertNil(CardNetwork.from(schemeName: "Cartes Bancaires"))
+    }
+
     func testCardIconIntegrationRightAlignmentUpdatesFromVisaToAmex() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
@@ -334,6 +345,28 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
         XCTAssertNotEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
         XCTAssertTrue(field.isCardIconVisibleForTesting)
+    }
+
+    func testCardIconManualSchemeSelectionOverridesPanDetection() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: true, alignment: .right)
+        field.setValue(value: "37")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .AMEX)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
+
+        field.selectedCardBrand = .VISA
+        field.updateImage(name: "", cardNumber: field.textField.secureText ?? "")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .VISA)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
     }
 
     func testCardIconDoesNotAppearWhenDisabled() {

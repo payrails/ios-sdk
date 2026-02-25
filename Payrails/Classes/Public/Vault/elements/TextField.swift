@@ -597,7 +597,6 @@ public class TextField: SkyflowElement, Element, BaseElement {
             
     }
     internal func updateImage(name: String, cardNumber: String) {
-        _ = name
         guard self.options.enableCardIcon, self.fieldType == .CARD_NUMBER else {
             self.detectedCardNetwork = .UNKNOWN
             self.resolvedCardIconURL = nil
@@ -605,7 +604,11 @@ public class TextField: SkyflowElement, Element, BaseElement {
             return
         }
 
-        let network = CardNetwork.detect(pan: cardNumber)
+        let explicitSchemeName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let selectedSchemeNetwork = CardNetwork.from(cardType: self.selectedCardBrand)
+        let network = CardNetwork.from(schemeName: explicitSchemeName)
+            ?? selectedSchemeNetwork
+            ?? CardNetwork.detect(pan: cardNumber)
         let iconURL = network.iconURL
         self.detectedCardNetwork = network
         self.resolvedCardIconURL = iconURL
@@ -691,7 +694,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             }
             if self.fieldType == .CARD_NUMBER {
                 let t = self.textField.secureText ?? ""
-                self.updateImage(name: "", cardNumber: t)
+                self.updateImage(name: action.title, cardNumber: t)
                 self.onChangeHandler?((self.state as! StateforText).getStateForListener())
             }
             
@@ -726,7 +729,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     }
                     if self.fieldType == .CARD_NUMBER {
                         let t = self.textField.secureText ?? ""
-                        self.updateImage(name: "", cardNumber: t)
+                        self.updateImage(name: action.title, cardNumber: t)
                         self.onChangeHandler?((self.state as! StateforText).getStateForListener())
                     }
                     self.updateMenuView()
