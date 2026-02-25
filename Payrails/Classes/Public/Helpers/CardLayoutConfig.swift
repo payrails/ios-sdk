@@ -63,6 +63,15 @@ public struct CardLayoutConfig: Equatable {
             return CardLayoutConfig.defaultRows(showNameField: showNameField)
         }
 
+        guard CardLayoutConfig.hasValidExpiryConfiguration(
+            in: sanitizedRows,
+            useCombinedExpiryDateField: useCombinedExpiryDateField,
+            isCustomLayout: customRows != nil
+        ) else {
+            print("Card form layout has invalid expiry configuration; falling back to default layout")
+            return CardLayoutConfig.defaultRows(showNameField: showNameField)
+        }
+
         guard CardLayoutConfig.containsRequiredSubmissionFields(in: sanitizedRows) else {
             return CardLayoutConfig.defaultRows(showNameField: showNameField)
         }
@@ -85,6 +94,26 @@ public struct CardLayoutConfig: Equatable {
         let hasSplitExpiry = fields.contains(.EXPIRATION_MONTH) && fields.contains(.EXPIRATION_YEAR)
 
         return hasCardNumber && hasCVV && (hasCombinedExpiry || hasSplitExpiry)
+    }
+
+    static func hasValidExpiryConfiguration(
+        in rows: [[CardFieldType]],
+        useCombinedExpiryDateField: Bool,
+        isCustomLayout: Bool
+    ) -> Bool {
+        guard isCustomLayout else {
+            return true
+        }
+
+        let fields = Set(rows.flatMap { $0 })
+        let hasExpiryMonth = fields.contains(.EXPIRATION_MONTH)
+        let hasExpiryYear = fields.contains(.EXPIRATION_YEAR)
+
+        if useCombinedExpiryDateField {
+            return !hasExpiryMonth && !hasExpiryYear
+        }
+
+        return hasExpiryMonth == hasExpiryYear
     }
 
     private func baseRows(showNameField: Bool) -> [[CardFieldType]] {

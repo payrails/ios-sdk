@@ -141,7 +141,7 @@ final class PayrailsTests: XCTestCase {
 
     func testCardLayoutCustomCanUseCombinedExpiryField() throws {
         let layout = CardLayoutConfig.custom(
-            [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]],
+            [[.CARD_NUMBER], [.EXPIRATION_DATE, .CVV]],
             useCombinedExpiryDateField: true
         )
 
@@ -170,6 +170,34 @@ final class PayrailsTests: XCTestCase {
     func testCardLayoutCustomMissingExpiryFallsBackToDefaultRows() throws {
         let layout = CardLayoutConfig.custom(
             [[.CARD_NUMBER], [.CVV]]
+        )
+
+        let rows = layout.resolvedRows(showNameField: false)
+        XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
+    }
+
+    func testCardLayoutCustomCombinedExpiryRejectsSplitExpiryFields() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]],
+            useCombinedExpiryDateField: true
+        )
+
+        let rows = layout.resolvedRows(showNameField: false)
+        XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
+    }
+
+    func testCardLayoutCustomSplitExpiryRejectsMonthWithoutYear() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.CARD_NUMBER], [.EXPIRATION_MONTH, .CVV]]
+        )
+
+        let rows = layout.resolvedRows(showNameField: false)
+        XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
+    }
+
+    func testCardLayoutCustomSplitExpiryRejectsYearWithoutMonth() throws {
+        let layout = CardLayoutConfig.custom(
+            [[.CARD_NUMBER], [.EXPIRATION_YEAR, .CVV]]
         )
 
         let rows = layout.resolvedRows(showNameField: false)
