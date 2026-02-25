@@ -130,14 +130,13 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(rows, [[.CARD_NUMBER], [.EXPIRATION_DATE, .CVV], [.CARDHOLDER_NAME]])
     }
 
-    func testCardLayoutCustomFieldOrderRearrangesRows() throws {
+    func testCardLayoutCustomRowsPreserveDeclaredOrder() throws {
         let layout = CardLayoutConfig.custom(
-            [[.CARD_NUMBER, .CARDHOLDER_NAME], [.EXPIRATION_DATE, .CVV]],
-            fieldOrder: [.CARD_NUMBER, .EXPIRATION_DATE, .CVV, .CARDHOLDER_NAME]
+            [[.CARD_NUMBER, .CARDHOLDER_NAME], [.EXPIRATION_DATE, .CVV]]
         )
 
         let rows = layout.resolvedRows(showNameField: true)
-        XCTAssertEqual(rows, [[.CARD_NUMBER, .EXPIRATION_DATE], [.CVV, .CARDHOLDER_NAME]])
+        XCTAssertEqual(rows, [[.CARD_NUMBER, .CARDHOLDER_NAME], [.EXPIRATION_DATE, .CVV]])
     }
 
     func testCardLayoutCustomCanUseCombinedExpiryField() throws {

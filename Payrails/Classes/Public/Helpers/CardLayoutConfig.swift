@@ -9,18 +9,15 @@ public struct CardLayoutConfig: Equatable {
 
     public let preset: Preset?
     public let customRows: [[CardFieldType]]?
-    public let fieldOrder: [CardFieldType]?
     public let useCombinedExpiryDateField: Bool
 
     private init(
         preset: Preset?,
         customRows: [[CardFieldType]]?,
-        fieldOrder: [CardFieldType]?,
         useCombinedExpiryDateField: Bool
     ) {
         self.preset = preset
         self.customRows = customRows
-        self.fieldOrder = fieldOrder
         self.useCombinedExpiryDateField = useCombinedExpiryDateField
     }
 
@@ -38,26 +35,22 @@ public struct CardLayoutConfig: Equatable {
 
     public static func preset(
         _ preset: Preset,
-        fieldOrder: [CardFieldType]? = nil,
         useCombinedExpiryDateField: Bool = false
     ) -> CardLayoutConfig {
         CardLayoutConfig(
             preset: preset,
             customRows: nil,
-            fieldOrder: fieldOrder,
             useCombinedExpiryDateField: useCombinedExpiryDateField
         )
     }
 
     public static func custom(
         _ rows: [[CardFieldType]],
-        fieldOrder: [CardFieldType]? = nil,
         useCombinedExpiryDateField: Bool = false
     ) -> CardLayoutConfig {
         CardLayoutConfig(
             preset: nil,
             customRows: rows,
-            fieldOrder: fieldOrder,
             useCombinedExpiryDateField: useCombinedExpiryDateField
         )
     }
@@ -74,10 +67,7 @@ public struct CardLayoutConfig: Equatable {
             return CardLayoutConfig.defaultRows(showNameField: showNameField)
         }
 
-        let rowSizes = sanitizedRows.map { $0.count }
-        let flattenedFields = sanitizedRows.flatMap { $0 }
-        let orderedFields = applyFieldOrder(to: flattenedFields)
-        return split(orderedFields, rowSizes: rowSizes)
+        return sanitizedRows
     }
 
     static func defaultRows(showNameField: Bool) -> [[CardFieldType]] {
@@ -158,42 +148,4 @@ public struct CardLayoutConfig: Equatable {
         }
     }
 
-    private func applyFieldOrder(to fields: [CardFieldType]) -> [CardFieldType] {
-        guard let fieldOrder, !fieldOrder.isEmpty else {
-            return fields
-        }
-
-        var seen = Set<CardFieldType>()
-        var ordered = [CardFieldType]()
-
-        for field in fieldOrder where fields.contains(field) && !seen.contains(field) {
-            ordered.append(field)
-            seen.insert(field)
-        }
-
-        for field in fields where !seen.contains(field) {
-            ordered.append(field)
-            seen.insert(field)
-        }
-
-        return ordered
-    }
-
-    private func split(_ fields: [CardFieldType], rowSizes: [Int]) -> [[CardFieldType]] {
-        var rows = [[CardFieldType]]()
-        var currentIndex = 0
-
-        for size in rowSizes where size > 0 {
-            let nextIndex = min(currentIndex + size, fields.count)
-            let row = Array(fields[currentIndex..<nextIndex])
-            rows.append(row)
-            currentIndex = nextIndex
-        }
-
-        if currentIndex < fields.count {
-            rows.append(Array(fields[currentIndex..<fields.count]))
-        }
-
-        return rows
-    }
 }
