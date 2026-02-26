@@ -158,14 +158,75 @@ internal enum CardNetwork: Equatable {
     case UNIONPAY
     case UNKNOWN
 
-    private static let visaRegex = "^4\\d*"
-    private static let mastercardRegex = "^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)\\d*"
-    private static let amexRegex = "^3[47]\\d*"
-    private static let discoverRegex = "^(6011|65|64[4-9]|622)\\d*"
-    private static let jcbRegex = "^35(2[89]|[3-8]\\d)\\d*"
-    private static let dinersRegex = "^3(0[0-5]|[68])\\d*"
-    private static let unionPayRegex = "^62\\d*"
     private static let baseIconURL = "https://assets.payrails.io/img/integrations"
+    
+    private struct NetworkConfig {
+        let network: CardNetwork
+        let detectionRegex: String?
+        let iconFileName: String?
+        let cardTypes: [CardType]
+        let schemeAliases: [String]
+    }
+    
+    // Keep Android parity by preserving this config order for PAN detection.
+    private static let configs: [NetworkConfig] = [
+        NetworkConfig(
+            network: .VISA,
+            detectionRegex: "^4\\d*",
+            iconFileName: "visa.png",
+            cardTypes: [.VISA],
+            schemeAliases: []
+        ),
+        NetworkConfig(
+            network: .MASTERCARD,
+            detectionRegex: "^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)\\d*",
+            iconFileName: "mastercard.png",
+            cardTypes: [.MASTERCARD],
+            schemeAliases: ["master card"]
+        ),
+        NetworkConfig(
+            network: .AMEX,
+            detectionRegex: "^3[47]\\d*",
+            iconFileName: "amex.png",
+            cardTypes: [.AMEX],
+            schemeAliases: ["american express"]
+        ),
+        NetworkConfig(
+            network: .DISCOVER,
+            detectionRegex: "^(6011|65|64[4-9]|622)\\d*",
+            iconFileName: "discover.png",
+            cardTypes: [.DISCOVER],
+            schemeAliases: []
+        ),
+        NetworkConfig(
+            network: .JCB,
+            detectionRegex: "^35(2[89]|[3-8]\\d)\\d*",
+            iconFileName: "jcb.png",
+            cardTypes: [.JCB],
+            schemeAliases: []
+        ),
+        NetworkConfig(
+            network: .DINERS,
+            detectionRegex: "^3(0[0-5]|[68])\\d*",
+            iconFileName: "diners.png",
+            cardTypes: [.DINERS_CLUB],
+            schemeAliases: ["diners club"]
+        ),
+        NetworkConfig(
+            network: .UNIONPAY,
+            detectionRegex: "^62\\d*",
+            iconFileName: "unionpay.png",
+            cardTypes: [.UNIONPAY],
+            schemeAliases: []
+        ),
+        NetworkConfig(
+            network: .UNKNOWN,
+            detectionRegex: nil,
+            iconFileName: nil,
+            cardTypes: [],
+            schemeAliases: []
+        )
+    ]
 
     internal static func detect(pan: String) -> CardNetwork {
         let normalizedPAN = normalize(pan: pan)
@@ -173,32 +234,13 @@ internal enum CardNetwork: Equatable {
             return .UNKNOWN
         }
 
-        if matches(normalizedPAN, regex: visaRegex) {
-            return .VISA
-        }
-
-        if matches(normalizedPAN, regex: mastercardRegex) {
-            return .MASTERCARD
-        }
-
-        if matches(normalizedPAN, regex: amexRegex) {
-            return .AMEX
-        }
-
-        if matches(normalizedPAN, regex: discoverRegex) {
-            return .DISCOVER
-        }
-
-        if matches(normalizedPAN, regex: jcbRegex) {
-            return .JCB
-        }
-
-        if matches(normalizedPAN, regex: dinersRegex) {
-            return .DINERS
-        }
-
-        if matches(normalizedPAN, regex: unionPayRegex) {
-            return .UNIONPAY
+        for config in configs {
+            guard let regex = config.detectionRegex else {
+                continue
+            }
+            if matches(normalizedPAN, regex: regex) {
+                return config.network
+            }
         }
 
         return .UNKNOWN
@@ -208,25 +250,8 @@ internal enum CardNetwork: Equatable {
         guard let cardType else {
             return nil
         }
-
-        switch cardType {
-        case .VISA:
-            return .VISA
-        case .MASTERCARD:
-            return .MASTERCARD
-        case .AMEX:
-            return .AMEX
-        case .DISCOVER:
-            return .DISCOVER
-        case .JCB:
-            return .JCB
-        case .DINERS_CLUB:
-            return .DINERS
-        case .UNIONPAY:
-            return .UNIONPAY
-        default:
-            return nil
-        }
+        
+        return configs.first(where: { $0.cardTypes.contains(cardType) })?.network
     }
 
     internal static func from(schemeName: String?) -> CardNetwork? {
@@ -242,43 +267,31 @@ internal enum CardNetwork: Equatable {
             return nil
         }
 
-        if let cardType = CardType.allCases.first(where: {
-            $0.instance.defaultName.lowercased() == normalizedScheme
-        }) {
-            return from(cardType: cardType)
+        for config in configs {
+            if config.schemeAliases.contains(normalizedScheme) {
+                return config.network
+            }
+            if config.cardTypes.contains(where: { $0.instance.defaultName.lowercased() == normalizedScheme }) {
+                return config.network
+            }
         }
-
-        switch normalizedScheme {
-        case "master card":
-            return .MASTERCARD
-        case "american express":
-            return .AMEX
-        case "diners club":
-            return .DINERS
-        default:
-            return nil
-        }
+        
+        return nil
+    }
+    
+    internal static func resolve(schemeName: String?, cardType: CardType?, pan: String) -> CardNetwork {
+        from(schemeName: schemeName)
+            ?? from(cardType: cardType)
+            ?? detect(pan: pan)
     }
 
     internal var iconURL: URL? {
-        switch self {
-        case .VISA:
-            return URL(string: "\(Self.baseIconURL)/visa.png")
-        case .MASTERCARD:
-            return URL(string: "\(Self.baseIconURL)/mastercard.png")
-        case .AMEX:
-            return URL(string: "\(Self.baseIconURL)/amex.png")
-        case .DISCOVER:
-            return URL(string: "\(Self.baseIconURL)/discover.png")
-        case .JCB:
-            return URL(string: "\(Self.baseIconURL)/jcb.png")
-        case .DINERS:
-            return URL(string: "\(Self.baseIconURL)/diners.png")
-        case .UNIONPAY:
-            return URL(string: "\(Self.baseIconURL)/unionpay.png")
-        case .UNKNOWN:
+        guard let config = Self.configs.first(where: { $0.network == self }),
+              let iconFileName = config.iconFileName else {
             return nil
         }
+        
+        return URL(string: "\(Self.baseIconURL)/\(iconFileName)")
     }
 
     private static func normalize(pan: String) -> String {

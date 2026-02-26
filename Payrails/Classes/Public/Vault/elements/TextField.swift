@@ -15,6 +15,32 @@ import UIKit
 
 
 public class TextField: SkyflowElement, Element, BaseElement {
+    private struct CardIconStyleConfig {
+        let cardIconSize: CGFloat
+        let copyIconSize: CGFloat
+        let spacing: CGFloat
+        let rightTrailingInset: CGFloat
+        let animationDuration: TimeInterval
+        
+        static let defaultConfig = CardIconStyleConfig(
+            cardIconSize: 24,
+            copyIconSize: 24,
+            spacing: 8,
+            rightTrailingInset: 3,
+            animationDuration: 0.2
+        )
+    }
+    
+    private struct CardIconConfig {
+        let style: CardIconStyleConfig
+        let cache: NSCache<NSURL, UIImage>
+        
+        static let defaultConfig = CardIconConfig(
+            style: .defaultConfig,
+            cache: NSCache<NSURL, UIImage>()
+        )
+    }
+    
     var onBeginEditing: (() -> Void)?
     var onEndEditing: (() -> Void)?
     var onFocusIsTrue: (() -> Void)?
@@ -39,12 +65,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
     }
     private var cardIconImageTask: URLSessionDataTask?
     private var customErrorMessage: String?
-    private static let cardIconCache = NSCache<NSURL, UIImage>()
-    private let cardIconSize: CGFloat = 24
-    private let copyIconSize: CGFloat = 24
-    private let cardIconSpacing: CGFloat = 8
-    private let rightIconTrailingInset: CGFloat = 3
-    private let cardIconAnimationDuration: TimeInterval = 0.2
+    private static let cardIconConfig = CardIconConfig.defaultConfig
+    private var cardIconSize: CGFloat { Self.cardIconConfig.style.cardIconSize }
+    private var copyIconSize: CGFloat { Self.cardIconConfig.style.copyIconSize }
+    private var cardIconSpacing: CGFloat { Self.cardIconConfig.style.spacing }
+    private var rightIconTrailingInset: CGFloat { Self.cardIconConfig.style.rightTrailingInset }
+    private var cardIconAnimationDuration: TimeInterval { Self.cardIconConfig.style.animationDuration }
     private static let defaultCardIconImageFetcher: (URL, @escaping (UIImage?) -> Void) -> URLSessionDataTask? = { url, completion in
         let task = URLSession.shared.dataTask(with: url) { data, _, error in
             guard error == nil, let data, let image = UIImage(data: data) else {
@@ -505,7 +531,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         cardIconImageView.layer.borderWidth = self.collectInput.iconStyles.base?.borderWidth ?? 0
         cardIconImageView.clipsToBounds = true
 
-        cardIconContainerView = UIView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: max(cardIconSize, 24)))
+        cardIconContainerView = UIView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: max(cardIconSize, copyIconSize)))
         cardIconContainerView.alpha = 0.0
         cardIconContainerView.addSubview(cardIconImageView)
         cardIconImageView.center = CGPoint(x: cardIconContainerView.bounds.midX, y: cardIconContainerView.bounds.midY)
@@ -519,13 +545,13 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     x: 0,
                     y: 0,
                     width: cardIconSize + rightIconTrailingInset,
-                    height: max(cardIconSize, 24)
+                    height: max(cardIconSize, copyIconSize)
                 )
                 cardIconContainerView.frame = CGRect(
                     x: rightIconTrailingInset,
                     y: 0,
                     width: cardIconSize,
-                    height: max(cardIconSize, 24)
+                    height: max(cardIconSize, copyIconSize)
                 )
                 cardIconImageView.center = CGPoint(
                     x: cardIconContainerView.bounds.midX,
@@ -544,7 +570,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     }
     
     private func addCopyIcon(){
-        copyIconImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: 24, height: 24))
+        copyIconImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: copyIconSize, height: copyIconSize))
         #if SWIFT_PACKAGE
         let image = UIImage(named: "Copy-Icon", in: Bundle.module, compatibleWith: nil)
         #else
@@ -556,7 +582,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         #endif
         copyIconImageView?.image = image
         copyIconImageView?.contentMode = .scaleAspectFit
-        copyContainerView = UIView(frame: CGRect(x: 0, y: 0, width: 24 , height: 24))
+        copyContainerView = UIView(frame: CGRect(x: 0, y: 0, width: copyIconSize , height: copyIconSize))
         copyContainerView.addSubview(copyIconImageView!)
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(copyIconTapped(_:)))
         copyContainerView.isUserInteractionEnabled = true
@@ -605,10 +631,11 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
 
         let explicitSchemeName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let selectedSchemeNetwork = CardNetwork.from(cardType: self.selectedCardBrand)
-        let network = CardNetwork.from(schemeName: explicitSchemeName)
-            ?? selectedSchemeNetwork
-            ?? CardNetwork.detect(pan: cardNumber)
+        let network = CardNetwork.resolve(
+            schemeName: explicitSchemeName,
+            cardType: self.selectedCardBrand,
+            pan: cardNumber
+        )
         let iconURL = network.iconURL
         self.detectedCardNetwork = network
         self.resolvedCardIconURL = iconURL
@@ -618,7 +645,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             return
         }
 
-        if let cachedImage = TextField.cardIconCache.object(forKey: iconURL as NSURL) {
+        if let cachedImage = TextField.cardIconConfig.cache.object(forKey: iconURL as NSURL) {
             setCardIconImage(cachedImage)
             return
         }
@@ -636,7 +663,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     return
                 }
 
-                TextField.cardIconCache.setObject(image, forKey: iconURL as NSURL)
+                TextField.cardIconConfig.cache.setObject(image, forKey: iconURL as NSURL)
                 self.setCardIconImage(image)
             }
         }
@@ -664,7 +691,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
     internal static func resetCardIconTestingState() {
         cardIconImageFetcher = defaultCardIconImageFetcher
-        cardIconCache.removeAllObjects()
+        cardIconConfig.cache.removeAllObjects()
     }
     
     private func getDropDownIcon(){
