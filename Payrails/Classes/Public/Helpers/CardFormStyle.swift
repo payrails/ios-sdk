@@ -58,6 +58,7 @@ public struct CardButtonStyle {
     public let borderWidth: CGFloat?
     public let borderColor: UIColor?
     public let contentEdgeInsets: UIEdgeInsets?
+    public let height: CGFloat?
 
     public init(
         backgroundColor: UIColor? = nil,
@@ -66,7 +67,8 @@ public struct CardButtonStyle {
         cornerRadius: CGFloat? = nil,
         borderWidth: CGFloat? = nil,
         borderColor: UIColor? = nil,
-        contentEdgeInsets: UIEdgeInsets? = nil
+        contentEdgeInsets: UIEdgeInsets? = nil,
+        height: CGFloat? = nil
     ) {
         self.backgroundColor = backgroundColor
         self.textColor = textColor
@@ -75,6 +77,7 @@ public struct CardButtonStyle {
         self.borderWidth = borderWidth
         self.borderColor = borderColor
         self.contentEdgeInsets = contentEdgeInsets
+        self.height = height
     }
 
     public static var defaultStyle: CardButtonStyle {
@@ -99,7 +102,8 @@ public struct CardButtonStyle {
             cornerRadius: self.cornerRadius ?? baseStyle.cornerRadius,
             borderWidth: self.borderWidth ?? baseStyle.borderWidth,
             borderColor: self.borderColor ?? baseStyle.borderColor,
-            contentEdgeInsets: self.contentEdgeInsets ?? baseStyle.contentEdgeInsets
+            contentEdgeInsets: self.contentEdgeInsets ?? baseStyle.contentEdgeInsets,
+            height: self.height ?? baseStyle.height
         )
     }
 }
@@ -158,7 +162,8 @@ public struct CardFormStylesConfig {
     public let allInputFieldStyles: CardFieldSpecificStyles?
     public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]?
     public let labelStyles: [CardFieldType: CardStyle]?
-    public let buttonStyle: CardButtonStyle?
+    public let fieldSpacing: CGFloat?
+    public let sectionSpacing: CGFloat?
 
     public init(
         wrapperStyle: CardWrapperStyle? = nil,
@@ -166,14 +171,16 @@ public struct CardFormStylesConfig {
         allInputFieldStyles: CardFieldSpecificStyles? = nil,
         inputFieldStyles: [CardFieldType : CardFieldSpecificStyles]? = nil,
         labelStyles: [CardFieldType : CardStyle]? = nil,
-        buttonStyle: CardButtonStyle? = nil
+        fieldSpacing: CGFloat? = nil,
+        sectionSpacing: CGFloat? = nil
     ) {
         self.wrapperStyle = wrapperStyle
         self.errorTextStyle = errorTextStyle
         self.allInputFieldStyles = allInputFieldStyles
         self.inputFieldStyles = inputFieldStyles
         self.labelStyles = labelStyles
-        self.buttonStyle = buttonStyle
+        self.fieldSpacing = fieldSpacing
+        self.sectionSpacing = sectionSpacing
     }
 
 
@@ -182,7 +189,9 @@ public struct CardFormStylesConfig {
         let defaultLabelStyle = CardStyle(textColor: .darkGray)
         let defaultErrorStyle = CardStyle(textColor: UIColor.red)
         let defaultWrapperStyle = CardWrapperStyle.defaultStyle
-        let defaultButtonStyle = CardButtonStyle.defaultStyle // Added
+
+        let defaultFieldSpacing: CGFloat = 10
+        let defaultSectionSpacing: CGFloat = 16
 
         var defaultLabelStylesDict: [CardFieldType: CardStyle] = [:]
         let allFieldTypes: [CardFieldType] = [
@@ -198,7 +207,8 @@ public struct CardFormStylesConfig {
             allInputFieldStyles: defaultAllInputStyle,
             inputFieldStyles: nil,
             labelStyles: defaultLabelStylesDict,
-            buttonStyle: defaultButtonStyle
+            fieldSpacing: defaultFieldSpacing,
+            sectionSpacing: defaultSectionSpacing
         )
     }
     
@@ -235,7 +245,8 @@ public struct CardFormStylesConfig {
              allInputFieldStyles: finalAllInputFieldStyles,
              inputFieldStyles: finalInputFieldStyles.isEmpty ? nil : finalInputFieldStyles,
              labelStyles: finalLabelStyles.isEmpty ? nil : finalLabelStyles,
-             buttonStyle: self.buttonStyle?.merged(over: baseConfig.buttonStyle) ?? baseConfig.buttonStyle // Added
+             fieldSpacing: self.fieldSpacing ?? baseConfig.fieldSpacing,
+             sectionSpacing: self.sectionSpacing ?? baseConfig.sectionSpacing
          )
      }
     
@@ -336,3 +347,4 @@ public struct CardFormStyle {
         )
     }
 }
+

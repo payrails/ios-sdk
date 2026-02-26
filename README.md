@@ -151,7 +151,7 @@ let cardForm = Payrails.createCardForm(config: customConfig, showSaveInstrument:
 ```swift
 let buttonTranslations = CardPaymenButtonTranslations(label: "Pay Now")
 let payButton = Payrails.createCardPaymentButton(
-    buttonStyle: nil,
+    buttonStyle: CardButtonStyle(height: 56), // Partial styles are merged over defaults
     translations: buttonTranslations
 )
 
@@ -162,6 +162,9 @@ payButton.presenter = self
 Notes:
 - When using `CardPaymentButton`, **do not set** `cardForm.delegate` manually. The button sets itself as the delegate to receive encrypted card data.
 - Use `PayrailsCardPaymentButtonDelegate` for success/failure callbacks.
+- Button customization should be done via `createCardPaymentButton`.
+- `CardButtonStyle.height` is supported in card-form mode.
+- Partial button styles are merged with defaults, so passing only `height` keeps default visuals.
 
 ## Apple Pay
 
@@ -278,12 +281,84 @@ Payrails.log("Some message")
 
 ## Customization Notes
 
-The current implementation exposes styling, fonts, colors, and text labels, but has these limitations:
+The current implementation exposes styling, fonts, colors, and text labels, with these remaining limitations:
 
-- Field order and placement are fixed (`[1, 1, 3]` with name, `[1, 3]` without name).
 - Field dimensions are applied internally; custom Auto Layout constraints are limited.
 - The save-instrument toggle layout is not configurable.
-- Some low-level styling (card-brand icon, asterisk visibility) is not exposed via `CardFormConfig`.
+- Advanced constraint-based composition is not yet available.
+
+## Card Form Customization (Iteration 1)
+
+The SDK now supports advanced customization for the card form, including:
+- Show/hide card brand icon (`showCardIcon`)
+- Card icon alignment (`cardIconAlignment`)
+- Show/hide required asterisk (`showRequiredAsterisk`)
+- Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
+- Card payment button customization via `createCardPaymentButton` (`CardButtonStyle`, including `height`)
+
+### Example Usage
+
+```swift
+let config = CardFormConfig(
+    showNameField: true,
+    showSaveInstrument: false,
+    showCardIcon: true,              // NEW
+    cardIconAlignment: .right,       // NEW
+    showRequiredAsterisk: false,     // NEW
+    styles: CardFormStylesConfig(
+        fieldSpacing: 12,            // NEW
+        sectionSpacing: 20           // NEW
+    )
+)
+
+let payButton = Payrails.createCardPaymentButton(
+    buttonStyle: CardButtonStyle(
+        height: 50,
+        backgroundColor: .systemBlue,
+        textColor: .white,
+        font: .boldSystemFont(ofSize: 16),
+        cornerRadius: 8
+    ),
+    translations: CardPaymenButtonTranslations(label: "Pay")
+)
+```
+
+- `createCardPaymentButton(... buttonStyle: ...)`: Styles the pay button and supports `height`
+- `sectionSpacing`: Sets the vertical spacing between the card form and the pay button (default is 16pt if not set)
+- `fieldSpacing`: Sets the spacing between input fields (see CardForm)
+
+## Card Form Layout Customization (Iteration 2 / Phase 2)
+
+The SDK now supports configurable field arrangement and ordering via `CardLayoutConfig`.
+
+### Layout presets
+
+```swift
+let standard = CardLayoutConfig.standard
+let compact = CardLayoutConfig.compact
+let minimal = CardLayoutConfig.minimal
+```
+
+### Custom rows and field order
+
+```swift
+let config = CardFormConfig(
+    showNameField: true,
+    layout: .custom(
+        [[.CARD_NUMBER], [.CARDHOLDER_NAME], [.EXPIRATION_DATE, .CVV]],
+        fieldOrder: [.CARD_NUMBER, .EXPIRATION_DATE, .CVV, .CARDHOLDER_NAME]
+    )
+)
+```
+
+- Use `.EXPIRATION_DATE` to render a single combined `MM/YY` field.
+- `fieldOrder` reorders fields across the configured rows while preserving row sizes.
+- Custom layouts must include `CARD_NUMBER`, `CVV`, and expiry (`EXPIRATION_DATE` or both `EXPIRATION_MONTH` + `EXPIRATION_YEAR`) to be submittable.
+- Unsupported field types in custom rows are ignored.
+- If all configured fields are unsupported, or required card fields are missing after sanitization, the SDK falls back to legacy default rows.
+- If `layout` is omitted, legacy rows remain the default:
+  - With `showNameField: true`: `[[.CARD_NUMBER], [.CARDHOLDER_NAME], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]]`
+  - With `showNameField: false`: `[[.CARD_NUMBER], [.CVV, .EXPIRATION_MONTH, .EXPIRATION_YEAR]]`
 
 ## Security Policy
 

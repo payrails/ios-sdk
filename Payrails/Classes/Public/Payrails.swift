@@ -152,7 +152,7 @@ public extension Payrails {
         
         return button
     }
-    
+
     // New factory method for stored instrument mode
     static func createCardPaymentButton(
         storedInstrument: StoredInstrument,
@@ -196,6 +196,10 @@ public extension Payrails {
             finalConfig = CardFormConfig(
                 showNameField: customConfig.showNameField,
                 showSaveInstrument: showSaveInstrument,
+                showCardIcon: customConfig.showCardIcon,
+                showRequiredAsterisk: customConfig.showRequiredAsterisk,
+                cardIconAlignment: customConfig.cardIconAlignment,
+                layout: customConfig.layout,
                 styles: finalStylesConfig,
                 translations: finalTranslations
             )
@@ -203,6 +207,10 @@ public extension Payrails {
             finalConfig = CardFormConfig(
                 showNameField: defaultConfig.showNameField,
                 showSaveInstrument: showSaveInstrument,
+                showCardIcon: defaultConfig.showCardIcon,
+                showRequiredAsterisk: defaultConfig.showRequiredAsterisk,
+                cardIconAlignment: defaultConfig.cardIconAlignment,
+                layout: defaultConfig.layout,
                 styles: defaultConfig.styles,
                 translations: defaultConfig.translations
             )
