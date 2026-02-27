@@ -131,7 +131,7 @@ public extension Payrails {
                 }
                 let options = CollectElementOptions(
                     required: true,
-                    enableCardIcon: fieldType == .CARD_NUMBER,
+                    enableCardIcon: config.showCardIcon && fieldType == .CARD_NUMBER,
                     enableCopy: true,
                     showRequiredAsterisk: config.showRequiredAsterisk
                 )

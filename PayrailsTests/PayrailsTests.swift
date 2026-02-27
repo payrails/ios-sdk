@@ -395,6 +395,35 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(field.isCardIconVisibleForTesting)
     }
 
+    func testCardIconUnknownFallbackReplacesStaleBrandWhenGenericFetchFails() {
+        UIView.setAnimationsEnabled(false)
+        let brandedIcon = makeCardIconImage()
+        TextField.cardIconImageFetcher = { url, completion in
+            if url.absoluteString.hasSuffix("/ic-card.png") {
+                completion(nil)
+            } else {
+                completion(brandedIcon)
+            }
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: true, alignment: .right)
+        field.setValue(value: "4")
+        flushMainQueue()
+
+        XCTAssertTrue(field.cardIconImageView.image === brandedIcon)
+        XCTAssertEqual(field.detectedCardNetwork, .VISA)
+
+        field.updateImage(name: "", cardNumber: "9")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .UNKNOWN)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/ic-card.png")
+        XCTAssertNotNil(field.cardIconImageView.image)
+        XCTAssertFalse(field.cardIconImageView.image === brandedIcon)
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+    }
+
     func testCardIconFallsBackToGenericForEmptyInput() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
