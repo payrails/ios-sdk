@@ -109,6 +109,7 @@ final class PayrailsTests: XCTestCase {
     func testCardFormConfigPhase1Defaults() throws {
         let config = CardFormConfig.defaultConfig
         XCTAssertFalse(config.showCardIcon, "Default showCardIcon should be false")
+        XCTAssertFalse(config.showSupportedCardNetworkIcons, "Default showSupportedCardNetworkIcons should be false")
         XCTAssertTrue(config.showRequiredAsterisk, "Default showRequiredAsterisk should be true")
         XCTAssertEqual(config.cardIconAlignment, .left, "Default cardIconAlignment should be .left")
         XCTAssertNil(config.layout, "Default layout should remain nil for backward compatibility")
@@ -372,6 +373,67 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(field.isCardIconVisibleForTesting)
     }
 
+    func testCardIconShowsSupportedNetworksBeforeTypingWhenEnabled() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(
+            showCardIcon: true,
+            alignment: .right,
+            showSupportedCardNetworkIcons: true
+        )
+        flushMainQueue()
+
+        XCTAssertTrue(field.isSupportedCardIconsVisibleForTesting)
+        XCTAssertEqual(field.supportedCardIconImageViews.count, 4)
+        XCTAssertEqual(field.detectedCardNetwork, .UNKNOWN)
+        XCTAssertNil(field.resolvedCardIconURL)
+    }
+
+    func testCardIconHidesSupportedNetworksAndShowsDetectedNetworkAfterTyping() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(
+            showCardIcon: true,
+            alignment: .right,
+            showSupportedCardNetworkIcons: true
+        )
+        flushMainQueue()
+        XCTAssertTrue(field.isSupportedCardIconsVisibleForTesting)
+
+        field.setValue(value: "4")
+        flushMainQueue()
+
+        XCTAssertFalse(field.isSupportedCardIconsVisibleForTesting)
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+        XCTAssertEqual(field.detectedCardNetwork, .VISA)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
+    }
+
+    func testCardIconDoesNotShowSupportedNetworksBeforeTypingWhenDisabled() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(
+            showCardIcon: true,
+            alignment: .right,
+            showSupportedCardNetworkIcons: false
+        )
+        flushMainQueue()
+
+        XCTAssertFalse(field.isSupportedCardIconsVisibleForTesting)
+    }
+
     func testCardIconHidesForUnknownNetwork() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
@@ -432,7 +494,11 @@ final class PayrailsTests: XCTestCase {
         XCTAssertNil(field.resolvedCardIconURL)
     }
 
-    private func makeCardNumberField(showCardIcon: Bool, alignment: CardIconAlignment) -> TextField {
+    private func makeCardNumberField(
+        showCardIcon: Bool,
+        alignment: CardIconAlignment,
+        showSupportedCardNetworkIcons: Bool = false
+    ) -> TextField {
         let input = CollectElementInput(
             table: "cards",
             column: "card_number",
@@ -447,6 +513,7 @@ final class PayrailsTests: XCTestCase {
         let options = CollectElementOptions(
             required: true,
             enableCardIcon: showCardIcon,
+            showSupportedCardNetworkIcons: showSupportedCardNetworkIcons,
             enableCopy: false
         )
         return TextField(
