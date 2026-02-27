@@ -291,6 +291,7 @@ The current implementation exposes styling, fonts, colors, and text labels, with
 
 The SDK now supports advanced customization for the card form, including:
 - Show/hide card brand icon (`showCardIcon`)
+- Show/hide supported network icons before typing (`showSupportedCardNetworkIcons`)
 - Card icon alignment (`cardIconAlignment`)
 - Show/hide required asterisk (`showRequiredAsterisk`)
 - Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
@@ -303,6 +304,7 @@ let config = CardFormConfig(
     showNameField: true,
     showSaveInstrument: false,
     showCardIcon: true,              // NEW
+    showSupportedCardNetworkIcons: true, // NEW
     cardIconAlignment: .right,       // NEW
     showRequiredAsterisk: false,     // NEW
     styles: CardFormStylesConfig(
