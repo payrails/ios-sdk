@@ -15,6 +15,8 @@ import UIKit
 
 
 public class TextField: SkyflowElement, Element, BaseElement {
+    private static let preInputSupportedCardNetworks: [CardNetwork] = [.VISA, .MASTERCARD, .AMEX, .DINERS]
+
     private struct CardIconStyleConfig {
         let cardIconSize: CGFloat
         let copyIconSize: CGFloat
@@ -58,12 +60,21 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var copyContainerView = UIView()
     internal var cardIconContainerView = UIView()
     internal var cardIconImageView = UIImageView()
+    internal var supportedCardIconsContainerView = UIView()
+    internal var supportedCardIconImageViews: [UIImageView] = []
     internal var detectedCardNetwork: CardNetwork = .UNKNOWN
     internal var resolvedCardIconURL: URL?
     internal var isCardIconVisibleForTesting: Bool {
         cardIconContainerView.alpha > 0.01 && cardIconImageView.image != nil
     }
+    internal var isSupportedCardIconsVisibleForTesting: Bool {
+        supportedCardIconsContainerView.alpha > 0.01
+            && !supportedCardIconImageViews.isEmpty
+            && textField.rightView === supportedCardIconsContainerView
+    }
     private var cardIconImageTask: URLSessionDataTask?
+    private var supportedCardIconImageTasks: [URLSessionDataTask] = []
+    private var supportedCardIconsRenderToken = UUID()
     private var customErrorMessage: String?
     private static let cardIconConfig = CardIconConfig.defaultConfig
     private var cardIconSize: CGFloat { Self.cardIconConfig.style.cardIconSize }
@@ -626,11 +637,21 @@ public class TextField: SkyflowElement, Element, BaseElement {
         guard self.options.enableCardIcon, self.fieldType == .CARD_NUMBER else {
             self.detectedCardNetwork = .UNKNOWN
             self.resolvedCardIconURL = nil
+            hideSupportedCardNetworkIcons()
             hideCardIcon(clearImage: true)
             return
         }
 
         let explicitSchemeName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if shouldShowSupportedCardNetworkIcons(explicitSchemeName: explicitSchemeName, cardNumber: cardNumber) {
+            showSupportedCardNetworkIcons()
+            self.detectedCardNetwork = .UNKNOWN
+            self.resolvedCardIconURL = nil
+            hideCardIcon(clearImage: true)
+            return
+        }
+
+        hideSupportedCardNetworkIcons()
         let network = CardNetwork.resolve(
             schemeName: explicitSchemeName,
             cardType: self.selectedCardBrand,
@@ -687,6 +708,129 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 self.cardIconImageView.image = nil
             }
         }
+    }
+
+    private func shouldShowSupportedCardNetworkIcons(explicitSchemeName: String, cardNumber: String) -> Bool {
+        guard self.options.showSupportedCardNetworkIcons else {
+            return false
+        }
+
+        let normalizedPAN = cardNumber.filter(\.isNumber)
+        return normalizedPAN.isEmpty && explicitSchemeName.isEmpty && self.selectedCardBrand == nil
+    }
+
+    private func showSupportedCardNetworkIcons() {
+        cancelSupportedCardIconLoads()
+        supportedCardIconsRenderToken = UUID()
+        supportedCardIconImageViews.removeAll()
+        supportedCardIconsContainerView.subviews.forEach { $0.removeFromSuperview() }
+
+        let rightAccessoryHeight = max(cardIconSize, copyIconSize)
+        var xOffset: CGFloat = rightIconTrailingInset
+
+        for (index, network) in Self.preInputSupportedCardNetworks.enumerated() {
+            let imageView = UIImageView(
+                frame: CGRect(
+                    x: xOffset,
+                    y: (rightAccessoryHeight - cardIconSize) / 2,
+                    width: cardIconSize,
+                    height: cardIconSize
+                )
+            )
+            imageView.contentMode = .scaleAspectFit
+            supportedCardIconsContainerView.addSubview(imageView)
+            supportedCardIconImageViews.append(imageView)
+
+            if let iconURL = network.iconURL {
+                if let cachedImage = TextField.cardIconConfig.cache.object(forKey: iconURL as NSURL) {
+                    imageView.image = cachedImage
+                } else {
+                    let currentRenderToken = supportedCardIconsRenderToken
+                    let task = TextField.cardIconImageFetcher(iconURL) { [weak self, weak imageView] image in
+                        guard let self else { return }
+                        DispatchQueue.main.async {
+                            guard currentRenderToken == self.supportedCardIconsRenderToken else {
+                                return
+                            }
+                            guard let imageView else {
+                                return
+                            }
+                            guard let image else {
+                                return
+                            }
+
+                            TextField.cardIconConfig.cache.setObject(image, forKey: iconURL as NSURL)
+                            imageView.image = image
+                        }
+                    }
+                    if let task {
+                        supportedCardIconImageTasks.append(task)
+                    }
+                }
+            }
+
+            xOffset += cardIconSize
+            if index < Self.preInputSupportedCardNetworks.count - 1 {
+                xOffset += cardIconSpacing
+            }
+        }
+
+        supportedCardIconsContainerView.frame = CGRect(
+            x: 0,
+            y: 0,
+            width: xOffset + rightIconTrailingInset,
+            height: rightAccessoryHeight
+        )
+        textField.rightViewMode = .always
+        textField.rightView = supportedCardIconsContainerView
+        UIView.animate(withDuration: cardIconAnimationDuration) {
+            self.supportedCardIconsContainerView.alpha = 1.0
+        }
+    }
+
+    private func hideSupportedCardNetworkIcons() {
+        let wasShowingSupportedIcons = textField.rightView === supportedCardIconsContainerView
+        cancelSupportedCardIconLoads()
+        supportedCardIconsRenderToken = UUID()
+
+        if wasShowingSupportedIcons {
+            applyDefaultCardNumberRightView()
+        }
+
+        UIView.animate(withDuration: cardIconAnimationDuration) {
+            self.supportedCardIconsContainerView.alpha = 0.0
+        } completion: { _ in
+            self.supportedCardIconImageViews.forEach { $0.image = nil }
+        }
+    }
+
+    private func cancelSupportedCardIconLoads() {
+        supportedCardIconImageTasks.forEach { $0.cancel() }
+        supportedCardIconImageTasks.removeAll()
+    }
+
+    private func applyDefaultCardNumberRightView() {
+        guard self.fieldType == .CARD_NUMBER else {
+            return
+        }
+
+        if self.options.enableCopy {
+            textField.rightViewMode = .always
+            if self.options.enableCardIcon && cardIconAlignment == .right {
+                textField.rightView = rightViewForIcons
+            } else {
+                textField.rightView = copyContainerView
+            }
+            return
+        }
+
+        if self.options.enableCardIcon && cardIconAlignment == .right {
+            textField.rightViewMode = .always
+            textField.rightView = rightViewForIcons
+            return
+        }
+
+        textField.rightView = nil
     }
 
     internal static func resetCardIconTestingState() {

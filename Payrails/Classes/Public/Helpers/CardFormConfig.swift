@@ -9,6 +9,7 @@ public struct CardFormConfig {
     public let showNameField: Bool
     public let showSaveInstrument: Bool
     public let showCardIcon: Bool
+    public let showSupportedCardNetworkIcons: Bool
     public let showRequiredAsterisk: Bool
     public let cardIconAlignment: CardIconAlignment
     public let layout: CardLayoutConfig?
@@ -20,6 +21,7 @@ public struct CardFormConfig {
         showNameField: Bool = false,
         showSaveInstrument: Bool = false,
         showCardIcon: Bool = false,
+        showSupportedCardNetworkIcons: Bool = false,
         showRequiredAsterisk: Bool = true,
         cardIconAlignment: CardIconAlignment = .left,
         layout: CardLayoutConfig? = nil,
@@ -29,6 +31,7 @@ public struct CardFormConfig {
         self.showNameField = showNameField
         self.showSaveInstrument = showSaveInstrument
         self.showCardIcon = showCardIcon
+        self.showSupportedCardNetworkIcons = showSupportedCardNetworkIcons
         self.showRequiredAsterisk = showRequiredAsterisk
         self.cardIconAlignment = cardIconAlignment
         self.layout = layout

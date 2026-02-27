@@ -12,6 +12,7 @@ import UIKit
 public struct CollectElementOptions {
     var required: Bool
     var enableCardIcon: Bool
+    var showSupportedCardNetworkIcons: Bool
     var format: String
     var translation: [ Character: String ]?
     var enableCopy: Bool
@@ -19,9 +20,10 @@ public struct CollectElementOptions {
     var cardMetaData: [ String: Any]?
 
     
-    public init(required: Bool? = false, enableCardIcon: Bool = true, format: String = "mm/yy", translation: [ Character: String ]? = nil, enableCopy: Bool = false, showRequiredAsterisk: Bool = true, cardMetaData: [ String: Any]? = nil) {
+    public init(required: Bool? = false, enableCardIcon: Bool = true, showSupportedCardNetworkIcons: Bool = false, format: String = "mm/yy", translation: [ Character: String ]? = nil, enableCopy: Bool = false, showRequiredAsterisk: Bool = true, cardMetaData: [ String: Any]? = nil) {
         self.required = required!
         self.enableCardIcon = enableCardIcon
+        self.showSupportedCardNetworkIcons = showSupportedCardNetworkIcons
         self.format = format
         self.translation = translation
         self.enableCopy = enableCopy
@@ -42,4 +44,3 @@ public struct CollectElementOptions {
     }
 
 }
-

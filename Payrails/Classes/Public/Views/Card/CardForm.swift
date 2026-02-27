@@ -122,6 +122,7 @@ public extension Payrails {
             let requiredOption = CollectElementOptions(
                 required: true,
                 enableCardIcon: config.showCardIcon,
+                showSupportedCardNetworkIcons: config.showSupportedCardNetworkIcons,
                 enableCopy: true,
                 showRequiredAsterisk: config.showRequiredAsterisk
             )
