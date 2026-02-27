@@ -636,12 +636,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
             cardType: self.selectedCardBrand,
             pan: cardNumber
         )
-        let iconURL = network.iconURL
+        let iconURL = network.iconURL ?? CardNetwork.UNKNOWN.iconURL
         self.detectedCardNetwork = network
         self.resolvedCardIconURL = iconURL
+        ensureGenericCardIconVisible()
 
         guard let iconURL else {
-            hideCardIcon(clearImage: true)
             return
         }
 
@@ -659,7 +659,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 }
 
                 guard let image else {
-                    self.hideCardIcon(clearImage: true)
+                    self.ensureGenericCardIconVisible()
                     return
                 }
 
@@ -687,6 +687,16 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 self.cardIconImageView.image = nil
             }
         }
+    }
+
+    private func ensureGenericCardIconVisible() {
+        if cardIconImageView.image == nil {
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: cardIconSize, weight: .regular)
+            cardIconImageView.image = UIImage(systemName: "creditcard", withConfiguration: symbolConfig)?
+                .withRenderingMode(.alwaysTemplate)
+            cardIconImageView.tintColor = .secondaryLabel
+        }
+        cardIconContainerView.alpha = 1.0
     }
 
     internal static func resetCardIconTestingState() {

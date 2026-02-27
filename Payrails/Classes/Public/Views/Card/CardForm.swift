@@ -119,13 +119,6 @@ public extension Payrails {
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
-            let requiredOption = CollectElementOptions(
-                required: true,
-                enableCardIcon: config.showCardIcon,
-                enableCopy: true,
-                showRequiredAsterisk: config.showRequiredAsterisk
-            )
-
             for fieldType in layoutRows.flatMap({ $0 }) {
                 guard let input = makeCollectInput(
                     for: fieldType,
@@ -136,7 +129,13 @@ public extension Payrails {
                 ) else {
                     continue
                 }
-                _ = container.create(input: input, options: requiredOption)
+                let options = CollectElementOptions(
+                    required: true,
+                    enableCardIcon: fieldType == .CARD_NUMBER,
+                    enableCopy: true,
+                    showRequiredAsterisk: config.showRequiredAsterisk
+                )
+                _ = container.create(input: input, options: options)
             }
 
             container.setupDynamicCVVLengthHandling()
