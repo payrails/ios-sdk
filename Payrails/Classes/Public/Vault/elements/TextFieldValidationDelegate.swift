@@ -88,6 +88,8 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
         let text = ((textField as! FormatTextField).secureText! as NSString).replacingCharacters(in: range, with: string)
         let count = text.count
 
+        collectField.lastEditWasDeletion = string.isEmpty
+
         if string.isEmpty {
             if (collectField.fieldType == .EXPIRATION_MONTH){
                 (textField as! FormatTextField).secureText = ""
