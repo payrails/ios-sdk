@@ -28,10 +28,10 @@ public struct CardFieldSpecificStyles {
 
     public static var defaultStyle: CardFieldSpecificStyles {
         .init(
-            base: .init(cornerRadius: 2, padding: UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10), borderWidth: 1, textAlignment: .left, textColor: .black), // Changed default text color
-            focus: .init(borderColor: .blue),
-            completed: .init(borderColor: .green),
-            invalid: .init(borderColor: .red)
+            base: .init(cornerRadius: 2, padding: UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10), borderWidth: 1, textAlignment: .left, textColor: .label),
+            focus: .init(borderColor: .systemBlue),
+            completed: .init(borderColor: .systemGreen),
+            invalid: .init(borderColor: .systemRed)
         )
     }
     
@@ -132,7 +132,7 @@ public struct CardWrapperStyle {
 
     public static var defaultStyle: CardWrapperStyle {
         .init(
-            borderColor: UIColor.gray,
+            borderColor: UIColor.separator,
             borderWidth: 1.0,
             cornerRadius: 8.0,
             padding: UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
@@ -186,8 +186,8 @@ public struct CardFormStylesConfig {
 
     public static var defaultConfig: CardFormStylesConfig {
         let defaultAllInputStyle = CardFieldSpecificStyles.defaultStyle
-        let defaultLabelStyle = CardStyle(textColor: .darkGray)
-        let defaultErrorStyle = CardStyle(textColor: UIColor.red)
+        let defaultLabelStyle = CardStyle(textColor: .secondaryLabel)
+        let defaultErrorStyle = CardStyle(textColor: UIColor.systemRed)
         let defaultWrapperStyle = CardWrapperStyle.defaultStyle
 
         let defaultFieldSpacing: CGFloat = 10
@@ -270,13 +270,13 @@ public struct CardFormStyle {
                 padding: UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10),
                 borderWidth: 1,
                 textAlignment: .left,
-                textColor: .blue
+                textColor: .label
             ),
-            focusStyle: .init(borderColor: .blue),
-            labelStyle: .init(textColor: .black),
-            completedStyle: .init(borderColor: .green),
-            invalidStyle: .init(borderColor: .red),
-            errorTextStyle: .init(textColor: UIColor.red)
+            focusStyle: .init(borderColor: .systemBlue),
+            labelStyle: .init(textColor: .secondaryLabel),
+            completedStyle: .init(borderColor: .systemGreen),
+            invalidStyle: .init(borderColor: .systemRed),
+            errorTextStyle: .init(textColor: UIColor.systemRed)
         )
     }
 
@@ -347,4 +347,3 @@ public struct CardFormStyle {
         )
     }
 }
-
