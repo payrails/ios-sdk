@@ -144,12 +144,18 @@ public extension Container {
                     element.onBeginEditing = {
                         errorList[element.elements.count] = ""
                         labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
-                        if( element.elements.count + 1 < self.elements.count ){
-                            if ALLOWED_FOCUS_AUTO_SHIFT_ELEMENT_TYPES.contains(element.fieldType) && element.textField.isFirstResponder && (element.state.getState()["isValid"] as! Bool)  {
-                                if(element.elements.count + 1 < self.elements.count){
-                                    self.elements[element.elements.count + 1].textField.becomeFirstResponder()
-                                }
-                            }
+
+                        let elementState = element.state.getState()
+                        let shouldAutoShiftFocus = shouldAutoShiftFocus(
+                            fieldType: element.fieldType,
+                            isFirstResponder: element.textField.isFirstResponder,
+                            lastEditWasDeletion: element.lastEditWasDeletion,
+                            isEmpty: elementState["isEmpty"] as! Bool,
+                            isValid: elementState["isValid"] as! Bool
+                        )
+
+                        if shouldAutoShiftFocus, element.elements.count + 1 < self.elements.count {
+                            self.elements[element.elements.count + 1].textField.becomeFirstResponder()
                         }
                     }
                 }

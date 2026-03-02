@@ -236,6 +236,42 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(options.showRequiredAsterisk, "Default showRequiredAsterisk should be true")
     }
 
+    func testAutoShiftFocusDoesNotTriggerOnDeletion() {
+        XCTAssertFalse(
+            shouldAutoShiftFocus(
+                fieldType: .CARD_NUMBER,
+                isFirstResponder: true,
+                lastEditWasDeletion: true,
+                isEmpty: true,
+                isValid: true
+            )
+        )
+    }
+
+    func testAutoShiftFocusDoesNotTriggerForEmptyValues() {
+        XCTAssertFalse(
+            shouldAutoShiftFocus(
+                fieldType: .CARD_NUMBER,
+                isFirstResponder: true,
+                lastEditWasDeletion: false,
+                isEmpty: true,
+                isValid: true
+            )
+        )
+    }
+
+    func testAutoShiftFocusTriggersOnlyForCompletedForwardInput() {
+        XCTAssertTrue(
+            shouldAutoShiftFocus(
+                fieldType: .CARD_NUMBER,
+                isFirstResponder: true,
+                lastEditWasDeletion: false,
+                isEmpty: false,
+                isValid: true
+            )
+        )
+    }
+
     func testCardPaymentButtonAppliesHeightInCardFormMode() throws {
         let button = Payrails.CardPaymentButton(
             buttonStyle: CardButtonStyle(height: 56)

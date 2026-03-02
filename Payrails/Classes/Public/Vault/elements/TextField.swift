@@ -240,6 +240,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var onReadyHandler: (([String: Any]) -> Void)?
     internal var onFocusHandler: (([String: Any]) -> Void)?
     internal var onSubmitHandler: (() -> Void)?
+    internal var lastEditWasDeletion = false
 
     
     override func getOutput() -> String? {
