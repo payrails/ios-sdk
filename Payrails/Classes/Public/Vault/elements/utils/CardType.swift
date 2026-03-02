@@ -158,7 +158,8 @@ internal enum CardNetwork: Equatable {
     case UNIONPAY
     case UNKNOWN
 
-    private static let baseIconURL = "https://assets.payrails.io/img/integrations"
+    private static let baseIconURL = "https://assets.payrails.io/img/logos/card"
+    private static let genericCardIconURL = "\(baseIconURL)/ic-card.png"
     
     private struct NetworkConfig {
         let network: CardNetwork
@@ -286,6 +287,10 @@ internal enum CardNetwork: Equatable {
     }
 
     internal var iconURL: URL? {
+        if self == .UNKNOWN {
+            return URL(string: Self.genericCardIconURL)
+        }
+
         guard let config = Self.configs.first(where: { $0.network == self }),
               let iconFileName = config.iconFileName else {
             return nil
