@@ -289,27 +289,28 @@ The current implementation exposes styling, fonts, colors, and text labels, with
 - The save-instrument toggle layout is not configurable.
 - Advanced constraint-based composition is not yet available.
 
-## Card Form Customization (Iteration 1)
+### Card Form Customization
 
-The SDK now supports advanced customization for the card form, including:
+The SDK supports advanced card form customization, including:
 - Show/hide card brand icon (`showCardIcon`)
 - Card icon alignment (`cardIconAlignment`)
 - Show/hide required asterisk (`showRequiredAsterisk`)
 - Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
 - Card payment button customization via `createCardPaymentButton` (`CardButtonStyle`, including `height`)
+- Configurable field arrangement and ordering via `CardLayoutConfig`
 
-### Example Usage
+#### Example Usage
 
 ```swift
 let config = CardFormConfig(
     showNameField: true,
     showSaveInstrument: false,
-    showCardIcon: true,              // NEW
-    cardIconAlignment: .right,       // NEW
-    showRequiredAsterisk: false,     // NEW
+    showCardIcon: true,
+    cardIconAlignment: .right,
+    showRequiredAsterisk: false,
     styles: CardFormStylesConfig(
-        fieldSpacing: 12,            // NEW
-        sectionSpacing: 20           // NEW
+        fieldSpacing: 12,
+        sectionSpacing: 20
     )
 )
 
@@ -330,11 +331,7 @@ let payButton = Payrails.createCardPaymentButton(
 - `fieldSpacing`: Sets the spacing between input fields (see CardForm)
 - If color properties are omitted, SDK fallbacks use theme-aware semantic iOS colors.
 
-## Card Form Layout Customization (Iteration 2 / Phase 2)
-
-The SDK now supports configurable field arrangement and ordering via `CardLayoutConfig`.
-
-### Layout presets
+#### Layout presets
 
 ```swift
 let standard = CardLayoutConfig.standard
@@ -342,7 +339,7 @@ let compact = CardLayoutConfig.compact
 let minimal = CardLayoutConfig.minimal
 ```
 
-### Custom rows and field order
+#### Custom rows and field order
 
 ```swift
 let config = CardFormConfig(
