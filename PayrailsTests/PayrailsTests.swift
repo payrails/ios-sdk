@@ -236,6 +236,42 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(options.showRequiredAsterisk, "Default showRequiredAsterisk should be true")
     }
 
+    func testAutoShiftFocusDoesNotTriggerOnDeletion() {
+        XCTAssertFalse(
+            shouldAutoShiftFocus(
+                fieldType: .CARD_NUMBER,
+                isFirstResponder: true,
+                lastEditWasDeletion: true,
+                isEmpty: true,
+                isValid: true
+            )
+        )
+    }
+
+    func testAutoShiftFocusDoesNotTriggerForEmptyValues() {
+        XCTAssertFalse(
+            shouldAutoShiftFocus(
+                fieldType: .CARD_NUMBER,
+                isFirstResponder: true,
+                lastEditWasDeletion: false,
+                isEmpty: true,
+                isValid: true
+            )
+        )
+    }
+
+    func testAutoShiftFocusTriggersOnlyForCompletedForwardInput() {
+        XCTAssertTrue(
+            shouldAutoShiftFocus(
+                fieldType: .CARD_NUMBER,
+                isFirstResponder: true,
+                lastEditWasDeletion: false,
+                isEmpty: false,
+                isValid: true
+            )
+        )
+    }
+
     func testCardPaymentButtonAppliesHeightInCardFormMode() throws {
         let button = Payrails.CardPaymentButton(
             buttonStyle: CardButtonStyle(height: 56)
@@ -286,14 +322,14 @@ final class PayrailsTests: XCTestCase {
     }
 
     func testCardNetworkIconURLMapping() {
-        XCTAssertEqual(CardNetwork.VISA.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
-        XCTAssertEqual(CardNetwork.MASTERCARD.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/mastercard.png")
-        XCTAssertEqual(CardNetwork.AMEX.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
-        XCTAssertEqual(CardNetwork.DISCOVER.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/discover.png")
-        XCTAssertEqual(CardNetwork.JCB.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/jcb.png")
-        XCTAssertEqual(CardNetwork.DINERS.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/diners.png")
-        XCTAssertEqual(CardNetwork.UNIONPAY.iconURL?.absoluteString, "https://assets.payrails.io/img/integrations/unionpay.png")
-        XCTAssertNil(CardNetwork.UNKNOWN.iconURL)
+        XCTAssertEqual(CardNetwork.VISA.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/visa.png")
+        XCTAssertEqual(CardNetwork.MASTERCARD.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/mastercard.png")
+        XCTAssertEqual(CardNetwork.AMEX.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/amex.png")
+        XCTAssertEqual(CardNetwork.DISCOVER.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/discover.png")
+        XCTAssertEqual(CardNetwork.JCB.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/jcb.png")
+        XCTAssertEqual(CardNetwork.DINERS.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/diners.png")
+        XCTAssertEqual(CardNetwork.UNIONPAY.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/unionpay.png")
+        XCTAssertEqual(CardNetwork.UNKNOWN.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/ic-card.png")
     }
 
     func testCardNetworkDetectionWithAndroidParityPrefixes() {
@@ -348,7 +384,7 @@ final class PayrailsTests: XCTestCase {
         flushMainQueue()
 
         XCTAssertEqual(field.detectedCardNetwork, .VISA)
-        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/visa.png")
         XCTAssertTrue(field.isCardIconVisibleForTesting)
         XCTAssertNotNil(field.textField.rightView)
 
@@ -358,8 +394,8 @@ final class PayrailsTests: XCTestCase {
         flushMainQueue()
 
         XCTAssertEqual(field.detectedCardNetwork, .AMEX)
-        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
-        XCTAssertNotEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/amex.png")
+        XCTAssertNotEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/visa.png")
         XCTAssertTrue(field.isCardIconVisibleForTesting)
 
         field.clearValue()
@@ -368,11 +404,11 @@ final class PayrailsTests: XCTestCase {
         flushMainQueue()
 
         XCTAssertEqual(field.detectedCardNetwork, .JCB)
-        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/jcb.png")
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/jcb.png")
         XCTAssertTrue(field.isCardIconVisibleForTesting)
     }
 
-    func testCardIconHidesForUnknownNetwork() {
+    func testCardIconFallsBackToGenericForUnknownNetwork() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
             completion(self.makeCardIconImage())
@@ -391,8 +427,62 @@ final class PayrailsTests: XCTestCase {
         flushMainQueue()
 
         XCTAssertEqual(field.detectedCardNetwork, .UNKNOWN)
-        XCTAssertNil(field.resolvedCardIconURL)
-        XCTAssertFalse(field.isCardIconVisibleForTesting)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/ic-card.png")
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+    }
+
+    func testCardIconUnknownFallbackReplacesStaleBrandWhenGenericFetchFails() {
+        UIView.setAnimationsEnabled(false)
+        let brandedIcon = makeCardIconImage()
+        TextField.cardIconImageFetcher = { url, completion in
+            if url.absoluteString.hasSuffix("/ic-card.png") {
+                completion(nil)
+            } else {
+                completion(brandedIcon)
+            }
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: true, alignment: .right)
+        field.setValue(value: "4")
+        flushMainQueue()
+
+        XCTAssertTrue(field.cardIconImageView.image === brandedIcon)
+        XCTAssertEqual(field.detectedCardNetwork, .VISA)
+
+        field.updateImage(name: "", cardNumber: "9")
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .UNKNOWN)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/ic-card.png")
+        XCTAssertNotNil(field.cardIconImageView.image)
+        XCTAssertFalse(field.cardIconImageView.image === brandedIcon)
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+    }
+
+    func testCardIconFallsBackToGenericForEmptyInput() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: true, alignment: .right)
+        flushMainQueue()
+
+        XCTAssertEqual(field.detectedCardNetwork, .UNKNOWN)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/ic-card.png")
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
+
+        field.setValue(value: "4")
+        flushMainQueue()
+        XCTAssertEqual(field.detectedCardNetwork, .VISA)
+
+        field.clearValue()
+        flushMainQueue()
+        XCTAssertEqual(field.detectedCardNetwork, .UNKNOWN)
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/ic-card.png")
+        XCTAssertTrue(field.isCardIconVisibleForTesting)
     }
 
     func testCardIconManualSchemeSelectionOverridesPanDetection() {
@@ -407,14 +497,14 @@ final class PayrailsTests: XCTestCase {
         flushMainQueue()
 
         XCTAssertEqual(field.detectedCardNetwork, .AMEX)
-        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/amex.png")
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/amex.png")
 
         field.selectedCardBrand = .VISA
         field.updateImage(name: "", cardNumber: field.textField.secureText ?? "")
         flushMainQueue()
 
         XCTAssertEqual(field.detectedCardNetwork, .VISA)
-        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/integrations/visa.png")
+        XCTAssertEqual(field.resolvedCardIconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/visa.png")
     }
 
     func testCardIconDoesNotAppearWhenDisabled() {

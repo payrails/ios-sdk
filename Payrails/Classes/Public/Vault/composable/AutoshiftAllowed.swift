@@ -13,3 +13,17 @@ let ALLOWED_FOCUS_AUTO_SHIFT_ELEMENT_TYPES: [ElementType] = [
     .EXPIRATION_YEAR,
     .EXPIRATION_MONTH
 ]
+
+func shouldAutoShiftFocus(
+    fieldType: ElementType,
+    isFirstResponder: Bool,
+    lastEditWasDeletion: Bool,
+    isEmpty: Bool,
+    isValid: Bool
+) -> Bool {
+    ALLOWED_FOCUS_AUTO_SHIFT_ELEMENT_TYPES.contains(fieldType) &&
+    isFirstResponder &&
+    !lastEditWasDeletion &&
+    !isEmpty &&
+    isValid
+}

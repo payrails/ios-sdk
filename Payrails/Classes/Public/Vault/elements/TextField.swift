@@ -240,6 +240,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var onReadyHandler: (([String: Any]) -> Void)?
     internal var onFocusHandler: (([String: Any]) -> Void)?
     internal var onSubmitHandler: (() -> Void)?
+    internal var lastEditWasDeletion = false
 
     
     override func getOutput() -> String? {
@@ -636,12 +637,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
             cardType: self.selectedCardBrand,
             pan: cardNumber
         )
-        let iconURL = network.iconURL
+        let iconURL = network.iconURL ?? CardNetwork.UNKNOWN.iconURL
         self.detectedCardNetwork = network
         self.resolvedCardIconURL = iconURL
+        ensureGenericCardIconVisible(forceReplace: network == .UNKNOWN)
 
         guard let iconURL else {
-            hideCardIcon(clearImage: true)
             return
         }
 
@@ -659,7 +660,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 }
 
                 guard let image else {
-                    self.hideCardIcon(clearImage: true)
+                    self.ensureGenericCardIconVisible(forceReplace: true)
                     return
                 }
 
@@ -687,6 +688,16 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 self.cardIconImageView.image = nil
             }
         }
+    }
+
+    private func ensureGenericCardIconVisible(forceReplace: Bool = false) {
+        if forceReplace || cardIconImageView.image == nil {
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: cardIconSize, weight: .regular)
+            cardIconImageView.image = UIImage(systemName: "creditcard", withConfiguration: symbolConfig)?
+                .withRenderingMode(.alwaysTemplate)
+            cardIconImageView.tintColor = .secondaryLabel
+        }
+        cardIconContainerView.alpha = 1.0
     }
 
     internal static func resetCardIconTestingState() {
@@ -865,7 +876,7 @@ extension TextField {
 
         self.textField.backgroundColor = style?.backgroundColor ?? fallbackStyle?.backgroundColor ?? .none
 
-        self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? UIColor.black
+        self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? self.tintColor
         var p = style?.padding ?? fallbackStyle?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         if self.fieldType == .CARD_NUMBER, self.options.enableCardIcon, cardIconAlignment == .left {
             p.left = cardIconSize + 12
@@ -1045,7 +1056,7 @@ internal extension TextField {
         
         let astriskAttributes: [NSAttributedString.Key: Any]  = [
             .strokeWidth:  -3.0,
-            .strokeColor: collectInput.labelStyles.requiredAstrisk?.textColor ?? UIColor.red,
+            .strokeColor: collectInput.labelStyles.requiredAstrisk?.textColor ?? UIColor.systemRed,
             NSAttributedString.Key.font: collectInput.labelStyles.requiredAstrisk?.font ?? UIFont.boldSystemFont(ofSize: 18.0),
             .baselineOffset:  verticalAstrisk > 0.0 ? verticalAstrisk : 2.0
         ]

@@ -94,8 +94,8 @@ public extension Payrails {
 
         private func setupViews() {
             let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
-            let defaultLabelStyle = CardStyle(textColor: .darkGray)
-            let defaultErrorStyle = CardStyle(textColor: .red)
+            let defaultLabelStyle = CardStyle(textColor: .secondaryLabel)
+            let defaultErrorStyle = CardStyle(textColor: .systemRed)
             let containerErrorStyle = stylesConfig.errorTextStyle ?? defaultErrorStyle
             let iconAlignment = config.cardIconAlignment
             let layoutRows = sanitizedLayoutRows(from: resolvedLayoutRows())
@@ -119,13 +119,6 @@ public extension Payrails {
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
-            let requiredOption = CollectElementOptions(
-                required: true,
-                enableCardIcon: config.showCardIcon,
-                enableCopy: true,
-                showRequiredAsterisk: config.showRequiredAsterisk
-            )
-
             for fieldType in layoutRows.flatMap({ $0 }) {
                 guard let input = makeCollectInput(
                     for: fieldType,
@@ -136,7 +129,13 @@ public extension Payrails {
                 ) else {
                     continue
                 }
-                _ = container.create(input: input, options: requiredOption)
+                let options = CollectElementOptions(
+                    required: true,
+                    enableCardIcon: config.showCardIcon && fieldType == .CARD_NUMBER,
+                    enableCopy: true,
+                    showRequiredAsterisk: config.showRequiredAsterisk
+                )
+                _ = container.create(input: input, options: options)
             }
 
             container.setupDynamicCVVLengthHandling()
@@ -299,7 +298,7 @@ public extension Payrails {
             let labelText = config.translations?.labels.saveInstrument ?? "Save card"
             saveInstrumentLabel.text = labelText
             saveInstrumentLabel.font = UIFont.systemFont(ofSize: 14)
-            saveInstrumentLabel.textColor = .darkGray
+            saveInstrumentLabel.textColor = .secondaryLabel
             
             // Create toggle container
             let toggleContainer = UIStackView()

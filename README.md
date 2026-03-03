@@ -165,6 +165,8 @@ Notes:
 - Button customization should be done via `createCardPaymentButton`.
 - `CardButtonStyle.height` is supported in card-form mode.
 - Partial button styles are merged with defaults, so passing only `height` keeps default visuals.
+- SDK default colors semantic iOS colors and adapt to light/dark mode.
+- Merchant-provided style colors always take precedence over SDK defaults.
 
 ## Apple Pay
 
@@ -326,6 +328,7 @@ let payButton = Payrails.createCardPaymentButton(
 - `createCardPaymentButton(... buttonStyle: ...)`: Styles the pay button and supports `height`
 - `sectionSpacing`: Sets the vertical spacing between the card form and the pay button (default is 16pt if not set)
 - `fieldSpacing`: Sets the spacing between input fields (see CardForm)
+- If color properties are omitted, SDK fallbacks use theme-aware semantic iOS colors.
 
 ## Card Form Layout Customization (Iteration 2 / Phase 2)
 

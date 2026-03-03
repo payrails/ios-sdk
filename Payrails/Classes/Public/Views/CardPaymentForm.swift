@@ -72,7 +72,7 @@ public extension Payrails {
             
             // --- Add Border to the StackView (self) ---
             self.layer.borderWidth = 1.0 // Set the thickness of the border
-            self.layer.borderColor = UIColor.lightGray.cgColor // Set the color (use .cgColor)
+            self.layer.borderColor = UIColor.separator.cgColor // Set the color (use .cgColor)
             self.layer.cornerRadius = 8.0 // Optional: Add rounded corners
             self.clipsToBounds = true   // Optional: Needed if using cornerRadius to clip content
             
@@ -193,4 +193,3 @@ public extension Payrails {
         }
     }
 }
-
