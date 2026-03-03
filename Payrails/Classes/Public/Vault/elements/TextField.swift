@@ -876,7 +876,7 @@ extension TextField {
 
         self.textField.backgroundColor = style?.backgroundColor ?? fallbackStyle?.backgroundColor ?? .none
 
-        self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? UIColor.black
+        self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? self.tintColor
         var p = style?.padding ?? fallbackStyle?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         if self.fieldType == .CARD_NUMBER, self.options.enableCardIcon, cardIconAlignment == .left {
             p.left = cardIconSize + 12
@@ -1056,7 +1056,7 @@ internal extension TextField {
         
         let astriskAttributes: [NSAttributedString.Key: Any]  = [
             .strokeWidth:  -3.0,
-            .strokeColor: collectInput.labelStyles.requiredAstrisk?.textColor ?? UIColor.red,
+            .strokeColor: collectInput.labelStyles.requiredAstrisk?.textColor ?? UIColor.systemRed,
             NSAttributedString.Key.font: collectInput.labelStyles.requiredAstrisk?.font ?? UIFont.boldSystemFont(ofSize: 18.0),
             .baselineOffset:  verticalAstrisk > 0.0 ? verticalAstrisk : 2.0
         ]

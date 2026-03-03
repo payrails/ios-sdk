@@ -83,7 +83,7 @@ public extension Payrails {
             // Configure label
             saveInstrumentLabel.text = "Save instrument"
             saveInstrumentLabel.font = UIFont.systemFont(ofSize: 14)
-            saveInstrumentLabel.textColor = .darkGray
+            saveInstrumentLabel.textColor = .secondaryLabel
             
             // Create toggle container
             let toggleContainer = UIStackView()
