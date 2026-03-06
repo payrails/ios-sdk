@@ -398,6 +398,23 @@ final class PayrailsTests: XCTestCase {
         XCTAssertNil(resolved, "Default wrapper padding should keep legacy composable inset behavior")
     }
 
+    func testCardFormResolveComposableHorizontalInsetsIgnoresVerticalOnlyPaddingChanges() {
+        let defaultPadding = CardWrapperStyle.defaultStyle.padding ?? .zero
+        let styles = CardFormStylesConfig(
+            wrapperStyle: CardWrapperStyle(
+                padding: UIEdgeInsets(
+                    top: defaultPadding.top + 6,
+                    left: defaultPadding.left,
+                    bottom: defaultPadding.bottom + 10,
+                    right: defaultPadding.right
+                )
+            )
+        ).merged(over: CardFormStylesConfig.defaultConfig)
+
+        let resolved = Payrails.CardForm.resolveComposableHorizontalInsets(stylesConfig: styles)
+        XCTAssertNil(resolved, "Vertical-only wrapper padding changes must not override composable horizontal insets")
+    }
+
     func testCardFormResolveComposableHorizontalInsetsUsesCustomWrapperPadding() {
         let styles = CardFormStylesConfig(
             wrapperStyle: CardWrapperStyle(

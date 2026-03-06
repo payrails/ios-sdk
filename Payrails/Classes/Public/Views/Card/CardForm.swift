@@ -164,8 +164,13 @@ public extension Payrails {
                 return nil
             }
 
+            let defaultHorizontalPadding = CardWrapperStyle.defaultStyle.padding ?? .zero
+            let isHorizontalPaddingUnchanged =
+                wrapperPadding.left == defaultHorizontalPadding.left &&
+                wrapperPadding.right == defaultHorizontalPadding.right
+
             // Keep legacy default behavior unless merchant changed wrapper horizontal padding.
-            if let defaultWrapperPadding = CardWrapperStyle.defaultStyle.padding, wrapperPadding == defaultWrapperPadding {
+            if isHorizontalPaddingUnchanged {
                 return nil
             }
 
