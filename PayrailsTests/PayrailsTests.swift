@@ -27,6 +27,21 @@ final class PayrailsTests: XCTestCase {
         UIView.setAnimationsEnabled(true)
     }
 
+    private func constraintConstant(
+        in constraints: [NSLayoutConstraint],
+        firstItem: UIView,
+        firstAttribute: NSLayoutConstraint.Attribute,
+        secondItem: UIView,
+        secondAttribute: NSLayoutConstraint.Attribute
+    ) -> CGFloat? {
+        constraints.first {
+            ($0.firstItem as? UIView) === firstItem &&
+            $0.firstAttribute == firstAttribute &&
+            ($0.secondItem as? UIView) === secondItem &&
+            $0.secondAttribute == secondAttribute
+        }?.constant
+    }
+
     func testInitDataPublicInitializer() {
         let payload = "dummy-init-data-payload"
 
@@ -262,6 +277,140 @@ final class PayrailsTests: XCTestCase {
             constants.contains(where: { abs($0 - 24) < 0.001 }),
             "Expected composable constraints to include configured row spacing"
         )
+    }
+
+    func testComposableContainerUsesConfiguredHorizontalPaddingForFieldsAndLabels() throws {
+        let client = Client()
+        let options = ContainerOptions(
+            layout: [1],
+            styles: Styles(base: Style(padding: UIEdgeInsets(top: 0, left: 18, bottom: 0, right: 14)))
+        )
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            label: "Card number",
+            placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        _ = container.create(input: input, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard
+            let rowView = composableView.subviews.first(where: { $0.subviews.contains(where: { $0 is TextField }) }),
+            let field = rowView.subviews.first(where: { $0 is TextField }),
+            let rowLabel = composableView.subviews.first(where: { $0 is UILabel })
+        else {
+            XCTFail("Expected row, field, and row label views")
+            return
+        }
+
+        let fieldLeading = constraintConstant(
+            in: rowView.constraints,
+            firstItem: field,
+            firstAttribute: .leading,
+            secondItem: rowView,
+            secondAttribute: .leading
+        )
+        let labelLeading = constraintConstant(
+            in: composableView.constraints,
+            firstItem: rowLabel,
+            firstAttribute: .leading,
+            secondItem: composableView,
+            secondAttribute: .leading
+        )
+        let labelTrailing = constraintConstant(
+            in: composableView.constraints,
+            firstItem: rowLabel,
+            firstAttribute: .trailing,
+            secondItem: composableView,
+            secondAttribute: .trailing
+        )
+
+        XCTAssertEqual(fieldLeading, 18, accuracy: 0.001)
+        XCTAssertEqual(labelLeading, 18, accuracy: 0.001)
+        XCTAssertEqual(labelTrailing, -14, accuracy: 0.001)
+    }
+
+    func testComposableContainerUsesLegacyHorizontalPaddingDefaultsWhenNotConfigured() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            label: "Card number",
+            placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        _ = container.create(input: input, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard
+            let rowView = composableView.subviews.first(where: { $0.subviews.contains(where: { $0 is TextField }) }),
+            let field = rowView.subviews.first(where: { $0 is TextField }),
+            let rowLabel = composableView.subviews.first(where: { $0 is UILabel })
+        else {
+            XCTFail("Expected row, field, and row label views")
+            return
+        }
+
+        let fieldLeading = constraintConstant(
+            in: rowView.constraints,
+            firstItem: field,
+            firstAttribute: .leading,
+            secondItem: rowView,
+            secondAttribute: .leading
+        )
+        let labelLeading = constraintConstant(
+            in: composableView.constraints,
+            firstItem: rowLabel,
+            firstAttribute: .leading,
+            secondItem: composableView,
+            secondAttribute: .leading
+        )
+        let labelTrailing = constraintConstant(
+            in: composableView.constraints,
+            firstItem: rowLabel,
+            firstAttribute: .trailing,
+            secondItem: composableView,
+            secondAttribute: .trailing
+        )
+
+        XCTAssertEqual(fieldLeading, 6, accuracy: 0.001)
+        XCTAssertEqual(labelLeading, 6, accuracy: 0.001)
+        XCTAssertEqual(labelTrailing, -6, accuracy: 0.001)
+    }
+
+    func testCardFormResolveComposableHorizontalInsetsUsesNilForDefaultWrapperPadding() {
+        let styles = CardFormStylesConfig.defaultConfig
+        let resolved = Payrails.CardForm.resolveComposableHorizontalInsets(stylesConfig: styles)
+        XCTAssertNil(resolved, "Default wrapper padding should keep legacy composable inset behavior")
+    }
+
+    func testCardFormResolveComposableHorizontalInsetsUsesCustomWrapperPadding() {
+        let styles = CardFormStylesConfig(
+            wrapperStyle: CardWrapperStyle(
+                padding: UIEdgeInsets(top: 4, left: 20, bottom: 8, right: 12)
+            )
+        ).merged(over: CardFormStylesConfig.defaultConfig)
+
+        let resolved = Payrails.CardForm.resolveComposableHorizontalInsets(stylesConfig: styles)
+        XCTAssertNotNil(resolved)
+        XCTAssertEqual(resolved?.left, 20, accuracy: 0.001)
+        XCTAssertEqual(resolved?.right, 12, accuracy: 0.001)
+        XCTAssertEqual(resolved?.top, 0, accuracy: 0.001)
+        XCTAssertEqual(resolved?.bottom, 0, accuracy: 0.001)
     }
 
     func testCollectElementOptionsShowRequiredAsteriskDefault() throws {
