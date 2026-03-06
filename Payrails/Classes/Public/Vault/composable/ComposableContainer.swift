@@ -79,6 +79,7 @@ public extension Container {
         let parentView = UIView()
         var previousChildView: UIView? = nil
         var previousLabel: UILabel? = nil
+        let rowSpacing = composableRowSpacing ?? 10.0
         var labelArray: [UILabel] = (0..<layout.count).map { _ in UILabel() }
         let rowWiseError = createRows(from: layout, numberOfRows: layout.count)
         var elementCount = 0
@@ -163,7 +164,7 @@ public extension Container {
             }
 
             childView.translatesAutoresizingMaskIntoConstraints = false
-            childView.topAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.topAnchor, constant: 10.0).isActive = true
+            childView.topAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.topAnchor, constant: rowSpacing).isActive = true
             childView.leadingAnchor.constraint(equalTo: parentView.leadingAnchor).isActive = true
             childView.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
             
@@ -176,7 +177,7 @@ public extension Container {
             previousLabel = labelArray[i]
         }
         previousChildView?.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
-        parentView.bottomAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.bottomAnchor, constant: 10.0).isActive = true
+        parentView.bottomAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.bottomAnchor, constant: rowSpacing).isActive = true
 
         return parentView
     }

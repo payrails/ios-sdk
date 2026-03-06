@@ -228,6 +228,42 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(merged.sectionSpacing, 16, "Base sectionSpacing should remain when not overridden")
     }
 
+    func testComposableContainerUsesConfiguredRowSpacing() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1, 1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+        container.composableRowSpacing = 24
+
+        let cardNumberInput = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            label: "Card number",
+            placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        let cvvInput = CollectElementInput(
+            table: "cards",
+            column: "security_code",
+            label: "CVV",
+            placeholder: "CVV",
+            type: .CVV
+        )
+
+        _ = container.create(input: cardNumberInput, options: CollectElementOptions(required: true))
+        _ = container.create(input: cvvInput, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        let constants = composableView.constraints.map(\.constant)
+        XCTAssertTrue(
+            constants.contains(where: { abs($0 - 24) < 0.001 }),
+            "Expected composable constraints to include configured row spacing"
+        )
+    }
+
     func testCollectElementOptionsShowRequiredAsteriskDefault() throws {
         let options = CollectElementOptions()
         // default should be true per implementation
