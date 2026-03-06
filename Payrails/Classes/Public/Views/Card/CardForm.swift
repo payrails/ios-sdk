@@ -116,6 +116,7 @@ public extension Payrails {
                 return
             }
 
+            container.composableRowSpacing = stylesConfig.fieldSpacing
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
