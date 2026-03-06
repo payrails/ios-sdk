@@ -97,6 +97,8 @@ public extension Payrails {
             let defaultLabelStyle = CardStyle(textColor: .secondaryLabel)
             let defaultErrorStyle = CardStyle(textColor: .systemRed)
             let containerErrorStyle = stylesConfig.errorTextStyle ?? defaultErrorStyle
+            let containerHorizontalInsets = Self.resolveComposableHorizontalInsets(stylesConfig: stylesConfig)
+            let containerStyles = containerHorizontalInsets.map { Styles(base: Style(padding: $0)) }
             let iconAlignment = config.cardIconAlignment
             let layoutRows = sanitizedLayoutRows(from: resolvedLayoutRows())
 
@@ -109,6 +111,7 @@ public extension Payrails {
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
                     layout: layoutRows.map(\.count),
+                    styles: containerStyles,
                     errorTextStyles: Styles(base: containerErrorStyle)
                 )
             ) else {
@@ -154,6 +157,24 @@ public extension Payrails {
             if config.showSaveInstrument {
                 setupSaveInstrumentToggle()
             }
+        }
+
+        internal static func resolveComposableHorizontalInsets(stylesConfig: CardFormStylesConfig) -> UIEdgeInsets? {
+            guard let wrapperPadding = stylesConfig.wrapperStyle?.padding else {
+                return nil
+            }
+
+            let defaultHorizontalPadding = CardWrapperStyle.defaultStyle.padding ?? .zero
+            let isHorizontalPaddingUnchanged =
+                wrapperPadding.left == defaultHorizontalPadding.left &&
+                wrapperPadding.right == defaultHorizontalPadding.right
+
+            // Keep legacy default behavior unless merchant changed wrapper horizontal padding.
+            if isHorizontalPaddingUnchanged {
+                return nil
+            }
+
+            return UIEdgeInsets(top: 0, left: wrapperPadding.left, bottom: 0, right: wrapperPadding.right)
         }
 
         private func resolvedLayoutRows() -> [[CardFieldType]] {
