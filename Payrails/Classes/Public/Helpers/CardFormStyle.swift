@@ -34,11 +34,11 @@ public struct CardFieldSpecificStyles {
             invalid: .init(borderColor: .systemRed)
         )
     }
-    
+
     public static var empty: CardFieldSpecificStyles {
         .init()
     }
-    
+
     public func merged(over base: CardFieldSpecificStyles?) -> CardFieldSpecificStyles {
         let baseStyle = base ?? CardFieldSpecificStyles.empty
         return CardFieldSpecificStyles(
@@ -108,7 +108,6 @@ public struct CardButtonStyle {
     }
 }
 
-
 public struct CardWrapperStyle {
     public let backgroundColor: UIColor?
     public let borderColor: UIColor?
@@ -155,7 +154,6 @@ public struct CardWrapperStyle {
     }
 }
 
-
 public struct CardFormStylesConfig {
     public let wrapperStyle: CardWrapperStyle?
     public let errorTextStyle: CardStyle?
@@ -169,8 +167,8 @@ public struct CardFormStylesConfig {
         wrapperStyle: CardWrapperStyle? = nil,
         errorTextStyle: CardStyle? = nil,
         allInputFieldStyles: CardFieldSpecificStyles? = nil,
-        inputFieldStyles: [CardFieldType : CardFieldSpecificStyles]? = nil,
-        labelStyles: [CardFieldType : CardStyle]? = nil,
+        inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]? = nil,
+        labelStyles: [CardFieldType: CardStyle]? = nil,
         fieldSpacing: CGFloat? = nil,
         sectionSpacing: CGFloat? = nil
     ) {
@@ -182,7 +180,6 @@ public struct CardFormStylesConfig {
         self.fieldSpacing = fieldSpacing
         self.sectionSpacing = sectionSpacing
     }
-
 
     public static var defaultConfig: CardFormStylesConfig {
         let defaultAllInputStyle = CardFieldSpecificStyles.defaultStyle
@@ -211,7 +208,7 @@ public struct CardFormStylesConfig {
             sectionSpacing: defaultSectionSpacing
         )
     }
-    
+
     public static var empty: CardFormStylesConfig {
         .init()
     }
@@ -222,16 +219,16 @@ public struct CardFormStylesConfig {
          let finalWrapperStyle = self.wrapperStyle?.merged(over: baseConfig.wrapperStyle) ?? baseConfig.wrapperStyle
 
          let finalErrorTextStyle = self.errorTextStyle?.merged(over: baseConfig.errorTextStyle) ?? baseConfig.errorTextStyle
-         
+
          let finalAllInputFieldStyles = self.allInputFieldStyles?.merged(over: baseConfig.allInputFieldStyles) ?? baseConfig.allInputFieldStyles
-         
+
          var finalInputFieldStyles = baseConfig.inputFieldStyles ?? [:]
          if let selfInputFieldStyles = self.inputFieldStyles {
              for (key, value) in selfInputFieldStyles {
                  finalInputFieldStyles[key] = value.merged(over: finalInputFieldStyles[key])
              }
          }
-         
+
          var finalLabelStyles = baseConfig.labelStyles ?? [:]
          if let selfLabelStyles = self.labelStyles {
              for (key, value) in selfLabelStyles {
@@ -249,10 +246,10 @@ public struct CardFormStylesConfig {
              sectionSpacing: self.sectionSpacing ?? baseConfig.sectionSpacing
          )
      }
-    
+
     public func effectiveInputStyles(for fieldType: CardFieldType) -> CardFieldSpecificStyles {
         let baseStyle = self.allInputFieldStyles ?? CardFieldSpecificStyles.defaultStyle
-        
+
         if let specificStyle = self.inputFieldStyles?[fieldType] {
             return specificStyle.merged(over: baseStyle)
         } else {
@@ -260,7 +257,6 @@ public struct CardFormStylesConfig {
         }
     }
 }
-
 
 public struct CardFormStyle {
     public static var defaultStyle: CardFormStyle {
@@ -286,7 +282,7 @@ public struct CardFormStyle {
     public let labelStyle: CardStyle?
     public let invalidStyle: CardStyle?
     public let errorTextStyle: CardStyle?
-    
+
     public init(
         baseStyle: CardStyle?,
         focusStyle: CardStyle? = nil,
@@ -329,12 +325,11 @@ public struct CardFormStyle {
             invalid: errorTextStyle
         )
     }
-    
-    
+
     public static var empty: CardFormStyle {
         .init(baseStyle: nil, labelStyle: nil)
     }
-    
+
     public func merged(over base: CardFormStyle?) -> CardFormStyle {
         let baseFormStyle = base ?? CardFormStyle.empty
         return CardFormStyle(

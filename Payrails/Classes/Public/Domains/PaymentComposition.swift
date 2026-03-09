@@ -13,7 +13,6 @@ struct PaymentComposition {
     let enrollInstrumentToNetworkOffers: Bool?
 }
 
-
 struct PaymentInstrumentData {
     let encryptedData: String
     let vaultProviderConfigId: String

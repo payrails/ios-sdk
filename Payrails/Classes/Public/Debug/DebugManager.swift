@@ -3,7 +3,7 @@ import UIKit
 public extension Payrails {
 
     public class DebugManager {
-        
+
         public static let shared = DebugManager()
         private var logView: LogView?
         private var currentWindow: UIWindow? {
@@ -34,7 +34,7 @@ public extension Payrails {
         public func showLogView() {
             DispatchQueue.main.async {
                 guard self.logView == nil || self.logView?.superview == nil else { return } // Already showing or instance exists without superview
-                
+
                 guard let window = self.currentWindow else {
                     print("Payrails.DebugManager Error: Could not find key window to present LogView.")
                     return
@@ -47,10 +47,10 @@ public extension Payrails {
                     let logViewWidth = windowBounds.width * 0.9
                     let logViewX = (windowBounds.width - logViewWidth) / 2
                     let logViewY = windowBounds.height - logViewHeight - 40 // 40 points from bottom
-                    
+
                     self.logView = LogView(frame: CGRect(x: logViewX, y: logViewY, width: logViewWidth, height: logViewHeight))
                 }
-                
+
                 guard let logView = self.logView else { return }
 
                 // Ensure it's brought to the front if it was somehow added but not visible

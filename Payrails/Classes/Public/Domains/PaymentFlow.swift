@@ -36,7 +36,7 @@ public struct UpdateInstrumentBody: Encodable {
     public let merchantReference: String?
     public let paymentMethod: String?
     public let `default`: Bool?
-    
+
     public init(
         status: String? = nil,
         networkTransactionReference: String? = nil,
@@ -61,7 +61,7 @@ public struct UpdateInstrumentResponse: Decodable {
     public let data: InstrumentData
     public let fingerprint: String?
     public let futureUsage: String?
-    
+
     public struct InstrumentData: Decodable {
         public let bin: String
         public let binLookup: BinLookup?
@@ -70,14 +70,14 @@ public struct UpdateInstrumentResponse: Decodable {
         public let suffix: String
         public let expiryMonth: String?
         public let expiryYear: String?
-        
+
         public struct BinLookup: Decodable {
             public let bin: String
             public let network: String
             public let issuer: String?
             public let issuerCountry: IssuerCountry?
             public let type: String?
-            
+
             public struct IssuerCountry: Decodable {
                 public let code: String?
                 public let name: String?

@@ -13,7 +13,7 @@ public struct CardFormConfig {
     public let cardIconAlignment: CardIconAlignment
     public let layout: CardLayoutConfig?
     public let translations: CardTranslations?
-    
+
     public let styles: CardFormStylesConfig?
 
     public init(
@@ -46,7 +46,7 @@ public struct CardFormConfig {
             translations: nil
         )
     }
-    
+
     /*
     public init(
         showNameField: Bool = false,

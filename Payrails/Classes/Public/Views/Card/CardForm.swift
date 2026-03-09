@@ -9,7 +9,7 @@ public protocol PayrailsCardFormDelegate: AnyObject {
 
 // Extension to Payrails for CardForm
 public extension Payrails {
-    
+
     final class CardCollectContainer: CardContainer {
         public let container: Container<ComposableContainer>
 
@@ -33,7 +33,7 @@ public extension Payrails {
         private let holderReference: String
         public var cardContainer: CardCollectContainer?
         private var payrailsCSE: PayrailsCSE?
-        
+
         // Save instrument properties
         public var saveInstrument: Bool = false {
             didSet {
@@ -42,7 +42,7 @@ public extension Payrails {
         }
         internal let saveInstrumentToggle = UISwitch()
         internal let saveInstrumentLabel = UILabel()
-        
+
         public init(
             config: CardFormConfig,
             tableName: String,
@@ -56,7 +56,7 @@ public extension Payrails {
             self.tableName = tableName
             self.holderReference = holderReference
             self.payrailsCSE = cseInstance
-            
+
             super.init(frame: .zero)
 
             let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
@@ -77,12 +77,12 @@ public extension Payrails {
             } else {
                 self.clipsToBounds = false
             }
-            
+
             if let padding = wrapperStyle.padding {
                 self.layoutMargins = padding
             }
             self.isLayoutMarginsRelativeArrangement = true // Always true if using layoutMargins
-            
+
             setupViews()
         }
 
@@ -284,49 +284,49 @@ public extension Payrails {
         public class CardCollectCallback: Callback {
             var onSuccess: ((Any) -> Void)?
             var onFailure: ((Any) -> Void)?
-            
+
             public func onSuccess(_ responseBody: Any) {
                 onSuccess?(responseBody)
             }
-            
+
             public func onFailure(_ error: Any) {
                 onFailure?(error)
             }
         }
-        
+
         private func setupSaveInstrumentToggle() {
             // Configure label
             let labelText = config.translations?.labels.saveInstrument ?? "Save card"
             saveInstrumentLabel.text = labelText
             saveInstrumentLabel.font = UIFont.systemFont(ofSize: 14)
             saveInstrumentLabel.textColor = .secondaryLabel
-            
+
             // Create toggle container
             let toggleContainer = UIStackView()
             toggleContainer.axis = .horizontal
             toggleContainer.spacing = 8
             toggleContainer.alignment = .center
-            
+
             // Add toggle and label to container
             toggleContainer.addArrangedSubview(saveInstrumentLabel)
             toggleContainer.addArrangedSubview(saveInstrumentToggle)
-            
+
             // Add toggle container to main stack
             self.addArrangedSubview(toggleContainer)
-            
+
             // Link toggle to property
             saveInstrumentToggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
         }
-        
+
         @objc private func toggleChanged() {
             self.saveInstrument = saveInstrumentToggle.isOn
         }
-        
+
         public func collectFields() {
             guard let container = self.container else { return }
-            
+
             let callback = CardCollectCallback()
-            
+
             callback.onSuccess = { [weak self] responseBody in
                 guard let self = self else { return }
 
@@ -377,12 +377,12 @@ public extension Payrails {
                     self.notifyCollectionFailure(error)
                 }
             }
-            
+
             callback.onFailure = { [weak self] error in
                 print("Failed to collect card data:", error)
                 self?.notifyCollectionFailure(PayrailsError.invalidCardData)
             }
-            
+
             cardContainer?.collect(with: callback)
         }
 
@@ -395,8 +395,7 @@ public extension Payrails {
         private func resolveExpiry(from fields: [String: Any]) -> (month: String, year: String)? {
             if
                 let expiryMonth = fields["expiry_month"] as? String,
-                let expiryYear = fields["expiry_year"] as? String
-            {
+                let expiryYear = fields["expiry_year"] as? String {
                 return (month: expiryMonth, year: expiryYear)
             }
 

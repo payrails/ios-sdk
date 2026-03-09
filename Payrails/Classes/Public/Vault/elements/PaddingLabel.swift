@@ -4,7 +4,6 @@
 
 // Impletementation for TextField other than SkyflowInputField, for ex : [validation error, label, reveal element]
 
-
 import Foundation
 import UIKit
 

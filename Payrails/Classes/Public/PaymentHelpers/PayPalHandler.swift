@@ -119,7 +119,7 @@ extension PayPalHandler: PaymentHandler {
             Checkout.start()
         }
     }
-    
+
     func processSuccessPayload(
         payload: [String: Any]?,
         amount: Amount,
@@ -141,7 +141,7 @@ extension PayPalHandler: PaymentHandler {
             paymentInstrumentData: nil,
             enrollInstrumentToNetworkOffers: false
         )
-        
+
         // Prepare the request body
         let returnInfo: [String: String] = [
             "success": "https://assets.payrails.io/html/payrails-success.html",
@@ -156,7 +156,7 @@ extension PayPalHandler: PaymentHandler {
             "paymentComposition": [payPalComposition],
             "returnInfo": returnInfo
         ]
-        
+
         completion(.success(body))
     }
 

@@ -53,15 +53,15 @@ internal struct SkyflowValidateCardExpirationDate: ValidationRule {
 extension SkyflowValidateCardExpirationDate: SkyflowInternalValidationProtocol {
     /// Validation function for expire date.
     public func validate(_ text: String?) -> Bool {
-        
+
         guard let text = text else {
             return false
         }
-        
+
         if text.isEmpty {
             return true
         }
-        
+
         if text.count != format.count {
             return false
         }

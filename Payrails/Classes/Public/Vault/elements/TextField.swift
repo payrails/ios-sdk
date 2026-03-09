@@ -13,7 +13,6 @@ import Foundation
 import UIKit
 #endif
 
-
 public class TextField: SkyflowElement, Element, BaseElement {
     private struct CardIconStyleConfig {
         let cardIconSize: CGFloat
@@ -21,7 +20,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         let spacing: CGFloat
         let rightTrailingInset: CGFloat
         let animationDuration: TimeInterval
-        
+
         static let defaultConfig = CardIconStyleConfig(
             cardIconSize: 24,
             copyIconSize: 24,
@@ -30,17 +29,17 @@ public class TextField: SkyflowElement, Element, BaseElement {
             animationDuration: 0.2
         )
     }
-    
+
     private struct CardIconConfig {
         let style: CardIconStyleConfig
         let cache: NSCache<NSURL, UIImage>
-        
+
         static let defaultConfig = CardIconConfig(
             style: .defaultConfig,
             cache: NSCache<NSURL, UIImage>()
         )
     }
-    
+
     var onBeginEditing: (() -> Void)?
     var onEndEditing: (() -> Void)?
     var onFocusIsTrue: (() -> Void)?
@@ -83,21 +82,21 @@ public class TextField: SkyflowElement, Element, BaseElement {
         return task
     }
     internal static var cardIconImageFetcher: (URL, @escaping (UIImage?) -> Void) -> URLSessionDataTask? = defaultCardIconImageFetcher
-    
-    internal var textFieldDelegate: UITextFieldDelegate? = nil
-    
+
+    internal var textFieldDelegate: UITextFieldDelegate?
+
     internal var errorTriggered: Bool = false
-    
+
     internal var isErrorMessageShowing: Bool {
         return self.errorMessage.alpha == 1.0
     }
 
     internal var listCardTypes: [CardType]?
     internal var dropdownButton = UIButton()
-    internal var selectedCardBrand: CardType? = nil
+    internal var selectedCardBrand: CardType?
 
     internal var uuid: String = ""
-    
+
     internal var textFieldCornerRadius: CGFloat {
         get {
             return textField.layer.cornerRadius
@@ -107,7 +106,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             textField.layer.masksToBounds = newValue > 0
         }
     }
-    
+
     internal var textFieldBorderWidth: CGFloat {
         get {
             return textField.layer.borderWidth
@@ -116,7 +115,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             textField.layer.borderWidth = newValue
         }
     }
-    
+
     internal var textFieldBorderColor: UIColor? {
         get {
             guard let cgcolor = textField.layer.borderColor else {
@@ -128,17 +127,17 @@ public class TextField: SkyflowElement, Element, BaseElement {
             textField.layer.borderColor = newValue?.cgColor
         }
     }
-    
+
     internal var textFieldPadding = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0) {
         didSet { setMainPaddings() }
     }
-    
+
     internal override var state: State {
         return StateforText(tf: self)
     }
-    
+
     var maxLength: Int?
-    
+
     override init(input: CollectElementInput, options: CollectElementOptions, contextOptions: ContextOptions, elements: [TextField]? = nil) {
         super.init(input: input, options: options, contextOptions: contextOptions, elements: elements ?? [])
         self.customErrorMessage = input.customErrorMessage
@@ -148,16 +147,16 @@ public class TextField: SkyflowElement, Element, BaseElement {
         setFormatPattern()
         setupField()
         let formatNotSupportedElements = [ElementType.CARDHOLDER_NAME, ElementType.EXPIRATION_MONTH, ElementType.CVV, ElementType.PIN]
-        if(formatNotSupportedElements.contains(fieldType)) {
+        if formatNotSupportedElements.contains(fieldType) {
             var context = self.contextOptions
             context?.interface = .COLLECT_CONTAINER
             context?.logLevel = .WARN
-            if(options.translation != nil || options.format != "mm/yy"){
+            if options.translation != nil || options.format != "mm/yy" {
                 Log.warn(message: .FORMAT_AND_TRANSLATION, values: [fieldType.name], contextOptions: context!)
             }
         }
     }
-    
+
     internal func addValidations() {
         if self.fieldType == .EXPIRATION_DATE {
             self.addDateValidations()
@@ -167,7 +166,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             self.addMonthValidations()
         }
     }
-    
+
     internal func addDateValidations() {
         let defaultFormat = "mm/yy"
         let supportedFormats = [defaultFormat, "mm/yyyy", "yy/mm", "yyyy/mm"]
@@ -180,27 +179,27 @@ public class TextField: SkyflowElement, Element, BaseElement {
         let expiryDateRule = SkyflowValidateCardExpirationDate(format: options.format, error: SkyflowValidationErrorType.expirationDate.rawValue)
         self.validationRules.append(ValidationSet(rules: [expiryDateRule]))
     }
-    
+
     internal func addMonthValidations() {
         let monthRule = SkyflowValidateExpirationMonth(error: SkyflowValidationErrorType.expirationMonth.rawValue)
         self.validationRules.append(ValidationSet(rules: [monthRule]))
     }
-    
+
     internal func addYearValidations() {
         var format = "yyyy"
         if self.options.format.lowercased() == "yy" {
             format = "yy"
         }
-        
+
         let yearRule = SkyflowValidateExpirationYear(format: format, error: SkyflowValidationErrorType.expirationYear.rawValue)
         self.validationRules.append(ValidationSet(rules: [yearRule]))
     }
-    
+
     internal func setFormatPattern() {
         switch fieldType {
         case .CARD_NUMBER:
             let cardType = CardType.forCardNumber(cardNumber: self.actualValue).instance
-            if(options.format.uppercased() == "XXXX-XXXX-XXXX-XXXX"){
+            if options.format.uppercased() == "XXXX-XXXX-XXXX-XXXX" {
               self.textField.formatPattern = cardType.formatPattern.replacingOccurrences(of: " ", with: "-")
             } else {
                 self.textField.formatPattern = cardType.formatPattern
@@ -214,12 +213,11 @@ public class TextField: SkyflowElement, Element, BaseElement {
             }
         }
     }
-    
+
     required internal init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
     }
-    
-    
+
     internal func isMounted() -> Bool {
         var flag = false
         if Thread.isMainThread {
@@ -231,10 +229,9 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
         return flag
     }
-    
-    
+
     internal var hasFocus = false
-    
+
     internal var onChangeHandler: (([String: Any]) -> Void)?
     internal var onBlurHandler: (([String: Any]) -> Void)?
     internal var onReadyHandler: (([String: Any]) -> Void)?
@@ -242,23 +239,21 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var onSubmitHandler: (() -> Void)?
     internal var lastEditWasDeletion = false
 
-    
     override func getOutput() -> String? {
         return textField.getTextwithFormatPattern
     }
-    
+
     internal var actualValue: String = ""
-    
+
     internal func getValue() -> String {
         return actualValue
     }
-    
-    
+
     internal func getOutputTextwithoutFormatPattern() -> String? {
         return textField.getSecureRawText
     }
-    
-    public func update(update: CollectElementInput){
+
+    public func update(update: CollectElementInput) {
         collectInput.placeholder = update.placeholder
         if update.column.isEmpty != true {
             collectInput.column = update.column
@@ -288,14 +283,14 @@ public class TextField: SkyflowElement, Element, BaseElement {
          updateStyle(update.labelStyles.focus, &collectInput.labelStyles.focus)
          updateStyle(update.labelStyles.invalid, &collectInput.labelStyles.invalid)
          updateStyle(update.labelStyles.requiredAstrisk, &collectInput.labelStyles.requiredAstrisk)
-        
+
          updateStyle(update.errorTextStyles.base, &collectInput.errorTextStyles.base)
          updateStyle(update.errorTextStyles.complete, &collectInput.errorTextStyles.complete)
          updateStyle(update.errorTextStyles.empty, &collectInput.errorTextStyles.empty)
          updateStyle(update.errorTextStyles.focus, &collectInput.errorTextStyles.focus)
          updateStyle(update.errorTextStyles.invalid, &collectInput.errorTextStyles.invalid)
          updateStyle(update.errorTextStyles.requiredAstrisk, &collectInput.errorTextStyles.requiredAstrisk)
-        
+
          updateStyle(update.iconStyles.base, &collectInput.iconStyles.base)
          updateStyle(update.iconStyles.complete, &collectInput.iconStyles.complete)
          updateStyle(update.iconStyles.empty, &collectInput.iconStyles.empty)
@@ -305,16 +300,16 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
         setupField()
     }
-    
-    public func update(updateOptions: CollectElementOptions){
-        if(updateOptions.cardMetaData != nil && self.fieldType == .CARD_NUMBER){
+
+    public func update(updateOptions: CollectElementOptions) {
+        if updateOptions.cardMetaData != nil && self.fieldType == .CARD_NUMBER {
             self.options.cardMetaData = updateOptions.cardMetaData
 
             if let schemes = self.options.cardMetaData?["scheme"] as? [CardType] {
                 if schemes.isEmpty {
                     selectedCardBrand = nil
                     listCardTypes = nil
-                
+
                 } else {
                     for _ in schemes {
                         listCardTypes = schemes
@@ -329,7 +324,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             let t = self.textField.secureText ?? ""
             updateImage(name: "", cardNumber: t)
         }
-        
+
     }
 
     func updateStyle(_ source: Style?, _ destination: inout Style?) {
@@ -337,41 +332,41 @@ public class TextField: SkyflowElement, Element, BaseElement {
             if destination == nil {
                 destination = Style()
             }
-        if (newStyle.borderColor != nil) {
+        if newStyle.borderColor != nil {
             destination?.borderColor = newStyle.borderColor
         }
-        if (newStyle.cornerRadius != nil){
+        if newStyle.cornerRadius != nil {
             destination?.cornerRadius = newStyle.cornerRadius
         }
-        if (newStyle.padding != nil){
+        if newStyle.padding != nil {
             destination?.padding = newStyle.padding
 
         }
-        if (newStyle.textAlignment != nil){
+        if newStyle.textAlignment != nil {
             destination?.textAlignment = newStyle.textAlignment
 
         }
-        if (newStyle.borderWidth != nil){
+        if newStyle.borderWidth != nil {
             destination?.borderWidth = newStyle.borderWidth
 
         }
-        if (newStyle.font != nil){
+        if newStyle.font != nil {
             destination?.font = newStyle.font
 
         }
-        if (newStyle.width != nil){
+        if newStyle.width != nil {
             destination?.width = newStyle.width
         }
-        if (newStyle.height != nil){
+        if newStyle.height != nil {
             destination?.height = newStyle.height
 
         }
         }
-    
+
     public func setValue(value: String) {
-        if(contextOptions.env == .DEV){
-            if(self.fieldType == .INPUT_FIELD && !(options.format == "mm/yy" || options.format == "")){
-                if(options.translation == nil){
+        if contextOptions.env == .DEV {
+            if self.fieldType == .INPUT_FIELD && !(options.format == "mm/yy" || options.format == "") {
+                if options.translation == nil {
                     options.translation = ["X": "[0-9]"]
                 }
                 for (key, value) in options.translation! {
@@ -382,9 +377,9 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 let result =  self.textField.formatInput(input: value, format: options.format, translation: options.translation!)
                 self.textField.secureText = result
                 actualValue = result
-            }else {
+            } else {
                 actualValue = value
-                
+
                 self.textField.addAndFormatText(value)
             }
             textFieldDidChange(self.textField)
@@ -392,12 +387,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
         } else {
             var context = self.contextOptions
             context?.interface = .COLLECT_CONTAINER
-            Log.warn(message: .SET_VALUE_WARNING, values: [self.collectInput.type?.name ?? "collect"],contextOptions: context!)
+            Log.warn(message: .SET_VALUE_WARNING, values: [self.collectInput.type?.name ?? "collect"], contextOptions: context!)
         }
     }
-    
-    public func clearValue(){
-        if(contextOptions.env == .DEV){
+
+    public func clearValue() {
+        if contextOptions.env == .DEV {
             actualValue = ""
             textField.secureText = ""
             if self.fieldType == .CARD_NUMBER {
@@ -406,15 +401,15 @@ public class TextField: SkyflowElement, Element, BaseElement {
         } else {
             var context = self.contextOptions
             context?.interface = .COLLECT_CONTAINER
-            Log.warn(message: .CLEAR_VALUE_WARNING, values: [self.collectInput.type?.name ?? "collect"],contextOptions: context!)
+            Log.warn(message: .CLEAR_VALUE_WARNING, values: [self.collectInput.type?.name ?? "collect"], contextOptions: context!)
         }
     }
-    
+
     override func setupField() {
         super.setupField()
         self.cardIconAlignment = collectInput.iconStyles.base?.cardIconAlignment ?? .left
         self.textField.placeholder = collectInput.placeholder
-        
+
         updateInputStyle()
         if let instance = fieldType.instance {
             validationRules = instance.validation
@@ -452,7 +447,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 self.textFieldLabel.widthAnchor.constraint(equalToConstant: (collectInput.labelStyles.base?.width)!)
             ])
         }
-        
+
         self.textFieldLabel.textColor = collectInput.labelStyles.base?.textColor ?? .none
         self.textFieldLabel.font = collectInput.labelStyles.base?.font ?? .none
         self.textFieldLabel.textAlignment = collectInput.labelStyles.base?.textAlignment ?? .left
@@ -469,7 +464,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         if self.options.enableCopy {
             textField.rightViewMode =  UITextField.ViewMode.always
             addCopyIcon()
-            if (self.fieldType == .CARD_NUMBER) {
+            if self.fieldType == .CARD_NUMBER {
                 if self.options.enableCardIcon && cardIconAlignment == .left {
                     textField.rightView = copyContainerView
                     textField.rightView?.isHidden = true
@@ -512,13 +507,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
             }
         }
 
-        
         if self.fieldType == .CARD_NUMBER {
             updateImage(name: "", cardNumber: self.textField.secureText ?? "")
         }
-        
+
         setFormatPattern()
-        
+
     }
 
     private func setupCardIconViews() {
@@ -569,8 +563,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
             }
         }
     }
-    
-    private func addCopyIcon(){
+
+    private func addCopyIcon() {
         copyIconImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: copyIconSize, height: copyIconSize))
         #if SWIFT_PACKAGE
         let image = UIImage(named: "Copy-Icon", in: Bundle.module, compatibleWith: nil)
@@ -583,7 +577,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         #endif
         copyIconImageView?.image = image
         copyIconImageView?.contentMode = .scaleAspectFit
-        copyContainerView = UIView(frame: CGRect(x: 0, y: 0, width: copyIconSize , height: copyIconSize))
+        copyContainerView = UIView(frame: CGRect(x: 0, y: 0, width: copyIconSize, height: copyIconSize))
         copyContainerView.addSubview(copyIconImageView!)
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(copyIconTapped(_:)))
         copyContainerView.isUserInteractionEnabled = true
@@ -621,7 +615,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             #endif
             self?.copyIconImageView?.image = copyImage
         }
-            
+
     }
     internal func updateImage(name: String, cardNumber: String) {
         guard self.options.enableCardIcon, self.fieldType == .CARD_NUMBER else {
@@ -704,8 +698,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
         cardIconImageFetcher = defaultCardIconImageFetcher
         cardIconConfig.cache.removeAllObjects()
     }
-    
-    private func getDropDownIcon(){
+
+    private func getDropDownIcon() {
         if #available(iOS 14.0, *) {
             setUpMenuView()
             dropdownButton.frame = CGRect(x: 0, y: 0, width: 12, height: 15)
@@ -726,7 +720,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal func setUpMenuView() {
         let actionClosure: (UIAction) -> Void = { [weak self] action in
             guard let self = self else { return }
-            
+
             if let matchingCardType = CardType.allCases.first(where: { $0.instance.defaultName == action.title }) {
                 self.selectedCardBrand = matchingCardType
             }
@@ -735,7 +729,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 self.updateImage(name: action.title, cardNumber: t)
                 self.onChangeHandler?((self.state as! StateforText).getStateForListener())
             }
-            
+
             self.updateMenuView()
         }
 
@@ -786,7 +780,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
         return SkyflowValidator.validate(input: str, rules: validationRules)
     }
-    
+
     func validateCustomRules() -> SkyflowValidationError {
         let str = actualValue
         if self.errorTriggered {
@@ -794,7 +788,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
         return SkyflowValidator.validate(input: str, rules: userValidationRules)
     }
-    
+
     internal func isValid() -> Bool {
         let state = self.state.getState()
         if (state["isRequired"] as! Bool) && (state["isEmpty"] as! Bool || self.actualValue.isEmpty) {
@@ -803,10 +797,10 @@ public class TextField: SkyflowElement, Element, BaseElement {
         if !(state["isValid"] as! Bool) {
             return false
         }
-        
+
         return true
     }
-    
+
     public func on(eventName: EventName, handler: @escaping ([String: Any]) -> Void) {
         switch eventName {
         case .CHANGE:
@@ -821,13 +815,13 @@ public class TextField: SkyflowElement, Element, BaseElement {
             break
         }
     }
-    
+
     public override func didMoveToWindow() {
         if self.window != nil {
             onReadyHandler?((self.state as! StateforText).getStateForListener())
         }
     }
-    
+
     public func unmount() {
         self.actualValue = ""
         self.textField.secureText = ""
@@ -839,7 +833,7 @@ extension TextField {
         self.hasBecomeResponder = true
         return textField.becomeFirstResponder()
     }
-    
+
     @discardableResult override public func resignFirstResponder() -> Bool {
         self.hasBecomeResponder = false
         return textField.resignFirstResponder()
@@ -847,7 +841,7 @@ extension TextField {
     override public var isFirstResponder: Bool {
         return textField.isFirstResponder
     }
-    
+
 }
 
 extension TextField {
@@ -859,12 +853,12 @@ extension TextField {
         self.textField.textColor = style?.textColor ?? fallbackStyle?.textColor ?? .none
 
         if let shadowLayer = style?.boxShadow ?? fallbackStyle?.boxShadow {
-            //To apply Shadow
+            // To apply Shadow
             self.textField.layer.shadowOpacity = shadowLayer.shadowOpacity
             self.textField.layer.shadowRadius = shadowLayer.shadowRadius
             self.textField.layer.shadowOffset = shadowLayer.shadowOffset
             self.textField.layer.shadowColor = shadowLayer.shadowColor
-            
+
         }
         if style?.placeholderColor != nil || fallbackStyle?.placeholderColor != nil {
             let attributes = [
@@ -881,12 +875,12 @@ extension TextField {
         if self.fieldType == .CARD_NUMBER, self.options.enableCardIcon, cardIconAlignment == .left {
             p.left = cardIconSize + 12
         }
-        
+
         if style?.width != nil {
-            NSLayoutConstraint.activate ([
+            NSLayoutConstraint.activate([
                 self.textField.widthAnchor.constraint(equalToConstant: (style?.width)!)
             ])
-            
+
         }
         if style?.height != nil {
         self.textField.heightAnchor.constraint(equalToConstant: (style?.height)!).isActive = true
@@ -918,7 +912,7 @@ extension TextField {
             NSLayoutConstraint.activate([maxHeightConstraint])
         }
     }
-    
+
     internal func updateLabelStyle(_ style: Style? = nil) {
         let fallbackStyle = self.collectInput!.labelStyles.base
         self.textFieldLabel.textColor = style?.textColor ?? fallbackStyle?.textColor ?? .none
@@ -926,20 +920,19 @@ extension TextField {
         self.textFieldLabel.textAlignment = style?.textAlignment ?? fallbackStyle?.textAlignment ?? .left
         self.textFieldLabel.insets = style?.padding ?? fallbackStyle?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
     }
-    
+
     internal func textFieldDidEndEditing(_ textField: UITextField) {
         self.textField.delegate?.textFieldDidEndEditing?(textField)
     }
-    
-    
-    @objc func  textFieldDidChange(_ textField: UITextField) {
+
+    @objc func textFieldDidChange(_ textField: UITextField) {
         isDirty = true
-        
+
         updateActualValue()
-        
+
         textFieldValueChanged()
         let state = self.state as! StateforText
-        
+
         onChangeHandler?((self.state as! StateforText).getStateForListener())
         if self.fieldType == .CARD_NUMBER {
             updateImage(name: "", cardNumber: self.textField.secureText ?? "")
@@ -952,11 +945,11 @@ extension TextField {
         } else if self.options.enableCopy {
             self.textField.rightViewMode = .always
             copyContainerView.isHidden = true
-            
+
         }
 
     }
-    
+
     func updateActualValue() {
         if self.fieldType == .CARD_NUMBER {
             self.actualValue = textField.getSecureRawText ?? ""
@@ -964,7 +957,6 @@ extension TextField {
             self.actualValue = textField.secureText ?? ""
         }
     }
-
 
     func updateErrorMessage() {
 
@@ -977,7 +969,7 @@ extension TextField {
         } else if self.hasFocus {
             updateInputStyle(collectInput!.inputStyles.focus)
             errorMessage.alpha = 0.0
-        } else if (currentState["isEmpty"] as! Bool || self.actualValue.isEmpty) { // Check if empty
+        } else if currentState["isEmpty"] as! Bool || self.actualValue.isEmpty { // Check if empty
             if currentState["isRequired"] as! Bool { // Check if required
                 isRequiredCheckFailed = true // Set the original flag
                 updateInputStyle(collectInput!.inputStyles.empty)
@@ -1026,65 +1018,59 @@ extension TextField {
 
             errorMessage.text = ""
         }
-        
 
         onEndEditing?() // Keep original call
     }
 }
 
 internal extension TextField {
-    
+
     @objc
     override func initialization() {
         super.initialization()
         buildTextFieldUI()
         addTextFieldObservers()
     }
-    
-    
+
     @objc
     func buildTextFieldUI() {
         textField.translatesAutoresizingMaskIntoConstraints = false
         errorMessage.translatesAutoresizingMaskIntoConstraints = false
         textFieldLabel.translatesAutoresizingMaskIntoConstraints = false
-        
+
         errorMessage.alpha = 0.0
         errorMessage.text = "Invalid " + (self.collectInput.label != "" ? self.collectInput.label : "value")
         let text = collectInput.label
-        
+
         var verticalAstrisk = -(collectInput.labelStyles.requiredAstrisk?.padding?.top ?? 0.0 ) + (collectInput.labelStyles.requiredAstrisk?.padding?.bottom ?? 0.0 )
-        
+
         let astriskAttributes: [NSAttributedString.Key: Any]  = [
-            .strokeWidth:  -3.0,
+            .strokeWidth: -3.0,
             .strokeColor: collectInput.labelStyles.requiredAstrisk?.textColor ?? UIColor.systemRed,
             NSAttributedString.Key.font: collectInput.labelStyles.requiredAstrisk?.font ?? UIFont.boldSystemFont(ofSize: 18.0),
-            .baselineOffset:  verticalAstrisk > 0.0 ? verticalAstrisk : 2.0
+            .baselineOffset: verticalAstrisk > 0.0 ? verticalAstrisk : 2.0
         ]
-        
+
         var leftAstriskPadding = Double(collectInput.labelStyles.requiredAstrisk?.padding?.left ?? 0.0)
-        
-        
-        leftAstriskPadding = leftAstriskPadding / 2
-        
-        
+
+        leftAstriskPadding /= 2
+
         DispatchQueue.main.async {
-            let attributedString = NSMutableAttributedString(string:text)
+            let attributedString = NSMutableAttributedString(string: text)
             let asterisk = NSAttributedString(string: " *", attributes: astriskAttributes)
             let space = NSAttributedString(string: " ")
-            
-            
+
             while leftAstriskPadding > 0 {
                 attributedString.append(space)
                 leftAstriskPadding-=1
             }
-            
+
             // Only add asterisk if required AND label text is not empty AND options.showRequiredAsterisk is true
-            if self.isRequired && !text.isEmpty && self.options.showRequiredAsterisk
-            {
-                
+            if self.isRequired && !text.isEmpty && self.options.showRequiredAsterisk {
+
                 attributedString.append(asterisk)
             }
-            self.textFieldLabel.attributedText = attributedString;
+            self.textFieldLabel.attributedText = attributedString
         }
         stackView.addArrangedSubview(textFieldLabel)
         stackView.addArrangedSubview(textField)
@@ -1097,23 +1083,21 @@ internal extension TextField {
         stackView.alignment = .fill
         stackView.translatesAutoresizingMaskIntoConstraints = false
 
-        
         addSubview(stackView)
         setMainPaddings()
     }
-    
+
     @objc
     func addTextFieldObservers() {
         NotificationCenter.default.addObserver(self, selector: #selector(textFieldDidChange), name: UITextField.textDidChangeNotification, object: textField)
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(focusOn))
         textField.addGestureRecognizer(tapGesture)
     }
-    
-    
+
     @objc
     override func setMainPaddings() {
         super.setMainPaddings()
-        
+
         let views = ["view": self, "stackView": stackView]
 
         horizontalConstraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-\(0)-[stackView]-\(0)-|",
@@ -1128,17 +1112,17 @@ internal extension TextField {
                                                             views: views)
         NSLayoutConstraint.activate(verticalConstraint)
     }
-    
+
     @objc
     func textFieldValueChanged() {
     }
-    
+
     @objc
     func focusOn() {
         textField.becomeFirstResponder()
         onFocusIsTrue?()
         textFieldValueChanged()
-        
+
     }
 }
 
@@ -1148,14 +1132,14 @@ extension TextField {
         self.errorMessage.text = error
         updateErrorMessage()
     }
-    
+
     public func resetError() {
         self.errorMessage.text = ""
         self.errorTriggered = false
         updateErrorMessage()
     }
-    
+
     public func getID() -> String {
-        return uuid;
+        return uuid
     }
 }

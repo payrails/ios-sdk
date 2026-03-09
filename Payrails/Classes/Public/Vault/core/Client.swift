@@ -6,13 +6,12 @@
 
 import Foundation
 
-
 public class Client {
     var vaultID: String
     var vaultURL: String
     var contextOptions: ContextOptions
     var elementLookup: [String: Any] = [:]
-    
+
     public init() {
         self.vaultID = "xxxx"
         self.vaultURL = "vault.skyflow.io"
@@ -39,21 +38,19 @@ public class Client {
         callback.onFailure(errorCode.getErrorObject(contextOptions: tempContextOptions))
     }
 
-    
-
     private func callRevealOnFailure(callback: Callback, errorObject: Error) {
         let result = ["errors": [errorObject]]
         callback.onFailure(result)
     }
-    
-    internal func createDetokenizeRecords(_ IDsToTokens: [String: String]) -> [String: [[String: String]]]{
-        var records = [] as [[String : String]]
+
+    internal func createDetokenizeRecords(_ IDsToTokens: [String: String]) -> [String: [[String: String]]] {
+        var records = [] as [[String: String]]
         var index = 0
         for (_, token) in IDsToTokens {
             records.append(["token": token])
             index += 1
         }
-        
+
         return ["records": records]
     }
 }

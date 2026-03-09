@@ -22,10 +22,9 @@ internal class FormatTextField: UITextField {
      the textfield would remain same
      */
     var formatPattern: String = ""
-    
+
     /** used for text with format pattern*/
     var textwithFormatPattern = ""
-
 
     /**
      Var that have the maximum length, based on the translation set
@@ -42,28 +41,27 @@ internal class FormatTextField: UITextField {
         textRect.origin.x += 2
       return textRect
     }
-    
-    
+
     /**
      Overriding the var text from UITextField so if any text
      is applied programmatically by calling formatText
      */
     @available(*, deprecated, message: "Don't use this method.")
     override var text: String? {
+        get { return nil }
         set {
             secureText = newValue
         }
-        get { return nil }
     }
 
     /// text just for internal using
     internal var secureText: String? {
+        get {
+            return super.text
+        }
         set {
             super.text = newValue
             self.updateTextFormat()
-        }
-        get {
-            return super.text
         }
     }
 
@@ -83,8 +81,7 @@ internal class FormatTextField: UITextField {
         if super.rightViewMode == .always {
             let newBound = CGRect(x: bounds.origin.x, y: bounds.origin.y, width: bounds.size.width - 25, height: bounds.size.height).inset(by: padding)
             return newBound
-        }
-         else{
+        } else {
             return bounds.inset(by: padding)
         }
     }
@@ -101,7 +98,6 @@ internal class FormatTextField: UITextField {
             return bounds.inset(by: padding)
         }
     }
-    
 
     func updateTextFormat() {
         self.undoManager?.removeAllActions()
@@ -119,7 +115,6 @@ internal class FormatTextField: UITextField {
         return formatPattern.isEmpty ? secureText : getFilteredString(text)
     }
 
-
     private func getText(_ string: String) -> String {
             return string
     }
@@ -129,20 +124,18 @@ internal class FormatTextField: UITextField {
      */
     func formatText(_ text: String, _ range: NSRange, _ isEmpty: Bool) -> FormatResult {
 
-        
         var formattedText = ""
         var offset = 0
         var seperatorsCount = 0
-        
-        
+
         if self.formatPattern.isEmpty {
             return FormatResult(formattedText: text, numOfSeperatorsAdded: seperatorsCount)
         }
-    
+
         if text.count > formatPattern.count {
             return FormatResult(formattedText: formattedText, numOfSeperatorsAdded: seperatorsCount, isSuccess: false)
         }
-        
+
         if text.count > 0 {
             let  filteredText  = self.getFilteredString(text)
             for (id, char) in formatPattern.enumerated() {
@@ -161,11 +154,11 @@ internal class FormatTextField: UITextField {
                 }
             }
         }
-        
+
         return FormatResult(formattedText: formattedText, numOfSeperatorsAdded: seperatorsCount)
     }
-    
-    func addAndFormatText(_ text: String){
+
+    func addAndFormatText(_ text: String) {
         var formattedText = ""
         var offset = 0
         if self.formatPattern.isEmpty {
@@ -184,7 +177,7 @@ internal class FormatTextField: UITextField {
                 offset += 1
             }
         }
-        
+
         self.secureText = formattedText
     }
     func formatInput(input: String, format: String, translation: [Character: String]) -> String {
@@ -231,7 +224,7 @@ internal class FormatTextField: UITextField {
                         }
                     }
                 }
-            }  else {
+            } else {
                 break
             }
         }
@@ -254,12 +247,11 @@ extension FormatTextField {
     }
 }
 
-
 internal struct FormatResult {
     internal var formattedText: String
     internal var isSuccess: Bool
     internal var numOfSeperatorsAdded: Int
-    
+
     public init(formattedText: String, numOfSeperatorsAdded: Int, isSuccess: Bool = true) {
         self.formattedText = formattedText
         self.numOfSeperatorsAdded = numOfSeperatorsAdded

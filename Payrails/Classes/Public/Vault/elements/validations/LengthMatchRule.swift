@@ -30,7 +30,7 @@ public struct LengthMatchRule: ValidationRule {
 extension LengthMatchRule: SkyflowInternalValidationProtocol {
     /// validate length of text
     public func validate(_ text: String?) -> Bool {
-        
+
         guard text != nil else {
             return false
         }

@@ -29,14 +29,14 @@ extension CardPaymentHandler: PaymentHandler {
     func set(response: Any) {
         self.response = response
     }
-    
+
     func makePayment(
         total: Double,
         currency: String,
         presenter: PaymentPresenter?
     ) {
         let effectivePresenter = presenter ?? self.presenter
-        
+
         guard let encryptedCardData = effectivePresenter?.encryptedCardData, !encryptedCardData.isEmpty else {
             print("Error: Missing or empty encrypted card data.")
             delegate?.paymentHandlerDidFail(
@@ -77,7 +77,7 @@ extension CardPaymentHandler: PaymentHandler {
     func handlePendingState(with executionResult: GetExecutionResult) {
         self.selfLink = executionResult.links.`self`
         self.confirmLink = executionResult.links.confirm
-        
+
         guard let link = executionResult.links.threeDS,
             let url = URL(string: link) else {
             delegate?.paymentHandlerDidFail(
@@ -87,7 +87,7 @@ extension CardPaymentHandler: PaymentHandler {
             )
             return
         }
-        
+
         delegate?.paymentHandlerWillRequestChallengePresentation(self)
 
         DispatchQueue.main.async {
@@ -99,7 +99,7 @@ extension CardPaymentHandler: PaymentHandler {
             self.webViewController = webViewController
         }
     }
-    
+
     func processSuccessPayload(
         payload: [String: Any]?,
         amount: Amount,
@@ -143,7 +143,7 @@ extension CardPaymentHandler: PaymentHandler {
             "paymentComposition": [paymentComposition],
             "returnInfo": returnInfo
         ]
-        
+
         completion(.success(body))
     }
 }
@@ -175,9 +175,9 @@ extension CardPaymentHandler: WKNavigationDelegate {
                         action: LinkAction(
                                     redirectMethod: "",
                                     redirectUrl: "",
-                                    parameters:  LinkAction.Parameters(orderId: "orderId", tokenId: "tokenId"),
+                                    parameters: LinkAction.Parameters(orderId: "orderId", tokenId: "tokenId"),
                                     type: ""
-                                )                   
+                                )
                         ),
                     payload: [:]
                 )
@@ -217,5 +217,3 @@ extension CardPaymentHandler: WKNavigationDelegate {
         }
     }
 }
-
-

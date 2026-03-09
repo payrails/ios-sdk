@@ -4,7 +4,6 @@
 //
 //
 
-
 import Foundation
 import UIKit
 
@@ -27,10 +26,10 @@ public extension Payrails {
                 show(loading: isProcessing)
             }
         }
-        
+
         public weak var delegate: GenericRedirectPaymentButtonDelegate?
         public weak var presenter: PaymentPresenter?
-        
+
         // Internal initializer used by factory method
         internal init(
             // TODO: paymentMethodCode can probably be typed better
@@ -41,20 +40,19 @@ public extension Payrails {
             self.session = session
             self.paymentMethodCode = paymentMethodCode
             super.init()
-            
-            
+
             setupButton(translations: translations)
         }
-        
+
         // Required initializers with warnings
         public required init() {
             fatalError("Use Payrails.createRedirectPaymentButton() instead")
         }
-        
+
         public required init?(coder: NSCoder) {
             fatalError("Use Payrails.createRedirectPaymentButton() instead")
         }
-        
+
         deinit {
             paymentTask?.cancel()
             if let session = session,
@@ -62,7 +60,7 @@ public extension Payrails {
                 session.cancelPayment()
             }
         }
-        
+
         private func setupButton(translations: CardPaymenButtonTranslations) {
             setTitle(translations.label, for: .normal)
             backgroundColor = .systemBlue
@@ -70,22 +68,22 @@ public extension Payrails {
             layer.cornerRadius = 8
             addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
         }
-        
+
         @objc private func payButtonTapped() {
             delegate?.onPaymentButtonClicked(self)
             pay()
         }
-        
+
         public func pay(with type: Payrails.PaymentType? = nil,
-                       storedInstrument: StoredInstrument? = nil) {
+                        storedInstrument: StoredInstrument? = nil) {
             guard let presenter = self.presenter else {
                 Payrails.log("Payment presenter not set")
                 return
             }
-            
+
             paymentTask = Task { [weak self, weak session] in
                 self?.isProcessing = true
-                
+
                 var result: OnPayResult?
                 if let session = session {
                     if var cardPaymentPresenter = presenter as? (any PaymentPresenter) {
@@ -103,14 +101,14 @@ public extension Payrails {
                 } else {
                     Payrails.log("Missing required payment data or session")
                 }
-                
+
                 await MainActor.run {
                     self?.handlePaymentResult(result)
                     self?.isProcessing = false
                 }
             }
         }
-        
+
         private func handlePaymentResult(_ result: OnPayResult?) {
             switch result {
             case .success:
@@ -119,7 +117,7 @@ public extension Payrails {
                 delegate?.onAuthorizeFailed(self)
             case .failure:
                 delegate?.onAuthorizeFailed(self)
-            case .error(_):
+            case .error:
                 delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
