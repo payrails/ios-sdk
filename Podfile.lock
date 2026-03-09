@@ -1,0 +1,25 @@
+PODS:
+  - JOSESwift (3.0.0)
+  - PayPalCheckout (1.3.0)
+  - PayrailsCSE (1.0.0):
+    - JOSESwift
+
+DEPENDENCIES:
+  - JOSESwift
+  - PayPalCheckout
+  - PayrailsCSE
+
+SPEC REPOS:
+  trunk:
+    - JOSESwift
+    - PayPalCheckout
+    - PayrailsCSE
+
+SPEC CHECKSUMS:
+  JOSESwift: 7784b1b844194d0f534eb6ac4fba5af683bccc79
+  PayPalCheckout: 06cb1e4f5bfdca33b8eb6052d04ac4e4a4ab512c
+  PayrailsCSE: c75c133c98c8a2f289926b2c83511c9d60380c3f
+
+PODFILE CHECKSUM: 91986140ae17e1c3c49b1e3707ebaa565dddce25
+
+COCOAPODS: 1.12.1
