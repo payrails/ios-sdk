@@ -67,7 +67,6 @@
 		68D1260E04BFD1AE9260FEE7 /* CardType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C55921BED7D712E93A3B138 /* CardType.swift */; };
 		70C894323882A4C0931DD199 /* PaymentComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04631924636FACFC9537C41F /* PaymentComposition.swift */; };
 		74090DEF7DEC9B5A4FCCF819 /* CharacterSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E75A55F2BCBA802FF74C16B /* CharacterSet.swift */; };
-		74A1AB30E90B2E626E8B73D8 /* Pods_Payrails.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08B60C8AE00088C3F8B99D2E /* Pods_Payrails.framework */; };
 		74AE97258DF170DAE6333873 /* StoredInstrumentPaymentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D513D6F428F32BBF3F0474 /* StoredInstrumentPaymentButton.swift */; };
 		7A60FFCDD00F21617B4BC20D /* EventName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51F9C7E662ABFB7B088DDAF0 /* EventName.swift */; };
 		7C6DF783788553C70A073ECD /* PayPalButtonWithToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B59F41352812AE4BB4065CB0 /* PayPalButtonWithToggle.swift */; };
@@ -96,7 +95,6 @@
 		D69FACD57390EDE889B04685 /* TextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB932841730F71BD7DE06095 /* TextField.swift */; };
 		D76426BBD2A091CCB46656F9 /* DebugManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F67244BCC4D6E605CE29EED /* DebugManager.swift */; };
 		D83F0697419A1D66C0641DBA /* ValidationSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6F825751B355905AF856FD /* ValidationSet.swift */; };
-		D9BF8E298FA3691472CFF3BE /* Pods_PayrailsTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B83D9B4ABCDB58B96074FFE /* Pods_PayrailsTests.framework */; };
 		DD7A77B0938C50C4D6B779B5 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15CDC0E994A0B384AE33F873 /* Log.swift */; };
 		DE8C281E9F9136F80C6B1FE4 /* AutoshiftAllowed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D449AD34CC6AF3FB7A61211 /* AutoshiftAllowed.swift */; };
 		E32DCEB644E248885AB3E72E /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07396BC9208AF89EE953C9BD /* LogView.swift */; };
@@ -164,9 +162,7 @@
 		078489752A8275FF00C29E6B /* SDKConfig+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SDKConfig+.swift"; sourceTree = "<group>"; };
 		07F65A362AFD2FD20099812F /* DropInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropInView.swift; sourceTree = "<group>"; };
 		07F65A382AFD2FEC0099812F /* DropInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropInViewController.swift; sourceTree = "<group>"; };
-		08B60C8AE00088C3F8B99D2E /* Pods_Payrails.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Payrails.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0ADF65478BCC0AB10900AA78 /* State.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = State.swift; sourceTree = "<group>"; };
-		0B83D9B4ABCDB58B96074FFE /* Pods_PayrailsTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PayrailsTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0BCDEF983A30CA0845AD6EE2 /* CollectElementOptions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CollectElementOptions.swift; sourceTree = "<group>"; };
 		15CDC0E994A0B384AE33F873 /* Log.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		1F67244BCC4D6E605CE29EED /* DebugManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DebugManager.swift; sourceTree = "<group>"; };
@@ -180,7 +176,6 @@
 		3D55CD917B179E2E24E5AFB7 /* LogStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		494EFF3BE3DB7FEDD5A37F71 /* PaypalElement.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PaypalElement.swift; sourceTree = "<group>"; };
 		49A54672B083AE3A9DC66491 /* FormatTextField.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormatTextField.swift; sourceTree = "<group>"; };
-		4A793496DB427F57490FD397 /* Pods-Payrails-PayrailsTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Payrails-PayrailsTests.release.xcconfig"; path = "Target Support Files/Pods-Payrails-PayrailsTests/Pods-Payrails-PayrailsTests.release.xcconfig"; sourceTree = "<group>"; };
 		4B6D7E16E3B0716A5A719EBE /* LengthMatchRule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LengthMatchRule.swift; sourceTree = "<group>"; };
 		4D62657AAB791604924D6F32 /* SkyflowInternalValidatorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkyflowInternalValidatorProtocol.swift; sourceTree = "<group>"; };
 		51F9C7E662ABFB7B088DDAF0 /* EventName.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventName.swift; sourceTree = "<group>"; };
@@ -192,7 +187,6 @@
 		6C6F825751B355905AF856FD /* ValidationSet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ValidationSet.swift; sourceTree = "<group>"; };
 		6DC3282B216F2D5FF0B45F77 /* Element.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Element.swift; sourceTree = "<group>"; };
 		6E0B0EE4CBA90892A8CBB3E1 /* Client.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Client.swift; sourceTree = "<group>"; };
-		6F7B4910FC9B99800C2A63A5 /* Pods-Payrails-PayrailsTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Payrails-PayrailsTests.debug.xcconfig"; path = "Target Support Files/Pods-Payrails-PayrailsTests/Pods-Payrails-PayrailsTests.debug.xcconfig"; sourceTree = "<group>"; };
 		70FC108B68B6C22802B8EB49 /* SkyflowValidationError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkyflowValidationError.swift; sourceTree = "<group>"; };
 		72662578CBEF549DFB9057BB /* GenericRedirectHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GenericRedirectHandler.swift; sourceTree = "<group>"; };
 		7335733F72E59B436BF5106D /* CollectElementInput.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CollectElementInput.swift; sourceTree = "<group>"; };
@@ -209,11 +203,9 @@
 		91F0475EF45F57C62252C844 /* PaddingLabel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PaddingLabel.swift; sourceTree = "<group>"; };
 		9466B0EB7A0809012C2A06D1 /* StateforText.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StateforText.swift; sourceTree = "<group>"; };
 		A60247A7E97A0B78F00EFCBE /* TextFieldValidationDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TextFieldValidationDelegate.swift; sourceTree = "<group>"; };
-		A68BC7325552F6D2820ECCDC /* Pods-Payrails.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Payrails.release.xcconfig"; path = "Target Support Files/Pods-Payrails/Pods-Payrails.release.xcconfig"; sourceTree = "<group>"; };
 		AB984ECB2C34AF70E406AEF2 /* CardLayoutConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardLayoutConfig.swift; sourceTree = "<group>"; };
 		AFA8D385A67A8A88D04A5C65 /* LogLevel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogLevel.swift; sourceTree = "<group>"; };
 		AFC8B0BB03620ACA69765165 /* RegexMatchRule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RegexMatchRule.swift; sourceTree = "<group>"; };
-		B37D4FAFDE169E4040CC7123 /* Pods-Payrails.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Payrails.debug.xcconfig"; path = "Target Support Files/Pods-Payrails/Pods-Payrails.debug.xcconfig"; sourceTree = "<group>"; };
 		B448C3D4CB4D77C8385B044C /* ContainerOptions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContainerOptions.swift; sourceTree = "<group>"; };
 		B59F41352812AE4BB4065CB0 /* PayPalButtonWithToggle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PayPalButtonWithToggle.swift; sourceTree = "<group>"; };
 		B7AEA2528BE7665FFE9FC1C1 /* ElementValueMatchRule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ElementValueMatchRule.swift; sourceTree = "<group>"; };
@@ -224,10 +216,8 @@
 		C0FEC36508EECD48D5C9E07B /* CardPaymentForm.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardPaymentForm.swift; sourceTree = "<group>"; };
 		CD8DCE46A43603BDCB415878 /* Callback.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Callback.swift; sourceTree = "<group>"; };
 		CF54180295D2A5451BB8F459 /* ValidationRule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ValidationRule.swift; sourceTree = "<group>"; };
-		D47A02F978294AA795BC3F2E /* Pods-PayrailsTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PayrailsTests.debug.xcconfig"; path = "Target Support Files/Pods-PayrailsTests/Pods-PayrailsTests.debug.xcconfig"; sourceTree = "<group>"; };
 		D50E6F4436B4718B91C55CD8 /* InterfaceName.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InterfaceName.swift; sourceTree = "<group>"; };
 		D5578678C23E3A02B0AA6DE8 /* ContainerType.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContainerType.swift; sourceTree = "<group>"; };
-		D856AC99965D985A0626752E /* Pods-PayrailsTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PayrailsTests.release.xcconfig"; path = "Target Support Files/Pods-PayrailsTests/Pods-PayrailsTests.release.xcconfig"; sourceTree = "<group>"; };
 		DCD1C80D4D4AB69C6863F122 /* CardPaymentButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardPaymentButton.swift; sourceTree = "<group>"; };
 		DFE728C508460C3556E6B78C /* ApplePayButtonWithToggle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ApplePayButtonWithToggle.swift; sourceTree = "<group>"; };
 		E15BE6EE068D5460E3A5A52E /* CardTranslations.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardTranslations.swift; sourceTree = "<group>"; };
@@ -246,7 +236,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				74A1AB30E90B2E626E8B73D8 /* Pods_Payrails.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,7 +244,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				0751515D2A7BE72600BC3560 /* Payrails.framework in Frameworks */,
-				D9BF8E298FA3691472CFF3BE /* Pods_PayrailsTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,8 +321,6 @@
 				075151542A7BE72600BC3560 /* Payrails */,
 				075151602A7BE72600BC3560 /* PayrailsTests */,
 				075151532A7BE72600BC3560 /* Products */,
-				70BA35F36D2F607F03AFC3F7 /* Pods */,
-				7FEB6A5C84ACAB76CB39188E /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -540,28 +526,6 @@
 			path = Vault;
 			sourceTree = "<group>";
 		};
-		70BA35F36D2F607F03AFC3F7 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				B37D4FAFDE169E4040CC7123 /* Pods-Payrails.debug.xcconfig */,
-				A68BC7325552F6D2820ECCDC /* Pods-Payrails.release.xcconfig */,
-				6F7B4910FC9B99800C2A63A5 /* Pods-Payrails-PayrailsTests.debug.xcconfig */,
-				4A793496DB427F57490FD397 /* Pods-Payrails-PayrailsTests.release.xcconfig */,
-				D47A02F978294AA795BC3F2E /* Pods-PayrailsTests.debug.xcconfig */,
-				D856AC99965D985A0626752E /* Pods-PayrailsTests.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		7FEB6A5C84ACAB76CB39188E /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				08B60C8AE00088C3F8B99D2E /* Pods_Payrails.framework */,
-				0B83D9B4ABCDB58B96074FFE /* Pods_PayrailsTests.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		8505D1CF9384BC2119732298 /* state */ = {
 			isa = PBXGroup;
 			children = (
@@ -711,7 +675,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 075151662A7BE72600BC3560 /* Build configuration list for PBXNativeTarget "Payrails" */;
 			buildPhases = (
-				E1142546949F33EBCD829A1B /* [CP] Check Pods Manifest.lock */,
 				07A5514A2A8E600E00194E3F /* Swiftlint */,
 				0751514D2A7BE72600BC3560 /* Headers */,
 				0751514E2A7BE72600BC3560 /* Sources */,
@@ -723,6 +686,10 @@
 			dependencies = (
 			);
 			name = Payrails;
+			packageProductDependencies = (
+				B7E23BE558E1C3F7D6316EAA /* PayPalCheckout */,
+				679AB92346698FAC959DAECA /* PayrailsCSE */,
+			);
 			productName = Payrails;
 			productReference = 075151522A7BE72600BC3560 /* Payrails.framework */;
 			productType = "com.apple.product-type.framework";
@@ -731,11 +698,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 075151692A7BE72600BC3560 /* Build configuration list for PBXNativeTarget "PayrailsTests" */;
 			buildPhases = (
-				ED1D7A901253763251E647CD /* [CP] Check Pods Manifest.lock */,
 				075151582A7BE72600BC3560 /* Sources */,
 				075151592A7BE72600BC3560 /* Frameworks */,
 				0751515A2A7BE72600BC3560 /* Resources */,
-				C716A9773952E6926DB0E10B /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -777,6 +742,10 @@
 			productRefGroup = 075151532A7BE72600BC3560 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				9D2657A249CED9A6DC2DD7DC /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */,
+				65E842D966F2A653D764A792 /* XCRemoteSwiftPackageReference "ios-cse" */,
+			);
 			targets = (
 				075151512A7BE72600BC3560 /* Payrails */,
 				0751515B2A7BE72600BC3560 /* PayrailsTests */,
@@ -821,67 +790,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# Skip SwiftLint in CI — lint runs as a dedicated CI step\nif [ \"${CI}\" = \"true\" ]; then\n  echo \"Skipping SwiftLint build phase in CI\"\n  exit 0\nfi\n\nif [[ \"$(uname -m)\" == arm64 ]]; then\n    export PATH=\"/opt/homebrew/bin:$PATH\"\nfi\n\nif which swiftlint > /dev/null; then\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
-		};
-		C716A9773952E6926DB0E10B /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PayrailsTests/Pods-PayrailsTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PayrailsTests/Pods-PayrailsTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PayrailsTests/Pods-PayrailsTests-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		E1142546949F33EBCD829A1B /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-Payrails-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		ED1D7A901253763251E647CD /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-PayrailsTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -1130,7 +1038,6 @@
 		};
 		075151672A7BE72600BC3560 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B37D4FAFDE169E4040CC7123 /* Pods-Payrails.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1159,7 +1066,6 @@
 		};
 		075151682A7BE72600BC3560 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A68BC7325552F6D2820ECCDC /* Pods-Payrails.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1188,7 +1094,6 @@
 		};
 		0751516A2A7BE72600BC3560 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D47A02F978294AA795BC3F2E /* Pods-PayrailsTests.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -1205,7 +1110,6 @@
 		};
 		0751516B2A7BE72600BC3560 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D856AC99965D985A0626752E /* Pods-PayrailsTests.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -1251,6 +1155,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9D2657A249CED9A6DC2DD7DC /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/paypal/paypalcheckout-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+		65E842D966F2A653D764A792 /* XCRemoteSwiftPackageReference "ios-cse" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/payrails/ios-cse.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B7E23BE558E1C3F7D6316EAA /* PayPalCheckout */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D2657A249CED9A6DC2DD7DC /* XCRemoteSwiftPackageReference "paypalcheckout-ios" */;
+			productName = PayPalCheckout;
+		};
+		679AB92346698FAC959DAECA /* PayrailsCSE */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 65E842D966F2A653D764A792 /* XCRemoteSwiftPackageReference "ios-cse" */;
+			productName = PayrailsCSE;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 075151492A7BE72600BC3560 /* Project object */;
 }

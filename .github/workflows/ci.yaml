@@ -43,14 +43,11 @@ jobs:
             brew install swiftlint
           fi
 
-      - name: Install CocoaPods dependencies
+      - name: Resolve SPM dependencies
         run: |
-          if command -v pod >/dev/null 2>&1; then
-            pod --version
-          else
-            gem install cocoapods
-          fi
-          pod install --repo-update
+          xcodebuild -project Payrails.xcodeproj \
+            -scheme Payrails \
+            -resolvePackageDependencies
 
       - name: Lint
         run: ./scripts/ci/lint.sh

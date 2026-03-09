@@ -32,6 +32,11 @@ let package = Package(
                 // Bundle asset catalog so SPM clients can load images
                 .process("Classes/Public/Assets/Media.xcassets")
             ]
+        ),
+        .testTarget(
+            name: "PayrailsTests",
+            dependencies: ["Payrails"],
+            path: "PayrailsTests"
         )
     ]
 )
