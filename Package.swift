@@ -10,7 +10,7 @@ let package = Package(
         .library(
             name: "Payrails",
             targets: ["Payrails"]
-        ),
+        )
     ],
     dependencies: [
         // Existing dependency on PayPal Checkout SDK
@@ -32,6 +32,6 @@ let package = Package(
                 // Bundle asset catalog so SPM clients can load images
                 .process("Classes/Public/Assets/Media.xcassets")
             ]
-        ),
+        )
     ]
 )
