@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate SDK (build, lint, test)
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      XCODE_VERSION: "16.4"
+      SIMULATOR_DESTINATION: "platform=iOS Simulator,name=iPhone 16 Pro,OS=latest"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Print toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install SwiftLint
+        run: |
+          if command -v swiftlint >/dev/null 2>&1; then
+            swiftlint version
+          else
+            brew install swiftlint
+          fi
+
+      - name: Install CocoaPods dependencies
+        run: |
+          if command -v pod >/dev/null 2>&1; then
+            pod --version
+          else
+            gem install cocoapods
+          fi
+          pod install --repo-update
+
+      - name: Lint
+        run: ./scripts/ci/lint.sh
+
+      - name: Build
+        run: ./scripts/ci/build.sh
+
+      - name: Test
+        run: ./scripts/ci/test.sh
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: .build/TestResults/PayrailsTests.xcresult
+          if-no-files-found: warn

@@ -56,21 +56,27 @@ public struct CardLayoutConfig: Equatable {
     }
 
     func resolvedRows(showNameField: Bool) -> [[CardFieldType]] {
-        let baseRows = baseRows(showNameField: showNameField)
-        let sanitizedRows = baseRows.filter { !$0.isEmpty }
+        // Validate expiry configuration on the raw rows before any field transformation,
+        // so that e.g. split expiry fields in a custom layout with useCombinedExpiryDateField
+        // are correctly rejected rather than silently converted.
+        let rowsForValidation = customRows ?? baseRows(showNameField: showNameField)
+        let sanitizedForValidation = rowsForValidation.filter { !$0.isEmpty }
 
-        guard !sanitizedRows.isEmpty else {
+        guard !sanitizedForValidation.isEmpty else {
             return CardLayoutConfig.defaultRows(showNameField: showNameField)
         }
 
         guard CardLayoutConfig.hasValidExpiryConfiguration(
-            in: sanitizedRows,
+            in: sanitizedForValidation,
             useCombinedExpiryDateField: useCombinedExpiryDateField,
             isCustomLayout: customRows != nil
         ) else {
             print("Card form layout has invalid expiry configuration; falling back to default layout")
             return CardLayoutConfig.defaultRows(showNameField: showNameField)
         }
+
+        let baseRows = baseRows(showNameField: showNameField)
+        let sanitizedRows = baseRows.filter { !$0.isEmpty }
 
         guard CardLayoutConfig.containsRequiredSubmissionFields(in: sanitizedRows) else {
             return CardLayoutConfig.defaultRows(showNameField: showNameField)
