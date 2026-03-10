@@ -80,6 +80,9 @@ public extension Container {
         var previousChildView: UIView?
         var previousLabel: UILabel?
         let rowSpacing = composableRowSpacing ?? 10.0
+        let horizontalPadding = containerOptions?.styles?.base?.padding
+        let leadingInset = horizontalPadding?.left ?? 6.0
+        let trailingInset = horizontalPadding?.right ?? 6.0
         var labelArray: [UILabel] = (0..<layout.count).map { _ in UILabel() }
         let rowWiseError = createRows(from: layout, numberOfRows: layout.count)
         var elementCount = 0
@@ -99,11 +102,9 @@ public extension Container {
 
             for j in 0..<layoutArray[i] {
                 childView.addSubview(elements[elementCount])
-                let padding = containerOptions?.styles?.base?.padding  ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
                 childView.layer.borderColor = containerOptions?.styles?.base?.borderColor?.cgColor ?? .none
                 childView.layer.borderWidth = containerOptions?.styles?.base?.borderWidth ?? 0
                 childView.layer.cornerRadius = containerOptions?.styles?.base?.cornerRadius ?? 0
-                childView.bounds = childView.frame.inset(by: padding)
 
                 if containerOptions?.styles?.base?.height != nil {
                     childView.heightAnchor.constraint(equalToConstant: (containerOptions?.styles?.base?.height)!).isActive = true
@@ -119,8 +120,7 @@ public extension Container {
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
                 } else if j == 0 {
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
-                    elements[elementCount].leftAnchor.constraint(equalTo: childView.leftAnchor, constant: 6.0).isActive = true
-                    elements[elementCount].leadingAnchor.constraint(equalTo: childView.leadingAnchor, constant: 6.0).isActive = true
+                    elements[elementCount].leadingAnchor.constraint(equalTo: childView.leadingAnchor, constant: leadingInset).isActive = true
                 }
                 elements[elementCount].topAnchor.constraint(equalTo: childView.topAnchor).isActive = true
                 elements[elementCount].bottomAnchor.constraint(equalTo: childView.bottomAnchor).isActive = true
@@ -169,8 +169,8 @@ public extension Container {
             childView.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
 
             labelArray[i].translatesAutoresizingMaskIntoConstraints = false
-            labelArray[i].leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: 6.0).isActive = true
-            labelArray[i].trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -6.0).isActive = true
+            labelArray[i].leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: leadingInset).isActive = true
+            labelArray[i].trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -trailingInset).isActive = true
             labelArray[i].topAnchor.constraint(equalTo: childView.bottomAnchor, constant: 5.0).isActive = true
 
             previousChildView = childView
