@@ -22,5 +22,6 @@ excluded:
   - Pods
   - DerivedData
   - .build
+  - .claude
   - docs
   - Docs

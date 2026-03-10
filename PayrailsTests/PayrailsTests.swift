@@ -332,9 +332,9 @@ final class PayrailsTests: XCTestCase {
             secondAttribute: .trailing
         )
 
-        XCTAssertEqual(fieldLeading, 18, accuracy: 0.001)
-        XCTAssertEqual(labelLeading, 18, accuracy: 0.001)
-        XCTAssertEqual(labelTrailing, -14, accuracy: 0.001)
+        XCTAssertEqual(fieldLeading ?? .nan, 18, accuracy: 0.001)
+        XCTAssertEqual(labelLeading ?? .nan, 18, accuracy: 0.001)
+        XCTAssertEqual(labelTrailing ?? .nan, -14, accuracy: 0.001)
     }
 
     func testComposableContainerUsesLegacyHorizontalPaddingDefaultsWhenNotConfigured() throws {
@@ -387,9 +387,9 @@ final class PayrailsTests: XCTestCase {
             secondAttribute: .trailing
         )
 
-        XCTAssertEqual(fieldLeading, 6, accuracy: 0.001)
-        XCTAssertEqual(labelLeading, 6, accuracy: 0.001)
-        XCTAssertEqual(labelTrailing, -6, accuracy: 0.001)
+        XCTAssertEqual(fieldLeading ?? .nan, 6, accuracy: 0.001)
+        XCTAssertEqual(labelLeading ?? .nan, 6, accuracy: 0.001)
+        XCTAssertEqual(labelTrailing ?? .nan, -6, accuracy: 0.001)
     }
 
     func testCardFormResolveComposableHorizontalInsetsUsesNilForDefaultWrapperPadding() {
@@ -424,10 +424,10 @@ final class PayrailsTests: XCTestCase {
 
         let resolved = Payrails.CardForm.resolveComposableHorizontalInsets(stylesConfig: styles)
         XCTAssertNotNil(resolved)
-        XCTAssertEqual(resolved?.left, 20, accuracy: 0.001)
-        XCTAssertEqual(resolved?.right, 12, accuracy: 0.001)
-        XCTAssertEqual(resolved?.top, 0, accuracy: 0.001)
-        XCTAssertEqual(resolved?.bottom, 0, accuracy: 0.001)
+        XCTAssertEqual(resolved?.left ?? .nan, 20, accuracy: 0.001)
+        XCTAssertEqual(resolved?.right ?? .nan, 12, accuracy: 0.001)
+        XCTAssertEqual(resolved?.top ?? .nan, 0, accuracy: 0.001)
+        XCTAssertEqual(resolved?.bottom ?? .nan, 0, accuracy: 0.001)
     }
 
     func testCollectElementOptionsShowRequiredAsteriskDefault() throws {
