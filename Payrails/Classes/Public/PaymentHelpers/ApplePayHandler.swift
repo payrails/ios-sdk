@@ -49,7 +49,7 @@ extension ApplePayHandler: PaymentHandler {
     }
 
     func handlePendingState(with: GetExecutionResult) {}
-    
+
     func processSuccessPayload(
         payload: [String: Any]?,
         amount: Amount,
@@ -61,7 +61,7 @@ extension ApplePayHandler: PaymentHandler {
             completion(.failure(PayrailsError.invalidDataFormat))
             return
         }
-        
+
         let paymentComposition = PaymentComposition(
             paymentMethodCode: Payrails.PaymentType.applePay.rawValue,
             integrationType: "api",
@@ -70,7 +70,7 @@ extension ApplePayHandler: PaymentHandler {
             paymentInstrumentData: paymentInstrumentData,
             enrollInstrumentToNetworkOffers: false
         )
-        
+
         // TODO: this should be shared and place accordingly
         let returnInfo: [String: String] = [
             "success": "https://assets.payrails.io/html/payrails-success.html",
@@ -85,7 +85,7 @@ extension ApplePayHandler: PaymentHandler {
             "paymentComposition": [paymentComposition],
             "returnInfo": returnInfo
         ]
-        
+
         completion(.success(body))
     }
 

@@ -6,7 +6,6 @@
 
 import UIKit
 
-
 internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
 
     var collectField: TextField
@@ -21,7 +20,7 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
                  textField.selectedTextRange = textField.textRange(from: cursorLoc, to: cursorLoc)
              }
         }
-        func updateFormat(_ text: String, _ isEmpty: Bool = false) -> Bool{
+        func updateFormat(_ text: String, _ isEmpty: Bool = false) -> Bool {
              if collectField.fieldType == .EXPIRATION_MONTH {
                  if let month = Int(text) {
                      if month == 0 {
@@ -38,7 +37,7 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
 
              if formatResult.isSuccess {
                  textField.text = formatResult.formattedText
-                 if range.location == text.count-1{
+                 if range.location == text.count-1 {
                      offset = formatResult.numOfSeperatorsAdded
                  }
                  updateCursorPosition(offset: offset)
@@ -47,27 +46,26 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
              return false
 
         }
-        func formatMonth() -> Bool{
+        func formatMonth() -> Bool {
              if let month = Int(text) {
                  if month > 1 && month < 10 {
                      textField.text = "0\(month)"
                      collectField.onBeginEditing?()
-                 }
-                 else if month <= 12 {
+                 } else if month <= 12 {
                      textField.text = "\(month)"
-                     if( month == 11 || month == 12 || month == 10){
+                     if month == 11 || month == 12 || month == 10 {
                          collectField.onBeginEditing?()
                      }
                  }
              }
              self.collectField.updateActualValue()
-             if(text.count <= 2){
+             if text.count <= 2 {
                  collectField.onChangeHandler?((collectField.state as! StateforText).getStateForListener())
              }
              return false
         }
         func customFormat() -> Bool {
-             if(collectField.options.translation == nil){
+             if collectField.options.translation == nil {
                  collectField.options.translation = ["X": "[0-9]"]
              }
              for (key, value) in collectField.options.translation! {
@@ -75,7 +73,7 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
                      collectField.options.translation![key] = "(?:)"
                  }
              }
-             if (collectField.options.format.count >= text.count) {
+             if collectField.options.format.count >= text.count {
                  let formattedResult = collectField.textField.formatInput(input: text, format: collectField.options.format, translation: collectField.options.translation!)
                  textField.text = formattedResult
                  updateCursorPosition(offset: formattedResult.count)
@@ -91,7 +89,7 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
         collectField.lastEditWasDeletion = string.isEmpty
 
         if string.isEmpty {
-            if (collectField.fieldType == .EXPIRATION_MONTH){
+            if collectField.fieldType == .EXPIRATION_MONTH {
                 (textField as! FormatTextField).secureText = ""
             }
             return updateFormat(text, true)
@@ -105,8 +103,7 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
              }
         }
 
-
-        if (collectField.fieldType == .INPUT_FIELD && !(collectField.options.format == "mm/yy" || collectField.options.format == "")) {
+        if collectField.fieldType == .INPUT_FIELD && !(collectField.options.format == "mm/yy" || collectField.options.format == "") {
            return customFormat()
         }
 
@@ -128,7 +125,6 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
                count > staticMaxLength {
                 return false
             }
-
 
             if !elementType.formatPattern.isEmpty {
                 return updateFormat(text)

@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/prompts/**"
+      - ".github/skills/**"
+      - ".codex/**"
+      - "openspec/**"
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/prompts/**"
+      - ".github/skills/**"
+      - ".codex/**"
+      - "openspec/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: SwiftLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run SwiftLint
+        uses: norio-nomura/action-swiftlint@3.2.1
+        with:
+          args: --strict --config .swiftlint.yml
+
+  build-test:
+    name: Build & Test
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      XCODE_VERSION: "16.4"
+      SIMULATOR_DESTINATION: "platform=iOS Simulator,name=iPhone 16 Pro,OS=latest"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Print toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('Payrails.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Resolve SPM dependencies
+        run: |
+          xcodebuild -project Payrails.xcodeproj \
+            -scheme Payrails \
+            -derivedDataPath .build/DerivedData \
+            -resolvePackageDependencies
+
+      - name: Build
+        run: ./scripts/ci/build.sh
+
+      - name: Test
+        run: ./scripts/ci/test.sh

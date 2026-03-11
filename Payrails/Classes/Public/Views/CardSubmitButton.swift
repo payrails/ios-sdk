@@ -51,7 +51,6 @@ public class ActionButton: UIButton, Loadingable {
     }
 }
 
-
 protocol Loadingable {
     func show(loading: Bool)
 }

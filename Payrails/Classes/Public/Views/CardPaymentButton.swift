@@ -24,19 +24,19 @@ public extension Payrails {
                 updateButtonTitle()
             }
         }
-        
+
         // Mode detection
         private var isStoredInstrumentMode: Bool {
             return storedInstrument != nil
         }
-        
+
         // Translations for different modes
         private let translations: CardPaymenButtonTranslations
         private let storedInstrumentTranslations: StoredInstrumentButtonTranslations?
-        
+
         public weak var delegate: PayrailsCardPaymentButtonDelegate?
         public weak var presenter: PaymentPresenter?
-        
+
         // Card form mode initializer (existing)
         internal init(cardForm: Payrails.CardForm, session: Payrails.Session?, translations: CardPaymenButtonTranslations, buttonStyle: CardButtonStyle? = nil) {
             self.cardForm = cardForm
@@ -45,11 +45,11 @@ public extension Payrails {
             self.translations = translations
             self.storedInstrumentTranslations = nil
             super.init()
-            
+
             setupButton(style: buttonStyle)
             cardForm.delegate = self
         }
-        
+
         // Stored instrument mode initializer (new)
         internal init(storedInstrument: StoredInstrument, session: Payrails.Session?, translations: CardPaymenButtonTranslations, storedInstrumentTranslations: StoredInstrumentButtonTranslations? = nil, buttonStyle: StoredInstrumentButtonStyle? = nil) {
             self.cardForm = nil
@@ -58,7 +58,7 @@ public extension Payrails {
             self.translations = translations
             self.storedInstrumentTranslations = storedInstrumentTranslations
             super.init()
-            
+
             setupButton(storedInstrumentStyle: buttonStyle)
         }
 
@@ -73,16 +73,16 @@ public extension Payrails {
 
             setupButton(style: buttonStyle)
         }
-        
+
         // Required initializers with warnings
         public required init() {
             fatalError("Use Payrails.createCardPaymentButton() instead")
         }
-        
+
         public required init?(coder: NSCoder) {
             fatalError("Use Payrails.createCardPaymentButton() instead")
         }
-        
+
         deinit {
             paymentTask?.cancel()
             if let session = session,
@@ -90,7 +90,7 @@ public extension Payrails {
                 session.cancelPayment()
             }
         }
-        
+
         private func setupButton(style: CardButtonStyle? = nil) {
             updateButtonTitle()
 
@@ -101,10 +101,10 @@ public extension Payrails {
             removeTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
             addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
         }
-        
+
         private func setupButton(storedInstrumentStyle: StoredInstrumentButtonStyle? = nil) {
             updateButtonTitle()
-            
+
             if let style = storedInstrumentStyle {
                 backgroundColor = style.backgroundColor
                 setTitleColor(style.textColor, for: .normal)
@@ -160,7 +160,7 @@ public extension Payrails {
             constraint.isActive = true
             heightConstraint = constraint
         }
-        
+
         private func updateButtonTitle() {
             if isStoredInstrumentMode {
                 // Use stored instrument translations if available
@@ -177,10 +177,10 @@ public extension Payrails {
                 setTitle(title, for: .normal)
             }
         }
-        
+
         @objc private func payButtonTapped() {
             delegate?.onPaymentButtonClicked(self)
-            
+
             if let cardForm = cardForm {
                 // Card form mode: collect card data first
                 cardForm.collectFields()
@@ -189,35 +189,35 @@ public extension Payrails {
                 pay(with: storedInstrument.type, storedInstrument: storedInstrument)
             }
         }
-        
+
         public func pay(with type: Payrails.PaymentType? = nil,
-                       storedInstrument: StoredInstrument? = nil) {
+                        storedInstrument: StoredInstrument? = nil) {
             guard let presenter = self.presenter else {
                 Payrails.log("Payment presenter not set")
                 return
             }
-            
+
             guard let session = session else {
                 Payrails.log("Session not available")
                 return
             }
-            
+
             let paymentType = type ?? .card
-            
+
             if isStoredInstrumentMode {
                 print("🧩🧩🧩🧩🧩🧩🧩🧩🧩🧩")
                 print("pay with stored instrument")
             } else {
                 print("-----------------------")
-                print("Save instrument:",  self.cardForm?.saveInstrument ?? false)
+                print("Save instrument:", self.cardForm?.saveInstrument ?? false)
                 print("-----------------------")
             }
-            
+
             paymentTask = Task { [weak self, weak session] in
                 await MainActor.run {
                     self?.isProcessing = true
                 }
-                
+
                 var result: OnPayResult?
                 if let session = session {
                     if let storedInstrument = storedInstrument ?? self?.storedInstrument {
@@ -238,14 +238,14 @@ public extension Payrails {
                 } else {
                     Payrails.log("Session is no longer available")
                 }
-                
+
                 await MainActor.run {
                     self?.handlePaymentResult(result)
                     self?.isProcessing = false
                 }
             }
         }
-        
+
         private func handlePaymentResult(_ result: OnPayResult?) {
             switch result {
             case .success:
@@ -254,7 +254,7 @@ public extension Payrails {
                 delegate?.onAuthorizeFailed(self)
             case .failure:
                 delegate?.onAuthorizeFailed(self)
-            case .error(_):
+            case .error:
                 delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
@@ -262,7 +262,7 @@ public extension Payrails {
                 Payrails.log("Payment result: unknown state")
             }
         }
-        
+
         // Public method to get the stored instrument (for stored instrument mode)
         public func getStoredInstrument() -> StoredInstrument? {
             return storedInstrument
@@ -275,14 +275,14 @@ extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
     public func cardForm(_ view: Payrails.CardForm, didCollectCardData data: String) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            
+
             self.encryptedCardData = data
             self.presenter?.encryptedCardData = encryptedCardData
             // Start the payment process
             self.pay(with: .card)
         }
     }
-    
+
     public func cardForm(_ view: Payrails.CardForm, didFailWithError error: Error) {
         Payrails.log("Card collection failed: \(error.localizedDescription)")
         // Could notify delegate here if needed

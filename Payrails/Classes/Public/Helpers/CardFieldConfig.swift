@@ -4,7 +4,6 @@
 //
 //
 
-
 public struct CardFieldConfig {
     public let type: CardFieldType
     public let placeholder: String?

@@ -2,7 +2,7 @@ import SwiftUI
 
 internal struct SimplePayrailsViewer: View {
     let config: SDKConfig
-    
+
     var body: some View {
         VStack {
             List {
@@ -14,7 +14,7 @@ internal struct SimplePayrailsViewer: View {
                         Text("\(config.amount.value) \(config.amount.currency)")
                             .fontWeight(.medium)
                     }
-                    
+
                     if let holderRef = config.holderReference {
                         HStack {
                             Text("Holder Reference")
@@ -23,7 +23,7 @@ internal struct SimplePayrailsViewer: View {
                                 .fontWeight(.medium)
                         }
                     }
-                    
+
                     HStack {
                         Text("Token")
                         Spacer()
@@ -31,7 +31,7 @@ internal struct SimplePayrailsViewer: View {
                             .fontWeight(.medium)
                     }
                 }
-                
+
                 // Vault Section
                 if let vault = config.vaultConfiguration {
                     Section(header: Text("Vault Configuration")) {
@@ -43,7 +43,7 @@ internal struct SimplePayrailsViewer: View {
                                     .fontWeight(.medium)
                             }
                         }
-                        
+
                         if let providerId = vault.providerId {
                             HStack {
                                 Text("Provider ID")
@@ -55,7 +55,7 @@ internal struct SimplePayrailsViewer: View {
                         }
                     }
                 }
-                
+
                 // Execution Section
                 if let execution = config.execution {
                     Section(header: Text("Execution")) {
@@ -66,14 +66,14 @@ internal struct SimplePayrailsViewer: View {
                                 .fontWeight(.medium)
                                 .lineLimit(1)
                         }
-                        
+
                         HStack {
                             Text("Merchant Reference")
                             Spacer()
                             Text(execution.merchantReference)
                                 .fontWeight(.medium)
                         }
-                        
+
                         HStack {
                             Text("Status")
                             Spacer()
@@ -87,7 +87,7 @@ internal struct SimplePayrailsViewer: View {
                                     .foregroundColor(.gray)
                             }
                         }
-                        
+
                         // Workflow
                         HStack {
                             Text("Workflow")
@@ -96,13 +96,13 @@ internal struct SimplePayrailsViewer: View {
                                 .fontWeight(.medium)
                         }
                     }
-                    
+
                     // Payment Options Section
                     if let firstResult = execution.initialResults.first {
                         Section(header: Text("Payment Options")) {
                             ForEach(firstResult.body.data.paymentOptions.indices, id: \.self) { index in
                                 let option = firstResult.body.data.paymentOptions[index]
-                                
+
                                 VStack(alignment: .leading) {
                                     HStack {
                                         Text(option.clientConfig?.displayName ?? option.paymentMethodCode)
@@ -112,7 +112,7 @@ internal struct SimplePayrailsViewer: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
-                                    
+
                                     if let flow = option.clientConfig?.flow {
                                         Text("Flow: \(flow)")
                                             .font(.caption)
@@ -126,12 +126,12 @@ internal struct SimplePayrailsViewer: View {
             }
             .listStyle(InsetGroupedListStyle())
             .navigationTitle("Payrails Data")
-            
+
             // Copy button
             Button(action: {
                 // Just copy the config description to clipboard
                 UIPasteboard.general.string = String(describing: config)
-            }) {
+            }, label: {
                 HStack {
                     Image(systemName: "doc.on.doc")
                     Text("Copy Config")
@@ -141,11 +141,11 @@ internal struct SimplePayrailsViewer: View {
                 .background(Color.blue)
                 .foregroundColor(.white)
                 .cornerRadius(8)
-            }
+            })
             .padding(.bottom, 20)
         }
     }
-    
+
     private func statusColor(for status: String) -> Color {
         switch status.lowercased() {
         case "created", "new":

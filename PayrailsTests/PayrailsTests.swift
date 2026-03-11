@@ -50,77 +50,77 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(initData.version, "1")
         XCTAssertEqual(initData.data, payload)
     }
-    
+
     // DATE DECODING TESTS FOR JSONDecoder.API() - to verify the custom date decoding strategy works as expected
-    
+
     /// Test that the API decoder handles dates WITH milliseconds
     func testAPIDecoderParsesDateWithMilliseconds() throws {
         let json = """
         {"executedAt": "2024-01-15T10:30:45.123Z"}
         """
-        
+
         struct TestModel: Decodable {
             let executedAt: Date
         }
-        
+
         let decoder = JSONDecoder.API()
         let data = json.data(using: .utf8)!
-        
+
         let result = try decoder.decode(TestModel.self, from: data)
         XCTAssertNotNil(result.executedAt)
     }
-    
+
     /// Test that the API decoder handles dates WITHOUT milliseconds
     /// This was the bug reported by merchants - dates like "0001-01-01T00:00:00Z" failed to parse
     func testAPIDecoderParsesDateWithoutMilliseconds() throws {
         let json = """
         {"executedAt": "2024-01-15T10:30:45Z"}
         """
-        
+
         struct TestModel: Decodable {
             let executedAt: Date
         }
-        
+
         let decoder = JSONDecoder.API()
         let data = json.data(using: .utf8)!
-        
+
         let result = try decoder.decode(TestModel.self, from: data)
         XCTAssertNotNil(result.executedAt)
     }
-    
+
     /// Test the exact date format from the merchant bug report
     func testAPIDecoderParsesActualBackendResponse() throws {
         let json = """
         {"executedAt": "0001-01-01T00:00:00Z"}
         """
-        
+
         struct TestModel: Decodable {
             let executedAt: Date
         }
-        
+
         let decoder = JSONDecoder.API()
         let data = json.data(using: .utf8)!
-        
+
         let result = try decoder.decode(TestModel.self, from: data)
         XCTAssertNotNil(result.executedAt)
     }
-    
+
     /// Test that the API decoder rejects invalid date strings
     func testAPIDecoderRejectsInvalidDate() throws {
         let json = """
         {"executedAt": "not-a-date"}
         """
-        
+
         struct TestModel: Decodable {
             let executedAt: Date
         }
-        
+
         let decoder = JSONDecoder.API()
         let data = json.data(using: .utf8)!
-        
+
         XCTAssertThrowsError(try decoder.decode(TestModel.self, from: data))
     }
-    
+
     func testCardFormConfigPhase1Defaults() throws {
         let config = CardFormConfig.defaultConfig
         XCTAssertFalse(config.showCardIcon, "Default showCardIcon should be false")
@@ -194,14 +194,14 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
     }
 
-    func testCardLayoutCustomCombinedExpiryRejectsSplitExpiryFields() throws {
+    func testCardLayoutCustomCombinedExpiryConvertsSplitExpiryFields() throws {
         let layout = CardLayoutConfig.custom(
             [[.CARD_NUMBER], [.EXPIRATION_MONTH, .EXPIRATION_YEAR, .CVV]],
             useCombinedExpiryDateField: true
         )
 
         let rows = layout.resolvedRows(showNameField: false)
-        XCTAssertEqual(rows, CardLayoutConfig.defaultRows(showNameField: false))
+        XCTAssertEqual(rows, [[.CARD_NUMBER], [.EXPIRATION_DATE, .CVV]])
     }
 
     func testCardLayoutCustomSplitExpiryRejectsMonthWithoutYear() throws {
@@ -332,9 +332,9 @@ final class PayrailsTests: XCTestCase {
             secondAttribute: .trailing
         )
 
-        XCTAssertEqual(fieldLeading, 18, accuracy: 0.001)
-        XCTAssertEqual(labelLeading, 18, accuracy: 0.001)
-        XCTAssertEqual(labelTrailing, -14, accuracy: 0.001)
+        XCTAssertEqual(fieldLeading ?? .nan, 18, accuracy: 0.001)
+        XCTAssertEqual(labelLeading ?? .nan, 18, accuracy: 0.001)
+        XCTAssertEqual(labelTrailing ?? .nan, -14, accuracy: 0.001)
     }
 
     func testComposableContainerUsesLegacyHorizontalPaddingDefaultsWhenNotConfigured() throws {
@@ -387,9 +387,9 @@ final class PayrailsTests: XCTestCase {
             secondAttribute: .trailing
         )
 
-        XCTAssertEqual(fieldLeading, 6, accuracy: 0.001)
-        XCTAssertEqual(labelLeading, 6, accuracy: 0.001)
-        XCTAssertEqual(labelTrailing, -6, accuracy: 0.001)
+        XCTAssertEqual(fieldLeading ?? .nan, 6, accuracy: 0.001)
+        XCTAssertEqual(labelLeading ?? .nan, 6, accuracy: 0.001)
+        XCTAssertEqual(labelTrailing ?? .nan, -6, accuracy: 0.001)
     }
 
     func testCardFormResolveComposableHorizontalInsetsUsesNilForDefaultWrapperPadding() {
@@ -424,10 +424,10 @@ final class PayrailsTests: XCTestCase {
 
         let resolved = Payrails.CardForm.resolveComposableHorizontalInsets(stylesConfig: styles)
         XCTAssertNotNil(resolved)
-        XCTAssertEqual(resolved?.left, 20, accuracy: 0.001)
-        XCTAssertEqual(resolved?.right, 12, accuracy: 0.001)
-        XCTAssertEqual(resolved?.top, 0, accuracy: 0.001)
-        XCTAssertEqual(resolved?.bottom, 0, accuracy: 0.001)
+        XCTAssertEqual(resolved?.left ?? .nan, 20, accuracy: 0.001)
+        XCTAssertEqual(resolved?.right ?? .nan, 12, accuracy: 0.001)
+        XCTAssertEqual(resolved?.top ?? .nan, 0, accuracy: 0.001)
+        XCTAssertEqual(resolved?.bottom ?? .nan, 0, accuracy: 0.001)
     }
 
     func testCollectElementOptionsShowRequiredAsteriskDefault() throws {

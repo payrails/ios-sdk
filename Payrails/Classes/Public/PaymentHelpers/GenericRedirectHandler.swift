@@ -4,7 +4,6 @@
 //
 //
 
-
 import Foundation
 import WebKit
 
@@ -34,14 +33,14 @@ extension GenericRedirectHandler: PaymentHandler {
     func set(response: Any) {
         self.response = response
     }
-    
+
     func makePayment(
         total: Double,
         currency: String,
         presenter: PaymentPresenter?
     ) {
         let effectivePresenter = presenter ?? self.presenter
-        
+
         delegate?.paymentHandlerDidFinish(
             handler: self,
             type: .genericRedirect,
@@ -69,11 +68,11 @@ extension GenericRedirectHandler: PaymentHandler {
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            
+
             // Create dismissal callback
             let dismissalCallback = { [weak self] in
                 guard let self = self else { return }
-                
+
                 // Check if payment was not completed before dismissal
                 if !self.paymentCompleted {
                     self.delegate?.paymentHandlerDidFinish(
@@ -85,7 +84,7 @@ extension GenericRedirectHandler: PaymentHandler {
                     self.webViewController = nil
                 }
             }
-            
+
             let webViewController = PayWebViewController(
                 url: url,
                 delegate: self,
@@ -95,7 +94,7 @@ extension GenericRedirectHandler: PaymentHandler {
             self.webViewController = webViewController
         }
     }
-    
+
     func processSuccessPayload(
         payload: [String: Any]?,
         amount: Amount,
@@ -108,7 +107,7 @@ extension GenericRedirectHandler: PaymentHandler {
              "pending": "https://assets.payrails.io/html/payrails-pending.html"
         ]
         let amountDict = ["value": amount.value, "currency": amount.currency]
-        
+
         let paymentComposition = PaymentComposition(
             paymentMethodCode: self.paymentOption.paymentMethodCode,
             integrationType: self.paymentOption.integrationType,
@@ -123,7 +122,7 @@ extension GenericRedirectHandler: PaymentHandler {
             "returnInfo": returnInfo,
             "paymentComposition": [paymentComposition]
         ]
-        
+
         completion(.success(body))
     }
 }
@@ -142,7 +141,7 @@ extension GenericRedirectHandler: WKNavigationDelegate {
         let errorPrefix = "https://assets.payrails.io/html/payrails-error.html"
 
         let finalAction: (() -> Void)?
-        
+
         print("Webview navigation")
         print(urlString)
 

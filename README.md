@@ -6,6 +6,44 @@ Payrails iOS SDK provides UI components and payment flows for card payments, App
 
 This README is the canonical integration guide. The `docs/` folder contains supplemental examples and flow-specific notes.
 
+## CI Validation
+
+The repository uses GitHub Actions CI checks for the SDK:
+- Triggered on pull requests targeting `main`
+- Triggered on direct pushes to `main` (post-merge verification)
+
+CI runs three checks:
+- Build (`./scripts/ci/build.sh`)
+- Lint (`./scripts/ci/lint.sh`)
+- Test (`./scripts/ci/test.sh`)
+
+### Local pre-PR checks
+
+Run the same commands locally before opening a pull request:
+
+```bash
+./scripts/ci/build.sh
+./scripts/ci/lint.sh
+./scripts/ci/test.sh
+```
+
+### CI prerequisites
+
+- GitHub-hosted macOS runner (`macos-15`) with Xcode 16.2 selected in workflow
+- Shared Xcode scheme: `Payrails.xcodeproj/xcshareddata/xcschemes/Payrails.xcscheme`
+- Canonical simulator destination: `platform=iOS Simulator,name=iPhone 15,OS=latest`
+- Workflow definition: `.github/workflows/ci.yaml`
+
+### Required checks and rollback
+
+Repository maintainers should configure branch protection on `main` to require the CI check:
+- `CI / Validate SDK (build, lint, test)`
+
+If rollback is needed:
+1. Remove/disable the required CI status check in branch protection.
+2. Revert `.github/workflows/ci.yaml` and `scripts/ci/*`.
+3. Re-run CI to confirm repository returns to the previous state.
+
 ## Installation
 
 ### CocoaPods

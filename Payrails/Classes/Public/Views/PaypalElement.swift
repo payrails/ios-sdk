@@ -16,53 +16,53 @@ public extension Payrails {
         public weak var presenter: PaymentPresenter?
         public var saveInstrument: Bool = false
         public var isEnabled: Bool = true
-        
+
         // Session reference
         internal weak var session: Payrails.Session?
         internal var paymentTask: Task<Void, Error>?
         internal var isProcessing: Bool = false
-        
+
         // Initializers
         internal init(session: Payrails.Session?) {
             self.session = session
             super.init(frame: .zero)
         }
-        
+
         required init?(coder: NSCoder) {
             super.init(coder: coder)
             print("Warning: Payrails.PaypalElement initialized via coder without a session.")
         }
-        
+
         deinit {
             paymentTask?.cancel()
         }
-        
+
         // Common method to execute payment
         internal func executePayment() {
             guard !isProcessing else { return }
-            
+
             guard let currentSession = session else {
                 print("Payrails.PaypalElement Error: Internal Session is missing.")
                 return
             }
-            
+
             guard let currentPresenter = presenter else {
                 print("Payrails.PaypalElement Error: Payment Presenter is not configured.")
                 return
             }
-            
+
             isProcessing = true
             paymentTask?.cancel()
-            
+
             if let button = self as? PayPalButton {
                 delegate?.onPaymentButtonClicked(button)
             }
-            
+
             print("--------------------")
             print("save instrument: ", self.saveInstrument)
             Payrails.log("save instrument: ", self.saveInstrument)
             print("--------------------")
-            
+
             paymentTask = Task { [weak self] in
                 guard let self = self else { return }
                 do {
@@ -74,7 +74,7 @@ public extension Payrails {
                     try Task.checkCancellation()
                     await MainActor.run {
                         guard self.isProcessing else { return }
-                        
+
                         if let button = self as? PayPalButton {
                             switch result {
                             case .success:
@@ -91,7 +91,7 @@ public extension Payrails {
                                 print("PayPal payment result: \(String(describing: result))")
                             }
                         }
-                        
+
                         self.isProcessing = false
                     }
                 } catch is CancellationError {

@@ -19,8 +19,7 @@ public struct Styles {
                empty: Style? =  Style(),
                focus: Style? = Style(),
                invalid: Style? = Style(),
-               requiredAstrisk: Style? = Style())
-    {
+               requiredAstrisk: Style? = Style()) {
        // Assign parametric values to struct members
         self.base = base
         self.complete = complete

@@ -18,7 +18,7 @@ extension SDKConfig {
             $0.paymentType == type
         })
     }
-    
+
     func paymentOption(forPaymentMethodCode code: String) -> PaymentOptions? {
         guard let lookupInitialResultBody = execution?.initialResults.first(where: { $0.body.name == "lookup" })?.body else {
             print("SDKConfig.paymentOption(forPaymentMethodCode:): Could not find 'lookup' initial result or execution details are missing.")

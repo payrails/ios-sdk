@@ -38,12 +38,11 @@ extension SkyflowValidateCardNumber: SkyflowInternalValidationProtocol {
             if !NSPredicate(format: "SELF MATCHES %@", self.regex).evaluate(with: text!) {
                 return false
             }
-            
+
             let cardType = CardType.forCardNumber(cardNumber: cardNumber)
             if cardType == .EMPTY || !cardType.instance.cardLengths.contains(cardNumber.count) {
                 return false
             }
-            
 
             return isLuhnValid(cardNumber: trimmedText!)
         }

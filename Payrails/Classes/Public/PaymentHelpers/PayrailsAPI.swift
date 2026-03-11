@@ -4,7 +4,7 @@ class PayrailsAPI {
     let config: SDKConfig
 
     var isRunning = false
-    
+
     var authorizeRequestDate  = Date()
 
     enum PaymentStatus {
@@ -22,7 +22,7 @@ class PayrailsAPI {
     ]
 
     private let statusesAfterPending: [PaymentAuthorizeStatus] = [
-        .authorizeSuccessful, 
+        .authorizeSuccessful,
         .authorizeFailed
     ]
 
@@ -84,14 +84,14 @@ class PayrailsAPI {
         type: Payrails.PaymentType? = nil
     ) async throws -> PayrailsAPI.PaymentStatus {
         // Card payments needs polling only
-        if (type == .card) {
+        if type == .card {
             let paymentStatus = try await checkExecutionStatus(
                 url: URL(string: link.href!)!,
                 targetStatuses: statusesAfterPending
             )
             return paymentStatus
         }
-        
+
         isRunning = true
         guard let href = link.href,
         let method = Method(rawValue: link.method ?? ""),
@@ -111,7 +111,7 @@ class PayrailsAPI {
             body: data,
             type: AuthorizeResponse.self
         )
-        
+
         // 1. Ensure 'execution' string exists
         guard let execution = authorizeResponse.links.execution else {
             #if DEBUG
@@ -132,17 +132,17 @@ class PayrailsAPI {
             url: executionURL,
             targetStatuses: statusesAfterPending
         )
-        
+
         return paymentStatus
     }
-    
+
     func confirmPaymentWithRetry(
         link: Link,
         payload: [String: Any]?,
         maxRetries: Int = 2
     ) async throws -> PayrailsAPI.PaymentStatus {
         var lastError: Error?
-        
+
         for attempt in 1...(maxRetries + 1) {
             do {
                 return try await confirmPayment(link: link, payload: payload)
@@ -157,7 +157,7 @@ class PayrailsAPI {
                 }
             }
         }
-        
+
         throw lastError ?? PayrailsError.unknown(error: nil)
     }
 
@@ -167,15 +167,15 @@ class PayrailsAPI {
             !href.isEmpty else {
             throw PayrailsError.missingData("instrumentDelete link is missing or invalid")
         }
-        
+
         let urlString = href.replacingOccurrences(of: ":instrumentId", with: instrumentId)
-        
+
         guard let url = URL(string: urlString) else {
             throw PayrailsError.missingData("Invalid instrumentDelete URL: \(urlString)")
         }
-        
+
         let method = Method(rawValue: instrumentDeleteLink.method ?? "DELETE") ?? .DELETE
-        
+
         return try await call(
             url: url,
             method: method,
@@ -183,24 +183,24 @@ class PayrailsAPI {
             type: DeleteInstrumentResponse.self
         )
     }
-    
+
     func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
         guard let instrumentUpdateLink = config.links?.instrumentUpdate,
             let href = instrumentUpdateLink.href,
             !href.isEmpty else {
             throw PayrailsError.missingData("instrumentUpdate link is missing or invalid")
         }
-        
+
         let urlString = href.replacingOccurrences(of: ":instrumentId", with: instrumentId)
-        
+
         guard let url = URL(string: urlString) else {
             throw PayrailsError.missingData("Invalid instrumentUpdate URL: \(urlString)")
         }
-        
+
         let method = Method(rawValue: instrumentUpdateLink.method ?? "PATCH") ?? .PATCH
-        
+
         let jsonData = try JSONEncoder().encode(body)
-        
+
         return try await call(
             url: url,
             method: method,
@@ -232,7 +232,7 @@ class PayrailsAPI {
             paymentComposition: [paymentComposition]
         )
         let jsonEncoder = JSONEncoder()
-        
+
         // Use proper encoding for stored instrument payments, fallback to convertToJSON for others
         let jsonData: Data?
         if payload?["paymentInstrumentId"] != nil {
@@ -249,9 +249,9 @@ class PayrailsAPI {
             body: jsonData,
             type: AuthorizeResponse.self
         )
-        
+
         authorizeRequestDate = authorizeResponse.executedAt
-        
+
         if let execution = authorizeResponse.links.execution,
             let executionURL = URL(string: execution) {
             return executionURL
@@ -259,12 +259,12 @@ class PayrailsAPI {
             throw PayrailsError.missingData("Execution link is missing")
         }
     }
-    
+
     private func isStatusValidForCompletion(_ status: Status, referenceTime: Date) -> Bool {
         let timeTolerance: TimeInterval = 5.0 // 5 seconds tolerance for timing edge cases
         return status.time >= referenceTime.addingTimeInterval(-timeTolerance)
     }
-    
+
     private func checkExecutionStatus(
         url: URL,
         targetStatuses: [PaymentAuthorizeStatus]
@@ -395,18 +395,18 @@ fileprivate extension PayrailsAPI {
         timeout: Int = 120,
         type: T.Type?
     ) async throws -> T {
-        
+
         var request = URLRequest(
             url: url,
             cachePolicy: .reloadIgnoringLocalAndRemoteCacheData
         )
-        
+
         request.httpMethod = method.rawValue
-        
+
         if let httpBody = body {
             request.httpBody = httpBody
         }
-        
+
         request.addValue(
             "application/json",
             forHTTPHeaderField: "Content-Type"
@@ -420,7 +420,7 @@ fileprivate extension PayrailsAPI {
         request.addValue("no-cache, no-store, must-revalidate", forHTTPHeaderField: "Cache-Control")
               request.addValue("no-cache", forHTTPHeaderField: "Pragma")
               request.addValue("0", forHTTPHeaderField: "Expires")
-        
+
         request.addValue(
             (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "0",
             forHTTPHeaderField: "x-client-version"
@@ -432,21 +432,20 @@ fileprivate extension PayrailsAPI {
         )
         request.addValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         request.timeoutInterval = TimeInterval(timeout)
-        
-        
+
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
-            
+
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            
+
             if statusCode == 401 || statusCode == 403 {
                 #if DEBUG
                 Payrails.log("Authentication error: status code \(statusCode)")
                 #endif
                 throw PayrailsError.authenticationError
             }
-            
+
             // If status code is not successful (outside 200-299 range)
             if statusCode < 200 || statusCode >= 300 {
                 #if DEBUG
@@ -454,7 +453,7 @@ fileprivate extension PayrailsAPI {
                 Payrails.log("Error response: \(responseString)")
                 #endif
             }
-            
+
             let jsonDecoder = JSONDecoder.API()
             do {
                 let result = try jsonDecoder.decode(T.self, from: data)
@@ -516,14 +515,14 @@ private extension Status {
 func convertToJSON(body: [String: Any]) -> Data? {
     // Create a mutable copy of the body
     var jsonBody = body
-    
+
     // Check if paymentComposition exists and is an array
     if let paymentCompositions = body["paymentComposition"] as? [PaymentComposition],
        !paymentCompositions.isEmpty {
-        
+
         // Convert each PaymentComposition object to a dictionary
         var paymentCompositionDicts: [[String: Any]] = []
-        
+
         for composition in paymentCompositions {
             var compositionDict: [String: Any] = [
                 "paymentMethodCode": composition.paymentMethodCode,
@@ -535,7 +534,7 @@ func convertToJSON(body: [String: Any]) -> Data? {
                 "storeInstrument": composition.storeInstrument,
                 "enrollInstrumentToNetworkOffers": composition.enrollInstrumentToNetworkOffers
             ]
-            
+
             // Special handling for Apple Pay
             if composition.paymentMethodCode == "applePay" {
                 // For Apple Pay, use the paymentInstrumentData directly
@@ -547,14 +546,14 @@ func convertToJSON(body: [String: Any]) -> Data? {
                     "vaultProviderConfigId": (composition.paymentInstrumentData as? PaymentInstrumentData)?.vaultProviderConfigId
                 ]
             }
-            
+
             paymentCompositionDicts.append(compositionDict)
         }
-        
+
         // Replace the PaymentComposition objects with their dictionary representations
         jsonBody["paymentComposition"] = paymentCompositionDicts
     }
-    
+
     // Convert to JSON data
     do {
         let jsonData = try JSONSerialization.data(withJSONObject: jsonBody, options: [.prettyPrinted])

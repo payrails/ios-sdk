@@ -7,7 +7,6 @@ import Foundation
 import UIKit
 #endif
 
-
 /// An object that describes `SkyflowTextField` state.
 /// State attributes are read-only.
 internal class State {
@@ -17,7 +16,7 @@ internal class State {
     /// set as true if  `SkyflowTextField` input is required to fill
     internal(set) open var isRequired = false
 
-    /// true if `SkyflowTextField` input in valid
+    // true if `SkyflowTextField` input in valid
     // internal(set) open var isValid: Bool = false
 
     init(columnName: String, isRequired: Bool) {

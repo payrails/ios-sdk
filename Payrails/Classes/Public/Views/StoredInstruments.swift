@@ -12,7 +12,7 @@ public struct StoredInstrumentsTranslations {
     public let cardPrefix: String
     public let paypalPrefix: String
     public let buttonTranslations: StoredInstrumentButtonTranslations
-    
+
     public init(
         cardPrefix: String = "Card ending in",
         paypalPrefix: String = "PayPal",
@@ -30,7 +30,7 @@ public struct DeleteButtonStyle {
     public let font: UIFont
     public let cornerRadius: CGFloat
     public let size: CGSize
-    
+
     public init(
         backgroundColor: UIColor = .systemRed,
         textColor: UIColor = .white,
@@ -44,7 +44,7 @@ public struct DeleteButtonStyle {
         self.cornerRadius = cornerRadius
         self.size = size
     }
-    
+
     public static let defaultStyle = DeleteButtonStyle()
 }
 
@@ -54,7 +54,7 @@ public struct UpdateButtonStyle {
     public let font: UIFont
     public let cornerRadius: CGFloat
     public let size: CGSize
-    
+
     public init(
         backgroundColor: UIColor = .systemBlue,
         textColor: UIColor = .white,
@@ -68,7 +68,7 @@ public struct UpdateButtonStyle {
         self.cornerRadius = cornerRadius
         self.size = size
     }
-    
+
     public static let defaultStyle = UpdateButtonStyle()
 }
 
@@ -84,7 +84,7 @@ public struct StoredInstrumentsStyle {
     public let buttonStyle: StoredInstrumentButtonStyle
     public let deleteButtonStyle: DeleteButtonStyle
     public let updateButtonStyle: UpdateButtonStyle
-    
+
     public init(
         backgroundColor: UIColor = .clear,
         itemBackgroundColor: UIColor = .systemBackground,
@@ -110,11 +110,9 @@ public struct StoredInstrumentsStyle {
         self.deleteButtonStyle = deleteButtonStyle
         self.updateButtonStyle = updateButtonStyle
     }
-    
+
     public static let defaultStyle = StoredInstrumentsStyle()
 }
-
-
 
 public extension Payrails {
     final class StoredInstruments: UIView {
@@ -127,10 +125,10 @@ public extension Payrails {
         private var instrumentViews: [Payrails.StoredInstrumentView] = []
         private var selectedInstrumentId: String?
         private let stackView: UIStackView
-        
+
         public weak var delegate: PayrailsStoredInstrumentsDelegate?
         public weak var presenter: PaymentPresenter?
-        
+
         // Internal initializer used by factory method
         internal init(
             session: Payrails.Session?,
@@ -147,28 +145,28 @@ public extension Payrails {
             self.showUpdateButton = showUpdateButton
             self.showPayButton = showPayButton
             self.stackView = UIStackView()
-            
+
             super.init(frame: .zero)
-            
+
             setupView()
             loadStoredInstruments()
         }
-        
+
         // Required initializers with warnings
         public required init?(coder: NSCoder) {
             fatalError("Use Payrails.createStoredInstruments() instead")
         }
-        
+
         private func setupView() {
             backgroundColor = style.backgroundColor
-            
+
             // Setup stack view
             stackView.axis = .vertical
             stackView.spacing = style.itemSpacing
             stackView.translatesAutoresizingMaskIntoConstraints = false
-            
+
             addSubview(stackView)
-            
+
             NSLayoutConstraint.activate([
                 stackView.topAnchor.constraint(equalTo: topAnchor),
                 stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -176,29 +174,29 @@ public extension Payrails {
                 stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
             ])
         }
-        
+
         private func loadStoredInstruments() {
             guard let session = session else {
                 Payrails.log("Session not available for loading stored instruments")
                 return
             }
-            
+
             // Get all stored instruments (both card and PayPal)
             let cardInstruments = session.storedInstruments(for: .card)
             let paypalInstruments = session.storedInstruments(for: .payPal)
             let allInstruments = cardInstruments + paypalInstruments
-            
+
             // If no instruments, render nothing (as requested)
             guard !allInstruments.isEmpty else {
                 return
             }
-            
+
             // Create views for each instrument
             for instrument in allInstruments {
                 createInstrumentView(for: instrument, showDeleteButton: showDeleteButton, showUpdateButton: showUpdateButton, showPayButton: showPayButton)
             }
         }
-        
+
         private func createInstrumentView(for instrument: StoredInstrument, showDeleteButton: Bool = false, showUpdateButton: Bool = false, showPayButton: Bool = false) {
             // Create StoredInstrumentView using the new component
             let instrumentView = Payrails.StoredInstrumentView(
@@ -210,17 +208,15 @@ public extension Payrails {
                 showUpdateButton: showUpdateButton,
                 showPayButton: showPayButton
             )
-            
+
             instrumentView.delegate = self
             instrumentView.presenter = presenter
             instrumentView.translatesAutoresizingMaskIntoConstraints = false
-            
+
             instrumentViews.append(instrumentView)
             stackView.addArrangedSubview(instrumentView)
         }
-        
 
-        
         public func refreshInstruments() {
             // Clear existing views
             for instrumentView in instrumentViews {
@@ -229,7 +225,7 @@ public extension Payrails {
             }
             instrumentViews.removeAll()
             selectedInstrumentId = nil
-            
+
             // Reload instruments
             loadStoredInstruments()
         }
@@ -245,28 +241,28 @@ extension Payrails.StoredInstruments: PayrailsStoredInstrumentViewDelegate {
                 instrumentView.setSelected(false)
             }
         }
-        
+
         selectedInstrumentId = instrument.id
         delegate?.storedInstruments(self, didSelectInstrument: instrument)
     }
-    
+
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didDeselectInstrument instrument: StoredInstrument) {
         selectedInstrumentId = nil
         // Note: We don't forward deselection to the main delegate as it only has selection callback
     }
-    
+
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didCompletePaymentForInstrument instrument: StoredInstrument) {
         delegate?.storedInstruments(self, didCompletePaymentForInstrument: instrument)
     }
-    
+
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didFailPaymentForInstrument instrument: StoredInstrument, error: PayrailsError) {
         delegate?.storedInstruments(self, didFailPaymentForInstrument: instrument, error: error)
     }
-    
+
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didRequestDeleteInstrument instrument: StoredInstrument) {
         delegate?.storedInstruments(self, didRequestDeleteInstrument: instrument)
     }
-    
+
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didRequestUpdateInstrument instrument: StoredInstrument) {
         delegate?.storedInstruments(self, didRequestUpdateInstrument: instrument)
     }

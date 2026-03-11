@@ -3,11 +3,9 @@ import SwiftUI
 import UIKit
 import PassKit
 
-
 public class Payrails {
     private static var currentSession: Payrails.Session?
     private static var currentCardForm: Payrails.CardForm?
-
 
     static func createSession(
         with configuration: Payrails.Configuration,
@@ -27,28 +25,27 @@ public class Payrails {
             )
         }
     }
-    
+
     static func getCurrentSession() -> Payrails.Session? {
         return currentSession
     }
 
     // MARK: - SDK Logging
     public static func log(_ items: Any..., separator: String = " ", terminator: String = "\n", file: String = #file, function: String = #function, line: UInt = #line) {
-        
+
         let output = items.map { "\($0)" }.joined(separator: separator)
         let fileName = (file as NSString).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) -> \(output)"
-        
+
         // 1. Print to console (for Xcode debugging)
         Swift.print(logMessage, terminator: terminator)
-        
+
         // 2. Add to our on-screen LogStore
         // Ensure this is thread-safe if called from various parts of the SDK
         LogStore.shared.addLog(logMessage)
-        
+
     }
 }
-
 
 public extension Payrails {
     private static func getDefaultCardFormConfig() -> CardFormConfig {
@@ -60,7 +57,7 @@ public extension Payrails {
              .EXPIRATION_MONTH: "Enter a valid month",
              .EXPIRATION_YEAR: "Enter a valid year"
         ]
-        
+
         let defaultTranslations = CardTranslations(
             placeholders: CardTranslations.Placeholders(values: [
                 .CARDHOLDER_NAME: "Full Name",
@@ -85,7 +82,7 @@ public extension Payrails {
             translations: defaultTranslations
         )
     }
-    
+
     static func createSession(
         with configuration: Payrails.Configuration
     ) async throws -> Payrails.Session {
@@ -101,7 +98,7 @@ public extension Payrails {
         })
         return result
     }
-    
+
     static func createPayPalButton(showSaveInstrument: Bool = false) -> PaypalElement {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a PayPalButton")
         let session = currentSession!
@@ -116,12 +113,12 @@ public extension Payrails {
             return button
         }
     }
-    
+
     static func createApplePayButton(type: PKPaymentButtonType, style: PKPaymentButtonStyle, showSaveInstrument: Bool = false) -> ApplePayElement {
         Payrails.log("Creating apple pay button")
         precondition(currentSession != nil, "Payrails session must be initialized before creating an ApplePayButton")
         let session = currentSession!
-        
+
         if showSaveInstrument {
             Payrails.log("Creating apple pay button with toggle")
             let button = Payrails.ApplePayButtonWithToggle(session: session, showSaveInstrument: true, type: type, style: style)
@@ -131,25 +128,24 @@ public extension Payrails {
             return button
         }
     }
-    
+
     static func createCardPaymentButton(
         buttonStyle: CardButtonStyle? = nil,
         translations: CardPaymenButtonTranslations
     ) -> Payrails.CardPaymentButton {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentButton")
         precondition(currentCardForm != nil, "A card form must be created with createCardForm() before creating a CardPaymentButton")
-        
+
         let session = currentSession!
         let cardForm = currentCardForm!
 
-        
         let button = Payrails.CardPaymentButton(
             cardForm: cardForm,
             session: session,
             translations: translations,
             buttonStyle: buttonStyle
         )
-        
+
         return button
     }
 
@@ -161,9 +157,9 @@ public extension Payrails {
         storedInstrumentTranslations: StoredInstrumentButtonTranslations? = nil
     ) -> Payrails.CardPaymentButton {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a CardPaymentButton")
-        
+
         let session = currentSession!
-        
+
         let button = Payrails.CardPaymentButton(
             storedInstrument: storedInstrument,
             session: session,
@@ -171,28 +167,27 @@ public extension Payrails {
             storedInstrumentTranslations: storedInstrumentTranslations,
             buttonStyle: buttonStyle
         )
-        
+
         return button
     }
-    
-    
+
     static func createCardForm(
         config: CardFormConfig? = nil,
         showSaveInstrument: Bool = false
     ) -> Payrails.CardForm {
         precondition(currentSession != nil, "Payrails session must be initialized before creating a CardForm")
-        
+
         let session = currentSession!
         let defaultConfig = getDefaultCardFormConfig()
         let defaultStylesConfig = defaultConfig.styles ?? CardFormStylesConfig.defaultConfig
-        
+
         let finalConfig: CardFormConfig
         if let customConfig = config {
             let finalStylesConfig = customConfig.styles?.merged(over: defaultStylesConfig) ?? defaultStylesConfig
-            
+
             let defaultTranslations = defaultConfig.translations ?? CardTranslations()
             let finalTranslations = defaultTranslations.merged(with: customConfig.translations)
-            
+
             finalConfig = CardFormConfig(
                 showNameField: customConfig.showNameField,
                 showSaveInstrument: showSaveInstrument,
@@ -215,12 +210,12 @@ public extension Payrails {
                 translations: defaultConfig.translations
             )
         }
-        
+
         guard let cseInstance = session.getCSEInstance(),
               let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
             fatalError("CSE instance or holder reference not available in session.")
         }
-        
+
         let cardForm = Payrails.CardForm(
             config: finalConfig,
             tableName: "tableName",
@@ -228,12 +223,12 @@ public extension Payrails {
             holderReference: holderReference,
             cseInstance: cseInstance
         )
-        
+
         currentCardForm = cardForm
-        
+
         return cardForm
     }
-    
+
     static func createGenericRedirectButton(
         buttonStyle: CardButtonStyle? = nil,
         translations: CardPaymenButtonTranslations,
@@ -245,7 +240,7 @@ public extension Payrails {
             session: session,
             translations: translations
         )
-        
+
         if let style = buttonStyle {
             if let bgColor = style.backgroundColor {
                 button.backgroundColor = bgColor
@@ -270,10 +265,10 @@ public extension Payrails {
                 button.contentEdgeInsets = insets
             }
         }
-        
+
         return button
     }
-    
+
     static func createStoredInstruments(
         style: StoredInstrumentsStyle? = nil,
         translations: StoredInstrumentsTranslations? = nil,
@@ -282,11 +277,11 @@ public extension Payrails {
         showPayButton: Bool = false
     ) -> Payrails.StoredInstruments {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstruments")
-        
+
         let session = currentSession!
         let finalStyle = style ?? StoredInstrumentsStyle.defaultStyle
         let finalTranslations = translations ?? StoredInstrumentsTranslations()
-        
+
         let storedInstruments = Payrails.StoredInstruments(
             session: session,
             style: finalStyle,
@@ -295,10 +290,10 @@ public extension Payrails {
             showUpdateButton: showUpdateButton,
             showPayButton: showPayButton
         )
-        
+
         return storedInstruments
     }
-    
+
     static func createStoredInstrumentView(
         instrument: StoredInstrument,
         style: StoredInstrumentsStyle? = nil,
@@ -308,11 +303,11 @@ public extension Payrails {
         showPayButton: Bool = false
     ) -> Payrails.StoredInstrumentView {
         precondition(currentSession != nil, "Payrails session must be initialized before creating StoredInstrumentView")
-        
+
         let session = currentSession!
         let finalStyle = style ?? StoredInstrumentsStyle.defaultStyle
         let finalTranslations = translations ?? StoredInstrumentsTranslations()
-        
+
         let storedInstrumentView = Payrails.StoredInstrumentView(
             instrument: instrument,
             session: session,
@@ -322,15 +317,15 @@ public extension Payrails {
             showUpdateButton: showUpdateButton,
             showPayButton: showPayButton
         )
-        
+
         return storedInstrumentView
     }
-    
+
     static func api(_ operation: String, _ instrumentId: String, _ body: UpdateInstrumentBody? = nil) async throws -> InstrumentAPIResponse {
         guard let currentSession = getCurrentSession() else {
             throw PayrailsError.missingData("No active Payrails session. Please initialize a session first.")
         }
-        
+
         switch operation {
         case "deleteInstrument":
             let response = try await currentSession.deleteInstrument(instrumentId: instrumentId)
@@ -345,32 +340,32 @@ public extension Payrails {
             throw PayrailsError.invalidDataFormat
         }
     }
-    
+
     static func getStoredInstruments() -> [StoredInstrument] {
         guard let currentSession = getCurrentSession() else {
             Payrails.log("No active Payrails session available for getting stored instruments")
             return []
         }
-        
+
         // Get all stored instruments (both card and PayPal)
         let cardInstruments = currentSession.storedInstruments(for: .card)
         let paypalInstruments = currentSession.storedInstruments(for: .payPal)
         let allInstruments = cardInstruments + paypalInstruments
-        
+
         Payrails.log("Retrieved \(allInstruments.count) stored instruments (\(cardInstruments.count) cards, \(paypalInstruments.count) PayPal)")
-        
+
         return allInstruments
     }
-    
+
     static func getStoredInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
         guard let currentSession = getCurrentSession() else {
             Payrails.log("No active Payrails session available for getting stored instruments")
             return []
         }
-        
+
         let instruments = currentSession.storedInstruments(for: type)
         Payrails.log("Retrieved \(instruments.count) stored instruments for type: \(type.rawValue)")
-        
+
         return instruments
     }
 }

@@ -10,7 +10,7 @@ import UIKit
 public class ComposableContainer: ContainerProtocol {}
 
 public extension Container {
-    
+
     func create(input: CollectElementInput, options: CollectElementOptions? = CollectElementOptions()) -> TextField where T: ComposableContainer {
         var tempContextOptions = self.skyflow.contextOptions
         tempContextOptions.interface = .COMPOSABLE_CONTAINER
@@ -23,9 +23,9 @@ public extension Container {
         Log.info(message: .CREATED_ELEMENT, values: [input.label == "" ? "composable" : input.label], contextOptions: tempContextOptions)
         return skyflowElement
     }
-    
+
     func on(eventName: EventName, handler: @escaping () -> Void) {
-        if (eventName == EventName.SUBMIT){
+        if eventName == EventName.SUBMIT {
             for element in elements {
                 element.onSubmitHandler = handler
             }
@@ -35,7 +35,7 @@ public extension Container {
     internal func createRows(from elements: [Int], numberOfRows: Int) -> [[Int]] {
         var number = Array(repeating: 0, count: elements.count)
         var result = [[Int]]()
-        
+
         for i in 0..<elements.count {
             if i > 0 {
                 number[i] = elements[i] + number[i-1]
@@ -56,7 +56,7 @@ public extension Container {
         }
         return result
     }
-    internal func updateErrorMessageInLabel(errorList: [String], layout: [Int], labelArray: [UILabel], result:[[Int]]) -> [UILabel]{
+    internal func updateErrorMessageInLabel(errorList: [String], layout: [Int], labelArray: [UILabel], result: [[Int]]) -> [UILabel] {
         let labelArray = labelArray
         for j in 0..<layout.count {
             labelArray[j].text = concatenateStringArray(errorList, from: result[j][0]-1, to: result[j][result[j].count - 1] - 1)
@@ -69,16 +69,16 @@ public extension Container {
             return ""
         }
         let subarray = array[startIndex...endIndex]
-        
+
         let concatenatedString = subarray.joined(separator: "")
-        
+
         return concatenatedString
     }
    internal func createDynamicViews(layout: [Int]) -> UIView {
         var errorList  = Array(repeating: "", count: elements.count)
         let parentView = UIView()
-        var previousChildView: UIView? = nil
-        var previousLabel: UILabel? = nil
+        var previousChildView: UIView?
+        var previousLabel: UILabel?
         let rowSpacing = composableRowSpacing ?? 10.0
         let horizontalPadding = containerOptions?.styles?.base?.padding
         let leadingInset = horizontalPadding?.left ?? 6.0
@@ -87,13 +87,13 @@ public extension Container {
         let rowWiseError = createRows(from: layout, numberOfRows: layout.count)
         var elementCount = 0
         let layoutArray = layout
-        
+
         for i in layoutArray.indices {
             let childView = UIView()
             labelArray[i] = UILabel()
             parentView.addSubview(childView)
             parentView.addSubview(labelArray[i])
-            
+
             labelArray[i].translatesAutoresizingMaskIntoConstraints = false
             labelArray[i].textColor = containerOptions?.errorTextStyles?.base?.textColor ?? .none
             labelArray[i].font = containerOptions?.errorTextStyles?.base?.font ?? .none
@@ -112,9 +112,9 @@ public extension Container {
                 if containerOptions?.styles?.base?.width != nil {
                     childView.widthAnchor.constraint(equalToConstant: (containerOptions?.styles?.base?.width)!).isActive = true
                 }
-                                
+
                 elements[elementCount].translatesAutoresizingMaskIntoConstraints = false
-                
+
                 if layoutArray[i] > 1 && elementCount >= 1 && j > 0 {
                     elements[elementCount].leadingAnchor.constraint(equalTo: elements[elementCount-1].trailingAnchor, constant: 20.0).isActive = true
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
@@ -133,7 +133,7 @@ public extension Container {
                         labelArray[i].font = self.containerOptions?.errorTextStyles?.focus?.font ?? self.containerOptions?.errorTextStyles?.base?.font ?? .none
                         labelArray[i].textAlignment = self.containerOptions?.errorTextStyles?.focus?.textAlignment ?? self.containerOptions?.errorTextStyles?.base?.textAlignment ?? .left
                    }
-                    
+
                     element.onEndEditing = {
                         if element.errorMessage.text == "" {
                             errorList[element.elements.count] = ""
@@ -167,12 +167,12 @@ public extension Container {
             childView.topAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.topAnchor, constant: rowSpacing).isActive = true
             childView.leadingAnchor.constraint(equalTo: parentView.leadingAnchor).isActive = true
             childView.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
-            
+
             labelArray[i].translatesAutoresizingMaskIntoConstraints = false
             labelArray[i].leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: leadingInset).isActive = true
             labelArray[i].trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -trailingInset).isActive = true
             labelArray[i].topAnchor.constraint(equalTo: childView.bottomAnchor, constant: 5.0).isActive = true
-                        
+
             previousChildView = childView
             previousLabel = labelArray[i]
         }
@@ -186,9 +186,9 @@ public extension Container {
         var tempContextOptions = self.skyflow.contextOptions
         tempContextOptions.interface = .COMPOSABLE_CONTAINER
         var totalCount = 0
-        
+
         if let options = containerOptions {
-            if (options.layout.count == 0) {
+            if options.layout.count == 0 {
                 throw SkyflowError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "\(ErrorCodes.EMPTY_COMPOSABLE_LAYOUT_ARRAY().description)" ])
             }
 
@@ -198,22 +198,22 @@ public extension Container {
         } else {
             throw SkyflowError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "\(ErrorCodes.MISSING_COMPOSABLE_CONTAINER_OPTIONS().description)" ])
         }
-        if (elements.count < totalCount || totalCount < elements.count){
+        if elements.count < totalCount || totalCount < elements.count {
             throw SkyflowError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "\(ErrorCodes.MISMATCH_ELEMENT_COUNT_LAYOUT_SUM().description)" ])
         }
 
         let view = createDynamicViews(layout: (containerOptions?.layout)!)
         return view
     }
-    
+
     func collect(callback: Callback) where T: ComposableContainer {
         var tempContextOptions = self.skyflow.contextOptions
         tempContextOptions.interface = .COMPOSABLE_CONTAINER
-        
+
         var errors = ""
         var errorCode: ErrorCodes?
         Log.info(message: .VALIDATE_COMPOSABLE_RECORDS, contextOptions: tempContextOptions)
-        
+
         // Validate elements
         for element in self.elements {
             errorCode = checkElement(element: element)
@@ -221,7 +221,7 @@ public extension Container {
                 callback.onFailure(errorCode!.getErrorObject(contextOptions: tempContextOptions))
                 return
             }
-            
+
             let state = element.getState()
             let error = state["validationError"]
             if (state["isRequired"] as! Bool) && (state["isEmpty"] as! Bool) {
@@ -235,44 +235,42 @@ public extension Container {
                 element.resignFirstResponder()
             }
         }
-    
+
         if errors != "" {
             callback.onFailure(NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: errors]))
             return
         }
-        
-        
+
         // Create records from inputs
         var records: [[String: Any]] = []
         var currentRecord: [String: Any] = [:]
         var fields: [String: Any] = [:]
-        
+
         for (index, element) in self.elements.enumerated() {
             let state = element.getState()
-        
-            
+
             // Try to get value
             if let value = state["value"] as? String {
                 fields[element.columnName] = value
             } else {
                 print("DEBUG: No value found in state")
-                
+
                 // Try to get value directly from element
                 print("DEBUG: Actual Value:", element.actualValue)
                 print("DEBUG: Get Output:", element.getOutput() ?? "nil")
                 print("DEBUG: Get Value:", element.getValue())
             }
         }
-        
+
         currentRecord["table"] = self.elements.first?.collectInput.table
         currentRecord["fields"] = fields
         records.append(currentRecord)
-        
+
         let result = ["records": records]
         Log.info(message: .COLLECT_SUBMIT_SUCCESS, contextOptions: tempContextOptions)
         callback.onSuccess(result)
     }
-        
+
     private func checkElement(element: TextField) -> ErrorCodes? {
         if element.collectInput.table.isEmpty {
             return .EMPTY_TABLE_NAME_IN_COLLECT()
@@ -285,7 +283,7 @@ public extension Container {
         }
         return nil
     }
-        
+
     private func checkRecord(record: [String: Any], index: Int) -> ErrorCodes? {
         if record["table"] == nil {
             return .TABLE_KEY_ERROR(value: "\(index)")
@@ -293,7 +291,7 @@ public extension Container {
         if !(record["table"] is String) {
             return .INVALID_TABLE_NAME_TYPE(value: "\(index)")
         }
-        if (record["table"] as? String == "") {
+        if record["table"] as? String == "" {
             return .EMPTY_TABLE_NAME()
         }
         if record["fields"] == nil {
@@ -303,19 +301,19 @@ public extension Container {
             return .INVALID_FIELDS_TYPE(value: "\(index)")
         }
         let fields = record["fields"] as! [String: Any]
-        if (fields.isEmpty){
+        if fields.isEmpty {
             return .EMPTY_FIELDS_KEY(value: "\(index)")
         }
         return nil
     }
-    
+
     func setupDynamicCVVLengthHandling() {
         guard let cardNumberField = self.elements.first(where: { $0.fieldType == .CARD_NUMBER }),
               let cvvField = self.elements.first(where: { $0.fieldType == .CVV }) else {
             return
         }
 
-        cardNumberField.onChangeHandler = { [weak cvvField, weak cardNumberField] stateDict in
+        cardNumberField.onChangeHandler = { [weak cvvField, weak cardNumberField] _ in
             guard let cvv = cvvField, let cnField = cardNumberField else { return }
 
             let currentCardNumber = cnField.getValue()
@@ -326,7 +324,7 @@ public extension Container {
             if cvv.maxLength != requiredLength {
                 cvv.maxLength = requiredLength
                 cvv.setValue(value: "")
-                
+
                 let currentCvvValue = cvv.getValue()
                 if currentCvvValue.count > requiredLength {
                     cvv.resetError()

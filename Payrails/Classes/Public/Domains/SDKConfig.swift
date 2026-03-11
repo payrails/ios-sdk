@@ -146,14 +146,14 @@ struct PaymentOptions: Decodable {
         let supportsSaveInstrument: Bool?
         let supportsBillingInfo: Bool?
         let additionalConfig: [String: AnyCodable]?
-        
+
         // Allow any other fields
         private var additionalInfo: [String: AnyCodable]?
-        
+
         enum CodingKeys: String, CodingKey, CaseIterable {
             case displayName, flow, supportsSaveInstrument, supportsBillingInfo, additionalConfig
         }
-        
+
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             displayName = try container.decodeIfPresent(String.self, forKey: .displayName)
@@ -161,11 +161,11 @@ struct PaymentOptions: Decodable {
             supportsSaveInstrument = try container.decodeIfPresent(Bool.self, forKey: .supportsSaveInstrument)
             supportsBillingInfo = try container.decodeIfPresent(Bool.self, forKey: .supportsBillingInfo)
             additionalConfig = try container.decodeIfPresent([String: AnyCodable].self, forKey: .additionalConfig)
-            
+
             // Capture any additional fields
             let additionalContainer = try decoder.container(keyedBy: DynamicCodingKeys.self)
             var additionalDict = [String: AnyCodable]()
-            
+
             for key in additionalContainer.allKeys {
                 // Use array mapping with explicit type annotation
                 let codingKeyValues = CodingKeys.allCases.map { $0.rawValue }
@@ -174,23 +174,23 @@ struct PaymentOptions: Decodable {
                     additionalDict[key.stringValue] = value
                 }
             }
-            
+
             if !additionalDict.isEmpty {
                 additionalInfo = additionalDict
             }
         }
     }
-    
+
     // Helper for dynamic decoding
     struct DynamicCodingKeys: CodingKey {
         var stringValue: String
         var intValue: Int?
-        
+
         init?(stringValue: String) {
             self.stringValue = stringValue
             self.intValue = nil
         }
-        
+
         init?(intValue: Int) {
             self.stringValue = "\(intValue)"
             self.intValue = intValue
@@ -200,14 +200,14 @@ struct PaymentOptions: Decodable {
     // Helper for handling any JSON value
     struct AnyCodable: Codable {
         let value: Any
-        
+
         init(_ value: Any) {
             self.value = value
         }
-        
+
         init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
-            
+
             if container.decodeNil() {
                 self.value = NSNull()
             } else if let bool = try? container.decode(Bool.self) {
@@ -226,10 +226,10 @@ struct PaymentOptions: Decodable {
                 throw DecodingError.dataCorruptedError(in: container, debugDescription: "AnyCodable cannot decode value")
             }
         }
-        
+
         func encode(to encoder: Encoder) throws {
             var container = encoder.singleValueContainer()
-            
+
             switch self.value {
             case is NSNull:
                 try container.encodeNil()
@@ -261,7 +261,7 @@ struct PaymentOptions: Decodable {
 
     struct CardInstrument: StoredInstrument, Decodable {
         var id: String
-        
+
         var email: String? { nil }
 
         var description: String? { String(format: "%@***%@", data?.bin ?? "", data?.suffix ?? "") }
@@ -327,7 +327,7 @@ struct PaymentOptions: Decodable {
         let clientId: String
         let merchantId: String
     }
-    
+
     struct GenericRedirectConfig: Decodable {
         // Most genericRedirect payments don't require special config
         // but we may add specific fields if needed
@@ -348,10 +348,10 @@ struct PaymentOptions: Decodable {
             }
         }
         self.optionalPaymentType = determinedPaymentType
-        
+
         // Initialize with nil values first
-        var tempConfig: PaymentConfig? = nil
-        var tempInstruments: PaymentInstrument? = nil
+        var tempConfig: PaymentConfig?
+        var tempInstruments: PaymentInstrument?
 
         // Decode config only if it exists and payment type is recognized
         let hasConfig = container.contains(.config)
@@ -373,7 +373,7 @@ struct PaymentOptions: Decodable {
                 break
             }
         }
-        
+
         // Decode paymentInstruments separately (regardless of config presence)
         if let paymentType = optionalPaymentType {
             switch paymentType {
@@ -389,7 +389,7 @@ struct PaymentOptions: Decodable {
                 break
             }
         }
-        
+
         // Assign the final values
         config = tempConfig
         paymentInstruments = tempInstruments
@@ -400,10 +400,9 @@ struct PaymentOptions: Decodable {
     }
 }
 
-
 public struct PublicSDKConfig {
     public let holderRefecerence: String
-    
+
     internal init(from config: SDKConfig) {
         self.holderRefecerence = config.holderReference ?? ""
     }
