@@ -867,7 +867,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
     // MARK: - Clear Field Button
 
-    private static let clearFieldIconURL = URL(string: "https://assets.payrails.io/img/logos/card/clear-field-1x.png")!
+    private static let clearFieldIconURL = URL(string: "\(PayrailsAssets.cardIconBaseURL)/clear-field-1x.png")!
 
     private func setupClearFieldButton() {
         clearFieldImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: cardIconSize))

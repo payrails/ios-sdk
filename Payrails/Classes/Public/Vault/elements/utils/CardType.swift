@@ -11,6 +11,10 @@
 
 import Foundation
 
+internal enum PayrailsAssets {
+    static let cardIconBaseURL = "https://assets.payrails.io/img/logos/card"
+}
+
 internal class CreditCard {
     var defaultName: String
     var regex: String
@@ -156,7 +160,7 @@ internal enum CardNetwork: Equatable {
     case UNIONPAY
     case UNKNOWN
 
-    private static let baseIconURL = "https://assets.payrails.io/img/logos/card"
+    private static let baseIconURL = PayrailsAssets.cardIconBaseURL
     private static let genericCardIconURL = "\(baseIconURL)/ic-card.png"
 
     private struct NetworkConfig {
@@ -312,7 +316,7 @@ internal enum FieldStaticIcon {
     case cardholderName
     case expiryDate
 
-    private static let baseIconURL = "https://assets.payrails.io/img/logos/card"
+    private static let baseIconURL = PayrailsAssets.cardIconBaseURL
 
     static func from(fieldType: ElementType) -> FieldStaticIcon? {
         switch fieldType {
