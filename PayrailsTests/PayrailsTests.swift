@@ -935,6 +935,34 @@ final class PayrailsTests: XCTestCase {
         XCTAssertFalse(field.isCardIconVisibleForTesting, "No static icon since showCardIcon is false")
     }
 
+    func testExpiryMonthTypingShowsAndHidesClearButton() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+        let field = makeFieldWithClearEnabled(fieldType: .EXPIRATION_MONTH, enableCardIcon: true)
+        flushMainQueue()
+
+        XCTAssertFalse(field.isClearButtonVisibleForTesting, "No clear button when month field is empty")
+
+        let didType = field.textField.delegate?.textField?(
+            field.textField,
+            shouldChangeCharactersIn: NSRange(location: 0, length: 0),
+            replacementString: "1"
+        )
+        XCTAssertEqual(didType, false, "Delegate should consume month formatting input")
+        XCTAssertTrue(field.isClearButtonVisibleForTesting, "Month field should show clear button after typing")
+
+        let didDelete = field.textField.delegate?.textField?(
+            field.textField,
+            shouldChangeCharactersIn: NSRange(location: 0, length: 1),
+            replacementString: ""
+        )
+        XCTAssertEqual(didDelete, false, "Delegate should consume month deletion input")
+        XCTAssertFalse(field.isClearButtonVisibleForTesting, "Month field should hide clear button after deleting input")
+    }
+
     private func makeCardNumberField(showCardIcon: Bool, alignment: CardIconAlignment) -> TextField {
         let input = CollectElementInput(
             table: "cards",
