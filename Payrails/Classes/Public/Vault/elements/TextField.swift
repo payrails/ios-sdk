@@ -483,6 +483,52 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
         updateClearFieldVisibility()
 
+        if self.options.enableCopy {
+            textField.rightViewMode = .always
+            addCopyIcon()
+            if self.fieldType == .CARD_NUMBER {
+                if self.options.enableCardIcon && cardIconAlignment == .left {
+                    textField.rightView = copyContainerView
+                    textField.rightView?.isHidden = true
+                } else if self.options.enableCardIcon && cardIconAlignment == .right {
+                    copyContainerView.isHidden = true
+                    let rightAccessoryHeight = max(cardIconSize, copyIconSize)
+                    copyContainerView.frame = CGRect(
+                        x: 0,
+                        y: (rightAccessoryHeight - copyIconSize) / 2,
+                        width: copyIconSize,
+                        height: copyIconSize
+                    )
+                    cardIconContainerView.frame = CGRect(
+                        x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                        y: 0,
+                        width: cardIconSize,
+                        height: rightAccessoryHeight
+                    )
+                    cardIconImageView.center = CGPoint(
+                        x: cardIconContainerView.bounds.midX,
+                        y: cardIconContainerView.bounds.midY
+                    )
+                    rightViewForIcons.addSubview(copyContainerView)
+                    rightViewForIcons.frame = CGRect(
+                        x: 0,
+                        y: 0,
+                        width: copyIconSize + cardIconSpacing + cardIconSize + rightIconTrailingInset,
+                        height: rightAccessoryHeight
+                    )
+                    textField.rightView = rightViewForIcons
+                } else {
+                    textField.rightViewMode = .always
+                    copyContainerView.isHidden = true
+                    textField.rightView = copyContainerView
+                    cardIconContainerView.alpha = 0.0
+                }
+            } else {
+                textField.rightView = copyContainerView
+                textField.rightView?.isHidden = true
+            }
+        }
+
         setFormatPattern()
 
     }
@@ -530,8 +576,10 @@ public class TextField: SkyflowElement, Element, BaseElement {
             }
         } else {
             textField.leftView = nil
-            textField.rightView = nil
-            textField.rightViewMode = .never
+            if !self.options.enableCopy {
+                textField.rightView = nil
+                textField.rightViewMode = .never
+            }
         }
     }
 
@@ -1139,7 +1187,7 @@ extension TextField {
 
         self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? self.tintColor
         var p = style?.padding ?? fallbackStyle?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        if (self.options.enableCardIcon || isClearButtonVisible) && cardIconAlignment == .left {
+        if (self.options.enableCardIcon || isClearButtonVisible || textField.leftView === cardIconContainerView) && cardIconAlignment == .left {
             p.left = cardIconSize + 12
         }
 
