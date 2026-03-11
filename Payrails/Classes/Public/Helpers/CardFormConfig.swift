@@ -5,12 +5,18 @@
 //
 
 //
+public enum FieldVariant {
+    case outlined
+    case underlined
+}
+
 public struct CardFormConfig {
     public let showNameField: Bool
     public let showSaveInstrument: Bool
     public let showCardIcon: Bool
     public let showRequiredAsterisk: Bool
     public let cardIconAlignment: CardIconAlignment
+    public let fieldVariant: FieldVariant
     public let layout: CardLayoutConfig?
     public let translations: CardTranslations?
 
@@ -22,6 +28,7 @@ public struct CardFormConfig {
         showCardIcon: Bool = false,
         showRequiredAsterisk: Bool = true,
         cardIconAlignment: CardIconAlignment = .left,
+        fieldVariant: FieldVariant = .outlined,
         layout: CardLayoutConfig? = nil,
         styles: CardFormStylesConfig? = nil,
         translations: CardTranslations? = nil
@@ -31,6 +38,7 @@ public struct CardFormConfig {
         self.showCardIcon = showCardIcon
         self.showRequiredAsterisk = showRequiredAsterisk
         self.cardIconAlignment = cardIconAlignment
+        self.fieldVariant = fieldVariant
         self.layout = layout
         self.translations = translations
         self.styles = styles?.merged(over: CardFormStylesConfig.defaultConfig) ?? CardFormStylesConfig.defaultConfig

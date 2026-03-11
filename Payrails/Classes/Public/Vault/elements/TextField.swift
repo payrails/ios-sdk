@@ -1221,9 +1221,22 @@ extension TextField {
         self.textField.heightAnchor.constraint(equalToConstant: (style?.height)!).isActive = true
         }
         self.textField.padding = p
-        self.textFieldBorderWidth = style?.borderWidth ?? fallbackStyle?.borderWidth ?? 0
-        self.textFieldBorderColor = style?.borderColor ?? fallbackStyle?.borderColor ?? .none
-        self.textFieldCornerRadius = style?.cornerRadius ?? fallbackStyle?.cornerRadius ?? 0
+
+        let resolvedBorderWidth = style?.borderWidth ?? fallbackStyle?.borderWidth ?? 0
+        let resolvedBorderColor = style?.borderColor ?? fallbackStyle?.borderColor ?? .none
+        let resolvedCornerRadius = style?.cornerRadius ?? fallbackStyle?.cornerRadius ?? 0
+
+        if self.options.fieldVariant == .underlined {
+            self.textFieldBorderWidth = 0
+            self.textFieldBorderColor = nil
+            self.textFieldCornerRadius = 0
+            self.textField.showUnderline(color: resolvedBorderColor, width: resolvedBorderWidth)
+        } else {
+            self.textField.hideUnderline()
+            self.textFieldBorderWidth = resolvedBorderWidth
+            self.textFieldBorderColor = resolvedBorderColor
+            self.textFieldCornerRadius = resolvedCornerRadius
+        }
 
         // Define constraints for width and height
         if let minWidth = style?.minWidth ?? fallbackStyle?.minWidth {

@@ -137,7 +137,8 @@ public extension Payrails {
                     required: true,
                     enableCardIcon: config.showCardIcon,
                     enableCopy: false,
-                    showRequiredAsterisk: config.showRequiredAsterisk
+                    showRequiredAsterisk: config.showRequiredAsterisk,
+                    fieldVariant: config.fieldVariant
                 )
                 _ = container.create(input: input, options: options)
             }

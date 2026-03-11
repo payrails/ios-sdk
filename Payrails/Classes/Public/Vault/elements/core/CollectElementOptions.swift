@@ -17,8 +17,9 @@ public struct CollectElementOptions {
     var enableCopy: Bool
     var showRequiredAsterisk: Bool
     var cardMetaData: [ String: Any]?
+    var fieldVariant: FieldVariant
 
-    public init(required: Bool? = false, enableCardIcon: Bool = true, format: String = "mm/yy", translation: [ Character: String ]? = nil, enableCopy: Bool = false, showRequiredAsterisk: Bool = true, cardMetaData: [ String: Any]? = nil) {
+    public init(required: Bool? = false, enableCardIcon: Bool = true, format: String = "mm/yy", translation: [ Character: String ]? = nil, enableCopy: Bool = false, showRequiredAsterisk: Bool = true, cardMetaData: [ String: Any]? = nil, fieldVariant: FieldVariant = .outlined) {
         self.required = required!
         self.enableCardIcon = enableCardIcon
         self.format = format
@@ -26,6 +27,7 @@ public struct CollectElementOptions {
         self.enableCopy = enableCopy
         self.showRequiredAsterisk = showRequiredAsterisk
         self.cardMetaData = cardMetaData
+        self.fieldVariant = fieldVariant
 
         if self.translation != nil {
             for (key, value) in self.translation! {

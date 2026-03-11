@@ -99,6 +99,41 @@ internal class FormatTextField: UITextField {
         }
     }
 
+    // MARK: - Underline Variant
+
+    internal var underlineLayer: CAShapeLayer?
+
+    internal func showUnderline(color: UIColor?, width: CGFloat) {
+        if underlineLayer == nil {
+            let line = CAShapeLayer()
+            line.fillColor = nil
+            layer.addSublayer(line)
+            underlineLayer = line
+        }
+        underlineLayer?.strokeColor = color?.cgColor ?? UIColor.clear.cgColor
+        underlineLayer?.lineWidth = width
+        updateUnderlinePath()
+    }
+
+    internal func hideUnderline() {
+        underlineLayer?.removeFromSuperlayer()
+        underlineLayer = nil
+    }
+
+    private func updateUnderlinePath() {
+        guard let line = underlineLayer else { return }
+        let path = UIBezierPath()
+        let y = bounds.height - (line.lineWidth / 2)
+        path.move(to: CGPoint(x: 0, y: y))
+        path.addLine(to: CGPoint(x: bounds.width, y: y))
+        line.path = path.cgPath
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateUnderlinePath()
+    }
+
     func updateTextFormat() {
         self.undoManager?.removeAllActions()
     }
