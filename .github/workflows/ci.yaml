@@ -3,8 +3,24 @@ name: CI
 on:
   pull_request:
     branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/prompts/**"
+      - ".github/skills/**"
+      - ".codex/**"
+      - "openspec/**"
   push:
     branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/prompts/**"
+      - ".github/skills/**"
+      - ".codex/**"
+      - "openspec/**"
 
 permissions:
   contents: read
@@ -14,10 +30,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Validate SDK (build, lint, test)
+  lint:
+    name: SwiftLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run SwiftLint
+        uses: norio-nomura/action-swiftlint@3.2.1
+        with:
+          args: --strict --config .swiftlint.yml
+
+  build-test:
+    name: Build & Test
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 25
     env:
       XCODE_VERSION: "16.4"
       SIMULATOR_DESTINATION: "platform=iOS Simulator,name=iPhone 16 Pro,OS=latest"
@@ -35,22 +64,21 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Install SwiftLint
-        run: |
-          if command -v swiftlint >/dev/null 2>&1; then
-            swiftlint version
-          else
-            brew install swiftlint
-          fi
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('Payrails.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
 
       - name: Resolve SPM dependencies
         run: |
           xcodebuild -project Payrails.xcodeproj \
             -scheme Payrails \
+            -derivedDataPath .build/DerivedData \
             -resolvePackageDependencies
-
-      - name: Lint
-        run: ./scripts/ci/lint.sh
 
       - name: Build
         run: ./scripts/ci/build.sh
