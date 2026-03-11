@@ -867,15 +867,28 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
     // MARK: - Clear Field Button
 
-    private func setupClearFieldButton() {
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: cardIconSize * 0.7, weight: .regular)
-        let clearImage = UIImage(systemName: "xmark.circle.fill", withConfiguration: symbolConfig)?
-            .withRenderingMode(.alwaysTemplate)
+    private static let clearFieldIconURL = URL(string: "https://assets.payrails.io/img/logos/card/clear-field-1x.png")!
 
+    private func setupClearFieldButton() {
         clearFieldImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: cardIconSize))
-        clearFieldImageView.image = clearImage
-        clearFieldImageView.tintColor = .tertiaryLabel
         clearFieldImageView.contentMode = .scaleAspectFit
+        clearFieldImageView.tintColor = .tertiaryLabel
+
+        // Set SF Symbol fallback immediately
+        setClearFieldFallbackIcon()
+
+        // Fetch CDN asset
+        if let cachedImage = TextField.cardIconConfig.cache.object(forKey: Self.clearFieldIconURL as NSURL) {
+            clearFieldImageView.image = cachedImage
+        } else {
+            _ = TextField.cardIconImageFetcher(Self.clearFieldIconURL) { [weak self] image in
+                guard let self, let image else { return }
+                TextField.cardIconConfig.cache.setObject(image, forKey: Self.clearFieldIconURL as NSURL)
+                DispatchQueue.main.async {
+                    self.clearFieldImageView.image = image
+                }
+            }
+        }
 
         clearFieldContainerView = UIView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: max(cardIconSize, copyIconSize)))
         clearFieldContainerView.addSubview(clearFieldImageView)
@@ -890,6 +903,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
         clearFieldContainerView.isAccessibilityElement = true
         clearFieldContainerView.accessibilityLabel = clearFieldAccessibilityLabel()
         clearFieldContainerView.accessibilityTraits = .button
+    }
+
+    private func setClearFieldFallbackIcon() {
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: cardIconSize * 0.7, weight: .regular)
+        clearFieldImageView.image = UIImage(systemName: "xmark.circle.fill", withConfiguration: symbolConfig)?
+            .withRenderingMode(.alwaysTemplate)
     }
 
     @objc private func clearFieldTapped(_ sender: UITapGestureRecognizer) {
