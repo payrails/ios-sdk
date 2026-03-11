@@ -305,3 +305,55 @@ internal enum CardNetwork: Equatable {
         value.range(of: regex, options: .regularExpression) != nil
     }
 }
+
+internal enum FieldStaticIcon {
+    case cardNumber
+    case cvv
+    case cardholderName
+    case expiryDate
+
+    private static let baseIconURL = "https://assets.payrails.io/img/logos/card"
+
+    static func from(fieldType: ElementType) -> FieldStaticIcon? {
+        switch fieldType {
+        case .CARD_NUMBER:
+            return .cardNumber
+        case .CVV:
+            return .cvv
+        case .CARDHOLDER_NAME:
+            return .cardholderName
+        case .EXPIRATION_DATE, .EXPIRATION_MONTH, .EXPIRATION_YEAR:
+            return .expiryDate
+        default:
+            return nil
+        }
+    }
+
+    var iconURL: URL? {
+        let fileName: String
+        switch self {
+        case .cardNumber:
+            fileName = "ic-card.png"
+        case .cvv:
+            fileName = "ic-cvv.png"
+        case .cardholderName:
+            fileName = "ic-cardholder.png"
+        case .expiryDate:
+            fileName = "ic-expiration.png"
+        }
+        return URL(string: "\(Self.baseIconURL)/\(fileName)")
+    }
+
+    var sfSymbolFallback: String {
+        switch self {
+        case .cardNumber:
+            return "creditcard"
+        case .cvv:
+            return "lock.shield"
+        case .cardholderName:
+            return "person"
+        case .expiryDate:
+            return "calendar"
+        }
+    }
+}

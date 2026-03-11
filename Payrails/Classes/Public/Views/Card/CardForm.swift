@@ -135,8 +135,8 @@ public extension Payrails {
                 }
                 let options = CollectElementOptions(
                     required: true,
-                    enableCardIcon: config.showCardIcon && fieldType == .CARD_NUMBER,
-                    enableCopy: true,
+                    enableCardIcon: config.showCardIcon,
+                    enableCopy: false,
                     showRequiredAsterisk: config.showRequiredAsterisk
                 )
                 _ = container.create(input: input, options: options)
@@ -224,9 +224,8 @@ public extension Payrails {
             let translation = getTranslation(for: fieldType)
             let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
             let labelStyle = labelStyle(for: fieldType, stylesConfig: stylesConfig, defaultLabelStyle: defaultLabelStyle)
-            let iconStyle: Styles = fieldType == .CARD_NUMBER
-                ? Styles(base: CardStyle(cardIconAlignment: iconAlignment))
-                : Styles()
+            // Keep icon alignment available for both static icons and clear button behavior.
+            let iconStyle: Styles = Styles(base: CardStyle(cardIconAlignment: iconAlignment))
 
             return CollectElementInput(
                 table: tableName,
