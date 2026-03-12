@@ -118,12 +118,19 @@ public extension Container {
                 if layoutArray[i] > 1 && elementCount >= 1 && j > 0 {
                     elements[elementCount].leadingAnchor.constraint(equalTo: elements[elementCount-1].trailingAnchor, constant: 20.0).isActive = true
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
+                    // Equal width for all elements in multi-field rows
+                    elements[elementCount].widthAnchor.constraint(equalTo: elements[elementCount - j].widthAnchor).isActive = true
                 } else if j == 0 {
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
                     elements[elementCount].leadingAnchor.constraint(equalTo: childView.leadingAnchor, constant: leadingInset).isActive = true
                 }
                 elements[elementCount].topAnchor.constraint(equalTo: childView.topAnchor).isActive = true
                 elements[elementCount].bottomAnchor.constraint(equalTo: childView.bottomAnchor).isActive = true
+
+                // Last element in the row gets a trailing constraint so fields stretch to fill the row width
+                if j == layoutArray[i] - 1 {
+                    elements[elementCount].trailingAnchor.constraint(equalTo: childView.trailingAnchor, constant: -trailingInset).isActive = true
+                }
 
                 for element in elements {
                     element.onFocusIsTrue = {
