@@ -778,15 +778,12 @@ final class PayrailsTests: XCTestCase {
             "https://assets.payrails.io/img/logos/card/ic-cvv.png"
         )
         XCTAssertEqual(
-            FieldStaticIcon.from(fieldType: .CARDHOLDER_NAME)?.iconURL?.absoluteString,
-            "https://assets.payrails.io/img/logos/card/ic-cardholder.png"
-        )
-        XCTAssertEqual(
-            FieldStaticIcon.from(fieldType: .EXPIRATION_DATE)?.iconURL?.absoluteString,
+            FieldStaticIcon.from(fieldType: .EXPIRATION_MONTH)?.iconURL?.absoluteString,
             "https://assets.payrails.io/img/logos/card/ic-expiration.png"
         )
+        XCTAssertNil(FieldStaticIcon.from(fieldType: .CARDHOLDER_NAME))
         XCTAssertEqual(
-            FieldStaticIcon.from(fieldType: .EXPIRATION_MONTH)?.iconURL?.absoluteString,
+            FieldStaticIcon.from(fieldType: .EXPIRATION_DATE)?.iconURL?.absoluteString,
             "https://assets.payrails.io/img/logos/card/ic-expiration.png"
         )
         XCTAssertNil(FieldStaticIcon.from(fieldType: .INPUT_FIELD))
@@ -795,7 +792,7 @@ final class PayrailsTests: XCTestCase {
     func testFieldStaticIconSFSymbolFallbacks() {
         XCTAssertEqual(FieldStaticIcon.from(fieldType: .CARD_NUMBER)?.sfSymbolFallback, "creditcard")
         XCTAssertEqual(FieldStaticIcon.from(fieldType: .CVV)?.sfSymbolFallback, "lock.shield")
-        XCTAssertEqual(FieldStaticIcon.from(fieldType: .CARDHOLDER_NAME)?.sfSymbolFallback, "person")
+        XCTAssertNil(FieldStaticIcon.from(fieldType: .CARDHOLDER_NAME)?.sfSymbolFallback)
         XCTAssertEqual(FieldStaticIcon.from(fieldType: .EXPIRATION_DATE)?.sfSymbolFallback, "calendar")
     }
 
@@ -810,7 +807,7 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(field.isCardIconVisibleForTesting)
     }
 
-    func testStaticIconAppearsOnCardholderField() {
+    func testStaticIconDoesNotAppearOnCardholderField() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
             completion(self.makeCardIconImage())
@@ -818,7 +815,7 @@ final class PayrailsTests: XCTestCase {
         }
         let field = makeFieldWithStaticIcon(fieldType: .CARDHOLDER_NAME)
         flushMainQueue()
-        XCTAssertTrue(field.isCardIconVisibleForTesting)
+        XCTAssertFalse(field.isCardIconVisibleForTesting)
     }
 
     func testStaticIconAppearsOnExpiryDateField() {
@@ -897,7 +894,7 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(field.isCardIconVisibleForTesting, "Configured empty icon should be restored after clearing")
     }
 
-    func testShowCardIconEnablesStaticIconsOnAllFields() {
+    func testShowCardIconEnablesStaticIconsOnSupportedFields() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
             completion(self.makeCardIconImage())
@@ -910,7 +907,7 @@ final class PayrailsTests: XCTestCase {
         flushMainQueue()
 
         XCTAssertTrue(cvvField.isCardIconVisibleForTesting, "CVV should have static icon")
-        XCTAssertTrue(cardholderField.isCardIconVisibleForTesting, "Cardholder should have static icon")
+        XCTAssertFalse(cardholderField.isCardIconVisibleForTesting, "Cardholder should not have static icon")
         XCTAssertTrue(expiryField.isCardIconVisibleForTesting, "Expiry should have static icon")
     }
 
