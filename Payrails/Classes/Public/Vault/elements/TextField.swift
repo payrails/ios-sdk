@@ -468,7 +468,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
         self.errorMessage.textAlignment = collectInput.errorTextStyles.base?.textAlignment ?? .left
         self.errorMessage.insets = collectInput.errorTextStyles.base?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 
-        if self.fieldType == .CARD_NUMBER || self.options.enableCardIcon {
+        if self.fieldType == .CARD_NUMBER || (self.options.enableCardIcon && self.fieldType != .CARDHOLDER_NAME) {
             setupCardIconViews()
         }
 
