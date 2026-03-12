@@ -17,6 +17,7 @@ public class Container<T: ContainerProtocol> {
     internal var elements: [TextField] = []
     internal var containerOptions: ContainerOptions?
     internal var composableRowSpacing: CGFloat?
+    internal var onLayoutInvalidationRequested: (() -> Void)?
 
     internal init(skyflow: Client) {
         self.skyflow = skyflow

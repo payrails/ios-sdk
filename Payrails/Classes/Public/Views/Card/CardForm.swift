@@ -120,6 +120,9 @@ public extension Payrails {
             }
 
             container.composableRowSpacing = stylesConfig.fieldSpacing
+            container.onLayoutInvalidationRequested = { [weak self] in
+                self?.requestLayoutRefresh()
+            }
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
@@ -157,6 +160,16 @@ public extension Payrails {
 
             if config.showSaveInstrument {
                 setupSaveInstrumentToggle()
+            }
+        }
+
+        private func requestLayoutRefresh() {
+            // Defer invalidation to avoid re-entering UIKit fitting during an active layout pass.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.invalidateIntrinsicContentSize()
+                self.setNeedsLayout()
+                self.superview?.setNeedsLayout()
             }
         }
 
