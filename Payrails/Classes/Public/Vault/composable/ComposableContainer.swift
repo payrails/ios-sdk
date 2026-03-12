@@ -127,8 +127,9 @@ public extension Container {
                 elements[elementCount].topAnchor.constraint(equalTo: childView.topAnchor).isActive = true
                 elements[elementCount].bottomAnchor.constraint(equalTo: childView.bottomAnchor).isActive = true
 
-                // Last element in the row gets a trailing constraint so fields stretch to fill the row width
-                if j == layoutArray[i] - 1 {
+                // Last element in the row gets a trailing constraint so fields stretch to fill the row width.
+                // Skip when an explicit width is set on the row to avoid over-constraining the layout.
+                if j == layoutArray[i] - 1 && containerOptions?.styles?.base?.width == nil {
                     elements[elementCount].trailingAnchor.constraint(equalTo: childView.trailingAnchor, constant: -trailingInset).isActive = true
                 }
 

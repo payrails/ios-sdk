@@ -995,23 +995,52 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 textField.leftViewMode = .always
             } else {
                 rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
-                cardIconContainerView.frame = CGRect(
-                    x: rightIconTrailingInset,
-                    y: 0,
-                    width: cardIconSize,
-                    height: max(cardIconSize, copyIconSize)
-                )
-                cardIconImageView.center = CGPoint(
-                    x: cardIconContainerView.bounds.midX,
-                    y: cardIconContainerView.bounds.midY
-                )
-                rightViewForIcons.addSubview(cardIconContainerView)
-                rightViewForIcons.frame = CGRect(
-                    x: 0,
-                    y: 0,
-                    width: cardIconSize + rightIconTrailingInset,
-                    height: max(cardIconSize, copyIconSize)
-                )
+                if self.options.enableCopy {
+                    // Rebuild right view with both copy icon + card icon
+                    let rightAccessoryHeight = max(cardIconSize, copyIconSize)
+                    copyContainerView.frame = CGRect(
+                        x: 0,
+                        y: (rightAccessoryHeight - copyIconSize) / 2,
+                        width: copyIconSize,
+                        height: copyIconSize
+                    )
+                    cardIconContainerView.frame = CGRect(
+                        x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                        y: 0,
+                        width: cardIconSize,
+                        height: rightAccessoryHeight
+                    )
+                    cardIconImageView.center = CGPoint(
+                        x: cardIconContainerView.bounds.midX,
+                        y: cardIconContainerView.bounds.midY
+                    )
+                    rightViewForIcons.addSubview(copyContainerView)
+                    rightViewForIcons.addSubview(cardIconContainerView)
+                    rightViewForIcons.frame = CGRect(
+                        x: 0,
+                        y: 0,
+                        width: copyIconSize + cardIconSpacing + cardIconSize + rightIconTrailingInset,
+                        height: rightAccessoryHeight
+                    )
+                } else {
+                    cardIconContainerView.frame = CGRect(
+                        x: rightIconTrailingInset,
+                        y: 0,
+                        width: cardIconSize,
+                        height: max(cardIconSize, copyIconSize)
+                    )
+                    cardIconImageView.center = CGPoint(
+                        x: cardIconContainerView.bounds.midX,
+                        y: cardIconContainerView.bounds.midY
+                    )
+                    rightViewForIcons.addSubview(cardIconContainerView)
+                    rightViewForIcons.frame = CGRect(
+                        x: 0,
+                        y: 0,
+                        width: cardIconSize + rightIconTrailingInset,
+                        height: max(cardIconSize, copyIconSize)
+                    )
+                }
                 textField.rightView = rightViewForIcons
                 textField.rightViewMode = .always
             }
@@ -1023,8 +1052,13 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 updateInputStyle()
             } else {
                 rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
-                textField.rightView = nil
-                textField.rightViewMode = .never
+                if self.options.enableCopy {
+                    textField.rightView = copyContainerView
+                    textField.rightViewMode = .always
+                } else {
+                    textField.rightView = nil
+                    textField.rightViewMode = .never
+                }
             }
         }
     }

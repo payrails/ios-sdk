@@ -1206,6 +1206,131 @@ final class PayrailsTests: XCTestCase {
                         "Multi-field rows should have equal width constraints between fields")
     }
 
+    func testHideClearButtonPreservesCopyIconWithCardIconRight() throws {
+        // Create a non-CARD_NUMBER field with enableCopy + enableCardIcon + right alignment
+        let input = CollectElementInput(
+            table: "cards",
+            column: "security_code",
+            inputStyles: Styles(base: Style()),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            iconStyles: Styles(base: Style(cardIconAlignment: .right)),
+            label: "CVV",
+            placeholder: "CVV",
+            type: .CVV
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: true,
+            enableCopy: true
+        )
+        let field = TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+
+        // Simulate typing content so clear button shows
+        field.actualValue = "123"
+        field.updateClearFieldVisibility()
+
+        // Simulate clearing content so clear button hides
+        field.actualValue = ""
+        field.updateClearFieldVisibility()
+
+        // After the show/hide cycle, copyContainerView should still be in rightViewForIcons
+        let rightSubviews = field.rightViewForIcons.subviews
+        let hasCopy = rightSubviews.contains(where: { $0 === field.copyContainerView })
+        let hasCardIcon = rightSubviews.contains(where: { $0 === field.cardIconContainerView })
+
+        XCTAssertTrue(hasCopy,
+                      "Copy icon should be preserved in rightViewForIcons after clear button cycle")
+        XCTAssertTrue(hasCardIcon,
+                      "Card icon should be present in rightViewForIcons after clear button cycle")
+    }
+
+    func testHideClearButtonRestoresCopyIconWithoutCardIcon() throws {
+        // Create a non-CARD_NUMBER field with enableCopy=true, enableCardIcon=false, right alignment
+        let input = CollectElementInput(
+            table: "cards",
+            column: "security_code",
+            inputStyles: Styles(base: Style()),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            iconStyles: Styles(base: Style(cardIconAlignment: .right)),
+            label: "CVV",
+            placeholder: "CVV",
+            type: .CVV
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: false,
+            enableCopy: true
+        )
+        let field = TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+
+        // Simulate typing content so clear button shows
+        field.actualValue = "123"
+        field.updateClearFieldVisibility()
+
+        // Simulate clearing content so clear button hides
+        field.actualValue = ""
+        field.updateClearFieldVisibility()
+
+        // After the show/hide cycle, textField.rightView should be copyContainerView
+        XCTAssertTrue(field.textField.rightView === field.copyContainerView,
+                      "Copy icon should be restored as rightView after clear button cycle when enableCardIcon is false")
+    }
+
+    func testComposableContainerSkipsTrailingConstraintWhenWidthIsSet() throws {
+        let client = Client()
+        let options = ContainerOptions(
+            layout: [1],
+            styles: Styles(base: Style(
+                padding: UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 12),
+                width: 200
+            ))
+        )
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards", column: "card_number",
+            label: "Card number", placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        _ = container.create(input: input, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard
+            let rowView = composableView.subviews.first(where: { $0.subviews.contains(where: { $0 is TextField }) }),
+            let field = rowView.subviews.first(where: { $0 is TextField })
+        else {
+            XCTFail("Expected row and field views")
+            return
+        }
+
+        let fieldTrailing = constraintConstant(
+            in: rowView.constraints,
+            firstItem: field,
+            firstAttribute: .trailing,
+            secondItem: rowView,
+            secondAttribute: .trailing
+        )
+
+        XCTAssertNil(fieldTrailing,
+                     "Trailing constraint should be skipped when explicit width is set on the container style")
+    }
+
     private func makeFieldWithVariant(
         _ variant: FieldVariant,
         borderWidth: CGFloat = 1,
