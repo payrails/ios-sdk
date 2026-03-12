@@ -1061,8 +1061,8 @@ final class PayrailsTests: XCTestCase {
         let outlined = CardFormConfig(fieldVariant: .outlined)
         XCTAssertEqual(outlined.fieldVariant, .outlined)
 
-        let underlined = CardFormConfig(fieldVariant: .underlined)
-        XCTAssertEqual(underlined.fieldVariant, .underlined)
+        let filled = CardFormConfig(fieldVariant: .filled)
+        XCTAssertEqual(filled.fieldVariant, .filled)
     }
 
     func testCollectElementOptionsDefaultFieldVariantIsOutlined() {
@@ -1071,8 +1071,8 @@ final class PayrailsTests: XCTestCase {
     }
 
     func testCollectElementOptionsStoresFieldVariant() {
-        let options = CollectElementOptions(fieldVariant: .underlined)
-        XCTAssertEqual(options.fieldVariant, .underlined)
+        let options = CollectElementOptions(fieldVariant: .filled)
+        XCTAssertEqual(options.fieldVariant, .filled)
     }
 
     func testOutlinedVariantAppliesBorderToLayer() {
@@ -1086,15 +1086,15 @@ final class PayrailsTests: XCTestCase {
         XCTAssertNil(field.textField.underlineLayer, "Outlined variant should not have an underline layer")
     }
 
-    func testUnderlinedVariantClearsBorderAndShowsUnderline() {
+    func testFilledVariantClearsBorderAndShowsUnderline() {
         UIView.setAnimationsEnabled(false)
-        let field = makeFieldWithVariant(.underlined, borderWidth: 2, borderColor: .red, cornerRadius: 8)
+        let field = makeFieldWithVariant(.filled, borderWidth: 2, borderColor: .red, cornerRadius: 8)
         flushMainQueue()
 
-        XCTAssertEqual(field.textFieldBorderWidth, 0, accuracy: 0.001, "Underlined variant should clear border width")
-        XCTAssertNil(field.textFieldBorderColor, "Underlined variant should clear border color")
-        XCTAssertEqual(field.textFieldCornerRadius, 0, accuracy: 0.001, "Underlined variant should clear corner radius")
-        XCTAssertNotNil(field.textField.underlineLayer, "Underlined variant should have an underline layer")
+        XCTAssertEqual(field.textFieldBorderWidth, 0, accuracy: 0.001, "Filled variant should clear border width")
+        XCTAssertNil(field.textFieldBorderColor, "Filled variant should clear border color")
+        XCTAssertEqual(field.textFieldCornerRadius, 0, accuracy: 0.001, "Filled variant should clear corner radius")
+        XCTAssertNotNil(field.textField.underlineLayer, "Filled variant should have an underline layer")
         XCTAssertEqual(field.textField.underlineLayer?.lineWidth, 2, "Underline width should match configured border width")
         XCTAssertEqual(
             field.textField.underlineLayer?.strokeColor,

@@ -7,7 +7,7 @@
 //
 public enum FieldVariant {
     case outlined
-    case underlined
+    case filled
 }
 
 public struct CardFormConfig {

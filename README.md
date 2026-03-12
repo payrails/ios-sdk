@@ -336,7 +336,7 @@ The SDK supports advanced card form customization, including:
 - Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
 - Card payment button customization via `createCardPaymentButton` (`CardButtonStyle`, including `height`)
 - Configurable field arrangement and ordering via `CardLayoutConfig`
-- Field border variant (`fieldVariant`): `.outlined` for full box borders or `.underlined` for bottom-line-only styling
+- Field border variant (`fieldVariant`): `.outlined` for full box borders or `.filled` for bottom-line-only styling
 
 Card icon and clear button behavior on iOS:
 - `showCardIcon: true`: shows static empty-state icons for supported fields
@@ -351,14 +351,14 @@ Card icon and clear button behavior on iOS:
 The `fieldVariant` property controls the border rendering style on each input field:
 
 - `.outlined` (default) — renders full box borders using `borderColor`, `borderWidth`, and `cornerRadius` from the configured `Style`
-- `.underlined` — renders a single bottom line using the same `borderColor` and `borderWidth`, while clearing box borders and corner radius
+- `.filled` — renders a single bottom line using the same `borderColor` and `borderWidth`, while clearing box borders and corner radius
 
 ```swift
 // Outlined (default)
 let outlinedConfig = CardFormConfig(fieldVariant: .outlined)
 
-// Underlined
-let underlinedConfig = CardFormConfig(fieldVariant: .underlined)
+// Filled
+let filledConfig = CardFormConfig(fieldVariant: .filled)
 ```
 
 Both variants respect all other style properties (background color, font, text color, padding) and work with any `CardLayoutConfig`.

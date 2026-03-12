@@ -1226,7 +1226,7 @@ extension TextField {
         let resolvedBorderColor = style?.borderColor ?? fallbackStyle?.borderColor ?? .none
         let resolvedCornerRadius = style?.cornerRadius ?? fallbackStyle?.cornerRadius ?? 0
 
-        if self.options.fieldVariant == .underlined {
+        if self.options.fieldVariant == .filled {
             self.textFieldBorderWidth = 0
             self.textFieldBorderColor = nil
             self.textFieldCornerRadius = 0
