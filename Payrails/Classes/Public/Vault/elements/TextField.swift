@@ -25,7 +25,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             cardIconSize: 24,
             copyIconSize: 24,
             spacing: 8,
-            rightTrailingInset: 3,
+            rightTrailingInset: 8,
             animationDuration: 0.2
         )
     }
@@ -500,7 +500,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                         height: copyIconSize
                     )
                     cardIconContainerView.frame = CGRect(
-                        x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                        x: copyIconSize + cardIconSpacing,
                         y: 0,
                         width: cardIconSize,
                         height: rightAccessoryHeight
@@ -561,7 +561,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     height: max(cardIconSize, copyIconSize)
                 )
                 cardIconContainerView.frame = CGRect(
-                    x: rightIconTrailingInset,
+                    x: 0,
                     y: 0,
                     width: cardIconSize,
                     height: max(cardIconSize, copyIconSize)
@@ -756,7 +756,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     height: copyIconSize
                 )
                 cardIconContainerView.frame = CGRect(
-                    x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                    x: copyIconSize + cardIconSpacing,
                     y: 0,
                     width: cardIconSize,
                     height: rightAccessoryHeight
@@ -783,7 +783,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     height: max(cardIconSize, copyIconSize)
                 )
                 cardIconContainerView.frame = CGRect(
-                    x: rightIconTrailingInset,
+                    x: 0,
                     y: 0,
                     width: cardIconSize,
                     height: max(cardIconSize, copyIconSize)
@@ -964,7 +964,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             // Right alignment: place clear button in rightViewForIcons
             rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
             clearFieldContainerView.frame = CGRect(
-                x: rightIconTrailingInset,
+                x: 0,
                 y: 0,
                 width: cardIconSize,
                 height: max(cardIconSize, copyIconSize)
@@ -1005,7 +1005,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                         height: copyIconSize
                     )
                     cardIconContainerView.frame = CGRect(
-                        x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                        x: copyIconSize + cardIconSpacing,
                         y: 0,
                         width: cardIconSize,
                         height: rightAccessoryHeight
@@ -1024,7 +1024,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     )
                 } else {
                     cardIconContainerView.frame = CGRect(
-                        x: rightIconTrailingInset,
+                        x: 0,
                         y: 0,
                         width: cardIconSize,
                         height: max(cardIconSize, copyIconSize)
