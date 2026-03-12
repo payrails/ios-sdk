@@ -25,7 +25,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             cardIconSize: 24,
             copyIconSize: 24,
             spacing: 8,
-            rightTrailingInset: 3,
+            rightTrailingInset: 8,
             animationDuration: 0.2
         )
     }
@@ -500,7 +500,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                         height: copyIconSize
                     )
                     cardIconContainerView.frame = CGRect(
-                        x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                        x: copyIconSize + cardIconSpacing,
                         y: 0,
                         width: cardIconSize,
                         height: rightAccessoryHeight
@@ -561,7 +561,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     height: max(cardIconSize, copyIconSize)
                 )
                 cardIconContainerView.frame = CGRect(
-                    x: rightIconTrailingInset,
+                    x: 0,
                     y: 0,
                     width: cardIconSize,
                     height: max(cardIconSize, copyIconSize)
@@ -756,7 +756,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     height: copyIconSize
                 )
                 cardIconContainerView.frame = CGRect(
-                    x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                    x: copyIconSize + cardIconSpacing,
                     y: 0,
                     width: cardIconSize,
                     height: rightAccessoryHeight
@@ -783,7 +783,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     height: max(cardIconSize, copyIconSize)
                 )
                 cardIconContainerView.frame = CGRect(
-                    x: rightIconTrailingInset,
+                    x: 0,
                     y: 0,
                     width: cardIconSize,
                     height: max(cardIconSize, copyIconSize)
@@ -824,6 +824,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal func showStaticFieldIcon() {
         guard self.options.enableCardIcon,
               self.fieldType != .CARD_NUMBER,
+              self.fieldType != .CARDHOLDER_NAME,
               let staticIcon = FieldStaticIcon.from(fieldType: self.fieldType) else {
             return
         }
@@ -963,7 +964,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             // Right alignment: place clear button in rightViewForIcons
             rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
             clearFieldContainerView.frame = CGRect(
-                x: rightIconTrailingInset,
+                x: 0,
                 y: 0,
                 width: cardIconSize,
                 height: max(cardIconSize, copyIconSize)
@@ -994,23 +995,52 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 textField.leftViewMode = .always
             } else {
                 rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
-                cardIconContainerView.frame = CGRect(
-                    x: rightIconTrailingInset,
-                    y: 0,
-                    width: cardIconSize,
-                    height: max(cardIconSize, copyIconSize)
-                )
-                cardIconImageView.center = CGPoint(
-                    x: cardIconContainerView.bounds.midX,
-                    y: cardIconContainerView.bounds.midY
-                )
-                rightViewForIcons.addSubview(cardIconContainerView)
-                rightViewForIcons.frame = CGRect(
-                    x: 0,
-                    y: 0,
-                    width: cardIconSize + rightIconTrailingInset,
-                    height: max(cardIconSize, copyIconSize)
-                )
+                if self.options.enableCopy {
+                    // Rebuild right view with both copy icon + card icon
+                    let rightAccessoryHeight = max(cardIconSize, copyIconSize)
+                    copyContainerView.frame = CGRect(
+                        x: 0,
+                        y: (rightAccessoryHeight - copyIconSize) / 2,
+                        width: copyIconSize,
+                        height: copyIconSize
+                    )
+                    cardIconContainerView.frame = CGRect(
+                        x: copyIconSize + cardIconSpacing,
+                        y: 0,
+                        width: cardIconSize,
+                        height: rightAccessoryHeight
+                    )
+                    cardIconImageView.center = CGPoint(
+                        x: cardIconContainerView.bounds.midX,
+                        y: cardIconContainerView.bounds.midY
+                    )
+                    rightViewForIcons.addSubview(copyContainerView)
+                    rightViewForIcons.addSubview(cardIconContainerView)
+                    rightViewForIcons.frame = CGRect(
+                        x: 0,
+                        y: 0,
+                        width: copyIconSize + cardIconSpacing + cardIconSize + rightIconTrailingInset,
+                        height: rightAccessoryHeight
+                    )
+                } else {
+                    cardIconContainerView.frame = CGRect(
+                        x: 0,
+                        y: 0,
+                        width: cardIconSize,
+                        height: max(cardIconSize, copyIconSize)
+                    )
+                    cardIconImageView.center = CGPoint(
+                        x: cardIconContainerView.bounds.midX,
+                        y: cardIconContainerView.bounds.midY
+                    )
+                    rightViewForIcons.addSubview(cardIconContainerView)
+                    rightViewForIcons.frame = CGRect(
+                        x: 0,
+                        y: 0,
+                        width: cardIconSize + rightIconTrailingInset,
+                        height: max(cardIconSize, copyIconSize)
+                    )
+                }
                 textField.rightView = rightViewForIcons
                 textField.rightViewMode = .always
             }
@@ -1022,8 +1052,13 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 updateInputStyle()
             } else {
                 rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
-                textField.rightView = nil
-                textField.rightViewMode = .never
+                if self.options.enableCopy {
+                    textField.rightView = copyContainerView
+                    textField.rightViewMode = .always
+                } else {
+                    textField.rightView = nil
+                    textField.rightViewMode = .never
+                }
             }
         }
     }
@@ -1220,9 +1255,22 @@ extension TextField {
         self.textField.heightAnchor.constraint(equalToConstant: (style?.height)!).isActive = true
         }
         self.textField.padding = p
-        self.textFieldBorderWidth = style?.borderWidth ?? fallbackStyle?.borderWidth ?? 0
-        self.textFieldBorderColor = style?.borderColor ?? fallbackStyle?.borderColor ?? .none
-        self.textFieldCornerRadius = style?.cornerRadius ?? fallbackStyle?.cornerRadius ?? 0
+
+        let resolvedBorderWidth = style?.borderWidth ?? fallbackStyle?.borderWidth ?? 0
+        let resolvedBorderColor = style?.borderColor ?? fallbackStyle?.borderColor ?? .none
+        let resolvedCornerRadius = style?.cornerRadius ?? fallbackStyle?.cornerRadius ?? 0
+
+        if self.options.fieldVariant == .filled {
+            self.textFieldBorderWidth = 0
+            self.textFieldBorderColor = nil
+            self.textFieldCornerRadius = 0
+            self.textField.showUnderline(color: resolvedBorderColor, width: resolvedBorderWidth)
+        } else {
+            self.textField.hideUnderline()
+            self.textFieldBorderWidth = resolvedBorderWidth
+            self.textFieldBorderColor = resolvedBorderColor
+            self.textFieldCornerRadius = resolvedCornerRadius
+        }
 
         // Define constraints for width and height
         if let minWidth = style?.minWidth ?? fallbackStyle?.minWidth {

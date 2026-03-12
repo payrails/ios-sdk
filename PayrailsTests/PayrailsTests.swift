@@ -1050,6 +1050,321 @@ final class PayrailsTests: XCTestCase {
         )
     }
 
+    // MARK: - FieldVariant Tests
+
+    func testCardFormConfigDefaultFieldVariantIsOutlined() {
+        let config = CardFormConfig()
+        XCTAssertEqual(config.fieldVariant, .outlined, "Default fieldVariant should be .outlined")
+    }
+
+    func testCardFormConfigStoresFieldVariant() {
+        let outlined = CardFormConfig(fieldVariant: .outlined)
+        XCTAssertEqual(outlined.fieldVariant, .outlined)
+
+        let filled = CardFormConfig(fieldVariant: .filled)
+        XCTAssertEqual(filled.fieldVariant, .filled)
+    }
+
+    func testCollectElementOptionsDefaultFieldVariantIsOutlined() {
+        let options = CollectElementOptions()
+        XCTAssertEqual(options.fieldVariant, .outlined, "Default CollectElementOptions.fieldVariant should be .outlined")
+    }
+
+    func testCollectElementOptionsStoresFieldVariant() {
+        let options = CollectElementOptions(fieldVariant: .filled)
+        XCTAssertEqual(options.fieldVariant, .filled)
+    }
+
+    func testOutlinedVariantAppliesBorderToLayer() {
+        UIView.setAnimationsEnabled(false)
+        let field = makeFieldWithVariant(.outlined, borderWidth: 2, borderColor: .black, cornerRadius: 8)
+        flushMainQueue()
+
+        XCTAssertEqual(field.textFieldBorderWidth, 2, accuracy: 0.001, "Outlined variant should apply border width to layer")
+        XCTAssertEqual(field.textFieldBorderColor, .black, "Outlined variant should apply border color to layer")
+        XCTAssertEqual(field.textFieldCornerRadius, 8, accuracy: 0.001, "Outlined variant should apply corner radius to layer")
+        XCTAssertNil(field.textField.underlineLayer, "Outlined variant should not have an underline layer")
+    }
+
+    func testFilledVariantClearsBorderAndShowsUnderline() {
+        UIView.setAnimationsEnabled(false)
+        let field = makeFieldWithVariant(.filled, borderWidth: 2, borderColor: .red, cornerRadius: 8)
+        flushMainQueue()
+
+        XCTAssertEqual(field.textFieldBorderWidth, 0, accuracy: 0.001, "Filled variant should clear border width")
+        XCTAssertNil(field.textFieldBorderColor, "Filled variant should clear border color")
+        XCTAssertEqual(field.textFieldCornerRadius, 0, accuracy: 0.001, "Filled variant should clear corner radius")
+        XCTAssertNotNil(field.textField.underlineLayer, "Filled variant should have an underline layer")
+        XCTAssertEqual(field.textField.underlineLayer?.lineWidth, 2, "Underline width should match configured border width")
+        XCTAssertEqual(
+            field.textField.underlineLayer?.strokeColor,
+            UIColor.red.cgColor,
+            "Underline color should match configured border color"
+        )
+    }
+
+    // MARK: - Composable Field Stretching Tests
+
+    func testComposableContainerSingleFieldRowHasTrailingConstraint() throws {
+        let client = Client()
+        let options = ContainerOptions(
+            layout: [1],
+            styles: Styles(base: Style(padding: UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 12)))
+        )
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards", column: "card_number",
+            label: "Card number", placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        _ = container.create(input: input, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard
+            let rowView = composableView.subviews.first(where: { $0.subviews.contains(where: { $0 is TextField }) }),
+            let field = rowView.subviews.first(where: { $0 is TextField })
+        else {
+            XCTFail("Expected row and field views")
+            return
+        }
+
+        let fieldTrailing = constraintConstant(
+            in: rowView.constraints,
+            firstItem: field,
+            firstAttribute: .trailing,
+            secondItem: rowView,
+            secondAttribute: .trailing
+        )
+
+        XCTAssertEqual(fieldTrailing ?? .nan, -12, accuracy: 0.001,
+                        "Single-field row should have trailing constraint with trailingInset")
+    }
+
+    func testComposableContainerMultiFieldRowHasEqualWidthAndTrailing() throws {
+        let client = Client()
+        let options = ContainerOptions(
+            layout: [2],
+            styles: Styles(base: Style(padding: UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)))
+        )
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let cvvInput = CollectElementInput(
+            table: "cards", column: "security_code",
+            label: "CVV", placeholder: "CVV",
+            type: .CVV
+        )
+        let expiryInput = CollectElementInput(
+            table: "cards", column: "expiry_month",
+            label: "Month", placeholder: "MM",
+            type: .EXPIRATION_MONTH
+        )
+        _ = container.create(input: cvvInput, options: CollectElementOptions(required: true))
+        _ = container.create(input: expiryInput, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard
+            let rowView = composableView.subviews.first(where: { $0.subviews.contains(where: { $0 is TextField }) })
+        else {
+            XCTFail("Expected row view")
+            return
+        }
+
+        let fields = rowView.subviews.compactMap { $0 as? TextField }
+        XCTAssertEqual(fields.count, 2, "Row should contain two fields")
+
+        // Last field should have trailing constraint
+        if let lastField = fields.last {
+            let trailing = constraintConstant(
+                in: rowView.constraints,
+                firstItem: lastField,
+                firstAttribute: .trailing,
+                secondItem: rowView,
+                secondAttribute: .trailing
+            )
+            XCTAssertEqual(trailing ?? .nan, -8, accuracy: 0.001,
+                            "Last field in multi-field row should have trailing constraint")
+        }
+
+        // Fields should have equal width constraint
+        let equalWidthConstraints = rowView.constraints.filter {
+            $0.firstAttribute == .width &&
+            $0.secondAttribute == .width &&
+            ($0.firstItem is TextField) &&
+            ($0.secondItem is TextField) &&
+            $0.multiplier == 1.0
+        }
+        XCTAssertFalse(equalWidthConstraints.isEmpty,
+                        "Multi-field rows should have equal width constraints between fields")
+    }
+
+    func testHideClearButtonPreservesCopyIconWithCardIconRight() throws {
+        // Create a non-CARD_NUMBER field with enableCopy + enableCardIcon + right alignment
+        let input = CollectElementInput(
+            table: "cards",
+            column: "security_code",
+            inputStyles: Styles(base: Style()),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            iconStyles: Styles(base: Style(cardIconAlignment: .right)),
+            label: "CVV",
+            placeholder: "CVV",
+            type: .CVV
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: true,
+            enableCopy: true
+        )
+        let field = TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+
+        // Simulate typing content so clear button shows
+        field.actualValue = "123"
+        field.updateClearFieldVisibility()
+
+        // Simulate clearing content so clear button hides
+        field.actualValue = ""
+        field.updateClearFieldVisibility()
+
+        // After the show/hide cycle, copyContainerView should still be in rightViewForIcons
+        let rightSubviews = field.rightViewForIcons.subviews
+        let hasCopy = rightSubviews.contains(where: { $0 === field.copyContainerView })
+        let hasCardIcon = rightSubviews.contains(where: { $0 === field.cardIconContainerView })
+
+        XCTAssertTrue(hasCopy,
+                      "Copy icon should be preserved in rightViewForIcons after clear button cycle")
+        XCTAssertTrue(hasCardIcon,
+                      "Card icon should be present in rightViewForIcons after clear button cycle")
+    }
+
+    func testHideClearButtonRestoresCopyIconWithoutCardIcon() throws {
+        // Create a non-CARD_NUMBER field with enableCopy=true, enableCardIcon=false, right alignment
+        let input = CollectElementInput(
+            table: "cards",
+            column: "security_code",
+            inputStyles: Styles(base: Style()),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            iconStyles: Styles(base: Style(cardIconAlignment: .right)),
+            label: "CVV",
+            placeholder: "CVV",
+            type: .CVV
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: false,
+            enableCopy: true
+        )
+        let field = TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+
+        // Simulate typing content so clear button shows
+        field.actualValue = "123"
+        field.updateClearFieldVisibility()
+
+        // Simulate clearing content so clear button hides
+        field.actualValue = ""
+        field.updateClearFieldVisibility()
+
+        // After the show/hide cycle, textField.rightView should be copyContainerView
+        XCTAssertTrue(field.textField.rightView === field.copyContainerView,
+                      "Copy icon should be restored as rightView after clear button cycle when enableCardIcon is false")
+    }
+
+    func testComposableContainerSkipsTrailingConstraintWhenWidthIsSet() throws {
+        let client = Client()
+        let options = ContainerOptions(
+            layout: [1],
+            styles: Styles(base: Style(
+                padding: UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 12),
+                width: 200
+            ))
+        )
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards", column: "card_number",
+            label: "Card number", placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        _ = container.create(input: input, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard
+            let rowView = composableView.subviews.first(where: { $0.subviews.contains(where: { $0 is TextField }) }),
+            let field = rowView.subviews.first(where: { $0 is TextField })
+        else {
+            XCTFail("Expected row and field views")
+            return
+        }
+
+        let fieldTrailing = constraintConstant(
+            in: rowView.constraints,
+            firstItem: field,
+            firstAttribute: .trailing,
+            secondItem: rowView,
+            secondAttribute: .trailing
+        )
+
+        XCTAssertNil(fieldTrailing,
+                     "Trailing constraint should be skipped when explicit width is set on the container style")
+    }
+
+    private func makeFieldWithVariant(
+        _ variant: FieldVariant,
+        borderWidth: CGFloat = 1,
+        borderColor: UIColor = .black,
+        cornerRadius: CGFloat = 0
+    ) -> TextField {
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            inputStyles: Styles(base: Style(
+                borderColor: borderColor,
+                cornerRadius: cornerRadius,
+                borderWidth: borderWidth
+            )),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            label: "Card number",
+            placeholder: "",
+            type: .CARD_NUMBER
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: false,
+            enableCopy: false,
+            fieldVariant: variant
+        )
+        return TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+    }
+
     private func makeCardIconImage() -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 20, height: 20))
         return renderer.image { context in
