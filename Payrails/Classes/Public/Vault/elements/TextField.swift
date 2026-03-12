@@ -59,8 +59,18 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var cardIconImageView = UIImageView()
     internal var detectedCardNetwork: CardNetwork = .UNKNOWN
     internal var resolvedCardIconURL: URL?
+    internal var clearFieldContainerView: UIView = {
+        let v = UIView()
+        v.isHidden = true
+        return v
+    }()
+    internal var clearFieldImageView = UIImageView()
+    private var isClearButtonVisible: Bool = false
     internal var isCardIconVisibleForTesting: Bool {
-        cardIconContainerView.alpha > 0.01 && cardIconImageView.image != nil
+        !cardIconContainerView.isHidden && cardIconContainerView.alpha > 0.01 && cardIconImageView.image != nil
+    }
+    internal var isClearButtonVisibleForTesting: Bool {
+        !clearFieldContainerView.isHidden
     }
     private var cardIconImageTask: URLSessionDataTask?
     private var customErrorMessage: String?
@@ -398,6 +408,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             if self.fieldType == .CARD_NUMBER {
                 updateImage(name: "", cardNumber: "")
             }
+            updateClearFieldVisibility()
         } else {
             var context = self.contextOptions
             context?.interface = .COLLECT_CONTAINER
@@ -457,12 +468,23 @@ public class TextField: SkyflowElement, Element, BaseElement {
         self.errorMessage.textAlignment = collectInput.errorTextStyles.base?.textAlignment ?? .left
         self.errorMessage.insets = collectInput.errorTextStyles.base?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 
-        if self.fieldType == .CARD_NUMBER {
+        if self.fieldType == .CARD_NUMBER || (self.options.enableCardIcon && self.fieldType != .CARDHOLDER_NAME) {
             setupCardIconViews()
         }
 
+        if self.fieldType == .CARD_NUMBER {
+            updateImage(name: "", cardNumber: self.textField.secureText ?? "")
+        } else if self.options.enableCardIcon {
+            showStaticFieldIcon()
+        }
+
+        if self.fieldType != .CARD_NUMBER {
+            setupClearFieldButton()
+        }
+        updateClearFieldVisibility()
+
         if self.options.enableCopy {
-            textField.rightViewMode =  UITextField.ViewMode.always
+            textField.rightViewMode = .always
             addCopyIcon()
             if self.fieldType == .CARD_NUMBER {
                 if self.options.enableCardIcon && cardIconAlignment == .left {
@@ -496,7 +518,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
                     )
                     textField.rightView = rightViewForIcons
                 } else {
-                    textField.rightViewMode =  UITextField.ViewMode.always
+                    textField.rightViewMode = .always
                     copyContainerView.isHidden = true
                     textField.rightView = copyContainerView
                     cardIconContainerView.alpha = 0.0
@@ -505,10 +527,6 @@ public class TextField: SkyflowElement, Element, BaseElement {
                 textField.rightView = copyContainerView
                 textField.rightView?.isHidden = true
             }
-        }
-
-        if self.fieldType == .CARD_NUMBER {
-            updateImage(name: "", cardNumber: self.textField.secureText ?? "")
         }
 
         setFormatPattern()
@@ -560,6 +578,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
             textField.leftView = nil
             if !self.options.enableCopy {
                 textField.rightView = nil
+                textField.rightViewMode = .never
             }
         }
     }
@@ -618,7 +637,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
     }
     internal func updateImage(name: String, cardNumber: String) {
-        guard self.options.enableCardIcon, self.fieldType == .CARD_NUMBER else {
+        // Brand detection is always on for CARD_NUMBER, regardless of config flags.
+        guard self.fieldType == .CARD_NUMBER else {
             self.detectedCardNetwork = .UNKNOWN
             self.resolvedCardIconURL = nil
             hideCardIcon(clearImage: true)
@@ -634,7 +654,23 @@ public class TextField: SkyflowElement, Element, BaseElement {
         let iconURL = network.iconURL ?? CardNetwork.UNKNOWN.iconURL
         self.detectedCardNetwork = network
         self.resolvedCardIconURL = iconURL
-        ensureGenericCardIconVisible(forceReplace: network == .UNKNOWN)
+
+        let hasIconFlag = self.options.enableCardIcon
+
+        if network == .UNKNOWN {
+            if hasIconFlag {
+                // A flag is set — show generic card icon as placeholder
+                ensureGenericCardIconVisible(forceReplace: true)
+            } else {
+                // No flags — hide icon and detach container (no gap)
+                hideCardIcon(clearImage: true)
+            }
+            return
+        }
+
+        // Brand detected — always show brand icon regardless of flags
+        ensureCardIconAttached()
+        ensureGenericCardIconVisible(forceReplace: false)
 
         guard let iconURL else {
             return
@@ -665,6 +701,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     }
 
     private func setCardIconImage(_ image: UIImage) {
+        ensureCardIconAttached()
         UIView.transition(with: cardIconImageView, duration: cardIconAnimationDuration, options: .transitionCrossDissolve, animations: {
             self.cardIconImageView.image = image
         })
@@ -681,10 +718,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
             if clearImage {
                 self.cardIconImageView.image = nil
             }
+            self.detachCardIconIfNeeded()
         }
     }
 
     private func ensureGenericCardIconVisible(forceReplace: Bool = false) {
+        ensureCardIconAttached()
         if forceReplace || cardIconImageView.image == nil {
             let symbolConfig = UIImage.SymbolConfiguration(pointSize: cardIconSize, weight: .regular)
             cardIconImageView.image = UIImage(systemName: "creditcard", withConfiguration: symbolConfig)?
@@ -692,6 +731,301 @@ public class TextField: SkyflowElement, Element, BaseElement {
             cardIconImageView.tintColor = .secondaryLabel
         }
         cardIconContainerView.alpha = 1.0
+    }
+
+    /// Dynamically attaches the card icon container to the text field.
+    /// Used when brand detection triggers an icon on a card number field
+    /// that didn't initially have icon views attached (both flags false).
+    private func ensureCardIconAttached() {
+        if cardIconAlignment == .left {
+            guard textField.leftView !== cardIconContainerView else { return }
+            textField.leftView = cardIconContainerView
+            textField.leftViewMode = .always
+            var p = textField.padding
+            p.left = cardIconSize + 12
+            textField.padding = p
+        } else {
+            // Right alignment: check if the card icon container is already in the right view hierarchy
+            guard !rightViewForIcons.subviews.contains(cardIconContainerView) else { return }
+            if self.options.enableCopy {
+                let rightAccessoryHeight = max(cardIconSize, copyIconSize)
+                copyContainerView.frame = CGRect(
+                    x: 0,
+                    y: (rightAccessoryHeight - copyIconSize) / 2,
+                    width: copyIconSize,
+                    height: copyIconSize
+                )
+                cardIconContainerView.frame = CGRect(
+                    x: copyIconSize + cardIconSpacing + rightIconTrailingInset,
+                    y: 0,
+                    width: cardIconSize,
+                    height: rightAccessoryHeight
+                )
+                cardIconImageView.center = CGPoint(
+                    x: cardIconContainerView.bounds.midX,
+                    y: cardIconContainerView.bounds.midY
+                )
+                rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
+                rightViewForIcons.addSubview(copyContainerView)
+                rightViewForIcons.addSubview(cardIconContainerView)
+                rightViewForIcons.frame = CGRect(
+                    x: 0,
+                    y: 0,
+                    width: copyIconSize + cardIconSpacing + cardIconSize + rightIconTrailingInset,
+                    height: rightAccessoryHeight
+                )
+                textField.rightView = rightViewForIcons
+            } else {
+                rightViewForIcons.frame = CGRect(
+                    x: 0,
+                    y: 0,
+                    width: cardIconSize + rightIconTrailingInset,
+                    height: max(cardIconSize, copyIconSize)
+                )
+                cardIconContainerView.frame = CGRect(
+                    x: rightIconTrailingInset,
+                    y: 0,
+                    width: cardIconSize,
+                    height: max(cardIconSize, copyIconSize)
+                )
+                cardIconImageView.center = CGPoint(
+                    x: cardIconContainerView.bounds.midX,
+                    y: cardIconContainerView.bounds.midY
+                )
+                rightViewForIcons.addSubview(cardIconContainerView)
+                textField.rightView = rightViewForIcons
+            }
+            textField.rightViewMode = .always
+        }
+    }
+
+    /// Detaches the card icon container from the text field when no config
+    /// flag is set and no brand icon needs to be visible (removes the gap).
+    private func detachCardIconIfNeeded() {
+        guard !self.options.enableCardIcon else { return }
+        if cardIconAlignment == .left && textField.leftView === cardIconContainerView {
+            textField.leftView = nil
+            textField.leftViewMode = .never
+            updateInputStyle()
+        } else if cardIconAlignment == .right {
+            cardIconContainerView.removeFromSuperview()
+            if self.options.enableCopy {
+                textField.rightView = copyContainerView
+            } else {
+                textField.rightView = nil
+                textField.rightViewMode = .never
+            }
+        }
+    }
+
+    /// Displays a static empty-state icon for the current field type.
+    /// Unlike `updateImage()` which dynamically tracks card network changes,
+    /// this sets a one-time static icon based on the field type.
+    internal func showStaticFieldIcon() {
+        guard self.options.enableCardIcon,
+              self.fieldType != .CARD_NUMBER,
+              let staticIcon = FieldStaticIcon.from(fieldType: self.fieldType) else {
+            return
+        }
+
+        guard let iconURL = staticIcon.iconURL else {
+            setStaticFallbackIcon(sfSymbolName: staticIcon.sfSymbolFallback)
+            return
+        }
+
+        // Show SF Symbol fallback immediately while CDN image loads
+        setStaticFallbackIcon(sfSymbolName: staticIcon.sfSymbolFallback)
+
+        // Check cache first
+        if let cachedImage = TextField.cardIconConfig.cache.object(forKey: iconURL as NSURL) {
+            setCardIconImage(cachedImage)
+            return
+        }
+
+        // Fetch from CDN
+        cardIconImageTask?.cancel()
+        cardIconImageTask = TextField.cardIconImageFetcher(iconURL) { [weak self] image in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                guard let image else {
+                    // CDN failed — keep the SF Symbol fallback
+                    return
+                }
+                TextField.cardIconConfig.cache.setObject(image, forKey: iconURL as NSURL)
+                self.setCardIconImage(image)
+            }
+        }
+    }
+
+    private func setStaticFallbackIcon(sfSymbolName: String) {
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: cardIconSize, weight: .regular)
+        cardIconImageView.image = UIImage(systemName: sfSymbolName, withConfiguration: symbolConfig)?
+            .withRenderingMode(.alwaysTemplate)
+        cardIconImageView.tintColor = .secondaryLabel
+        cardIconContainerView.alpha = 1.0
+    }
+
+    // MARK: - Clear Field Button
+
+    private static let clearFieldIconURL = URL(string: "\(PayrailsAssets.cardIconBaseURL)/clear-field-1x.png")!
+
+    private func setupClearFieldButton() {
+        clearFieldImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: cardIconSize))
+        clearFieldImageView.contentMode = .scaleAspectFit
+        clearFieldImageView.tintColor = .tertiaryLabel
+
+        // Set SF Symbol fallback immediately
+        setClearFieldFallbackIcon()
+
+        // Fetch CDN asset
+        if let cachedImage = TextField.cardIconConfig.cache.object(forKey: Self.clearFieldIconURL as NSURL) {
+            clearFieldImageView.image = cachedImage
+        } else {
+            _ = TextField.cardIconImageFetcher(Self.clearFieldIconURL) { [weak self] image in
+                guard let self, let image else { return }
+                TextField.cardIconConfig.cache.setObject(image, forKey: Self.clearFieldIconURL as NSURL)
+                DispatchQueue.main.async {
+                    self.clearFieldImageView.image = image
+                }
+            }
+        }
+
+        clearFieldContainerView = UIView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: max(cardIconSize, copyIconSize)))
+        clearFieldContainerView.addSubview(clearFieldImageView)
+        clearFieldImageView.center = CGPoint(x: clearFieldContainerView.bounds.midX,
+                                              y: clearFieldContainerView.bounds.midY)
+        clearFieldContainerView.isHidden = true
+
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(clearFieldTapped(_:)))
+        clearFieldContainerView.isUserInteractionEnabled = true
+        clearFieldContainerView.addGestureRecognizer(tapGesture)
+
+        clearFieldContainerView.isAccessibilityElement = true
+        clearFieldContainerView.accessibilityLabel = clearFieldAccessibilityLabel()
+        clearFieldContainerView.accessibilityTraits = .button
+    }
+
+    private func setClearFieldFallbackIcon() {
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: cardIconSize * 0.7, weight: .regular)
+        clearFieldImageView.image = UIImage(systemName: "xmark.circle.fill", withConfiguration: symbolConfig)?
+            .withRenderingMode(.alwaysTemplate)
+    }
+
+    @objc private func clearFieldTapped(_ sender: UITapGestureRecognizer) {
+        actualValue = ""
+        textField.secureText = ""
+        textFieldDidChange(self.textField)
+        textField.becomeFirstResponder()
+    }
+
+    private func clearFieldAccessibilityLabel() -> String {
+        switch self.fieldType {
+        case .CVV: return "Clear CVV"
+        case .CARDHOLDER_NAME: return "Clear cardholder name"
+        case .EXPIRATION_DATE: return "Clear expiration date"
+        case .EXPIRATION_MONTH: return "Clear expiration month"
+        case .EXPIRATION_YEAR: return "Clear expiration year"
+        default: return "Clear field"
+        }
+    }
+
+    internal func updateClearFieldVisibility() {
+        guard self.fieldType != .CARD_NUMBER else {
+            clearFieldContainerView.isHidden = true
+            isClearButtonVisible = false
+            return
+        }
+
+        let fieldHasContent = !actualValue.isEmpty
+
+        if fieldHasContent {
+            showClearButton()
+        } else {
+            hideClearButton()
+        }
+    }
+
+    private func showClearButton() {
+        guard !isClearButtonVisible else { return }
+        isClearButtonVisible = true
+
+        // Hide the static icon
+        cardIconContainerView.isHidden = true
+
+        // Show clear button
+        clearFieldContainerView.isHidden = false
+
+        if cardIconAlignment == .left {
+            textField.leftView = clearFieldContainerView
+            textField.leftViewMode = .always
+            updateInputStyle()
+        } else {
+            // Right alignment: place clear button in rightViewForIcons
+            rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
+            clearFieldContainerView.frame = CGRect(
+                x: rightIconTrailingInset,
+                y: 0,
+                width: cardIconSize,
+                height: max(cardIconSize, copyIconSize)
+            )
+            rightViewForIcons.addSubview(clearFieldContainerView)
+            rightViewForIcons.frame = CGRect(
+                x: 0,
+                y: 0,
+                width: cardIconSize + rightIconTrailingInset,
+                height: max(cardIconSize, copyIconSize)
+            )
+            textField.rightView = rightViewForIcons
+            textField.rightViewMode = .always
+        }
+    }
+
+    private func hideClearButton() {
+        guard isClearButtonVisible else { return }
+        isClearButtonVisible = false
+
+        clearFieldContainerView.isHidden = true
+
+        if self.options.enableCardIcon {
+            // Restore static icon
+            cardIconContainerView.isHidden = false
+            if cardIconAlignment == .left {
+                textField.leftView = cardIconContainerView
+                textField.leftViewMode = .always
+            } else {
+                rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
+                cardIconContainerView.frame = CGRect(
+                    x: rightIconTrailingInset,
+                    y: 0,
+                    width: cardIconSize,
+                    height: max(cardIconSize, copyIconSize)
+                )
+                cardIconImageView.center = CGPoint(
+                    x: cardIconContainerView.bounds.midX,
+                    y: cardIconContainerView.bounds.midY
+                )
+                rightViewForIcons.addSubview(cardIconContainerView)
+                rightViewForIcons.frame = CGRect(
+                    x: 0,
+                    y: 0,
+                    width: cardIconSize + rightIconTrailingInset,
+                    height: max(cardIconSize, copyIconSize)
+                )
+                textField.rightView = rightViewForIcons
+                textField.rightViewMode = .always
+            }
+        } else {
+            // No static icon — remove icon slot entirely
+            if cardIconAlignment == .left {
+                textField.leftView = nil
+                textField.leftViewMode = .never
+                updateInputStyle()
+            } else {
+                rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
+                textField.rightView = nil
+                textField.rightViewMode = .never
+            }
+        }
     }
 
     internal static func resetCardIconTestingState() {
@@ -872,7 +1206,7 @@ extension TextField {
 
         self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? self.tintColor
         var p = style?.padding ?? fallbackStyle?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        if self.fieldType == .CARD_NUMBER, self.options.enableCardIcon, cardIconAlignment == .left {
+        if (self.options.enableCardIcon || isClearButtonVisible || textField.leftView === cardIconContainerView) && cardIconAlignment == .left {
             p.left = cardIconSize + 12
         }
 
@@ -945,9 +1279,10 @@ extension TextField {
         } else if self.options.enableCopy {
             self.textField.rightViewMode = .always
             copyContainerView.isHidden = true
-
         }
 
+        // Toggle clear button visibility based on field content
+        updateClearFieldVisibility()
     }
 
     func updateActualValue() {

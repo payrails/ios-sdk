@@ -330,12 +330,20 @@ The current implementation exposes styling, fonts, colors, and text labels, with
 ### Card Form Customization
 
 The SDK supports advanced card form customization, including:
-- Show/hide card brand icon (`showCardIcon`)
+- Show/hide static empty-state field icons (`showCardIcon`)
 - Card icon alignment (`cardIconAlignment`)
 - Show/hide required asterisk (`showRequiredAsterisk`)
 - Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
 - Card payment button customization via `createCardPaymentButton` (`CardButtonStyle`, including `height`)
 - Configurable field arrangement and ordering via `CardLayoutConfig`
+
+Card icon and clear button behavior on iOS:
+- `showCardIcon: true`: shows static empty-state icons for supported fields
+- `showCardIcon: false`: hides static empty-state icons
+- Card-number network detection remains enabled (brand icon updates based on PAN)
+- Clear button (`x`) is always available on iOS for non-card-number fields when they contain input
+- Card number does not show the clear button, so network icon behavior remains visible
+- The same clear-button behavior applies to both combined expiry (`EXPIRATION_DATE`) and split expiry (`EXPIRATION_MONTH` + `EXPIRATION_YEAR`) layouts
 
 #### Example Usage
 

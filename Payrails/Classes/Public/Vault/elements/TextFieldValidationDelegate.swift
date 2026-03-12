@@ -62,6 +62,9 @@ internal class TextFieldValidationDelegate: NSObject, UITextFieldDelegate {
              if text.count <= 2 {
                  collectField.onChangeHandler?((collectField.state as! StateforText).getStateForListener())
              }
+             // EXPIRATION_MONTH uses a custom path and bypasses textFieldDidChange,
+             // so clear button visibility must be refreshed explicitly.
+             collectField.updateClearFieldVisibility()
              return false
         }
         func customFormat() -> Bool {

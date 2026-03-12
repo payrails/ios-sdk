@@ -11,6 +11,10 @@
 
 import Foundation
 
+internal enum PayrailsAssets {
+    static let cardIconBaseURL = "https://assets.payrails.io/img/logos/card"
+}
+
 internal class CreditCard {
     var defaultName: String
     var regex: String
@@ -156,7 +160,7 @@ internal enum CardNetwork: Equatable {
     case UNIONPAY
     case UNKNOWN
 
-    private static let baseIconURL = "https://assets.payrails.io/img/logos/card"
+    private static let baseIconURL = PayrailsAssets.cardIconBaseURL
     private static let genericCardIconURL = "\(baseIconURL)/ic-card.png"
 
     private struct NetworkConfig {
@@ -303,5 +307,50 @@ internal enum CardNetwork: Equatable {
 
     private static func matches(_ value: String, regex: String) -> Bool {
         value.range(of: regex, options: .regularExpression) != nil
+    }
+}
+
+internal enum FieldStaticIcon {
+    case cardNumber
+    case cvv
+    case expiryDate
+
+    private static let baseIconURL = PayrailsAssets.cardIconBaseURL
+
+    static func from(fieldType: ElementType) -> FieldStaticIcon? {
+        switch fieldType {
+        case .CARD_NUMBER:
+            return .cardNumber
+        case .CVV:
+            return .cvv
+        case .EXPIRATION_DATE, .EXPIRATION_MONTH, .EXPIRATION_YEAR:
+            return .expiryDate
+        default:
+            return nil
+        }
+    }
+
+    var iconURL: URL? {
+        let fileName: String
+        switch self {
+        case .cardNumber:
+            fileName = "ic-card.png"
+        case .cvv:
+            fileName = "ic-cvv.png"
+        case .expiryDate:
+            fileName = "ic-expiration.png"
+        }
+        return URL(string: "\(Self.baseIconURL)/\(fileName)")
+    }
+
+    var sfSymbolFallback: String {
+        switch self {
+        case .cardNumber:
+            return "creditcard"
+        case .cvv:
+            return "lock.shield"
+        case .expiryDate:
+            return "calendar"
+        }
     }
 }
