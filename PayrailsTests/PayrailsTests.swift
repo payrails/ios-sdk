@@ -438,6 +438,12 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(hasHeightConstraint(for: rowLabel, in: composableView, relation: .equal, constant: 18))
         XCTAssertTrue(hasHeightConstraint(for: rowLabel, in: composableView, relation: .greaterThanOrEqual, constant: 14))
         XCTAssertTrue(hasHeightConstraint(for: rowLabel, in: composableView, relation: .lessThanOrEqual, constant: 24))
+        XCTAssertEqual(
+            rowLabel.contentCompressionResistancePriority(for: .vertical).rawValue,
+            UILayoutPriority.defaultHigh.rawValue,
+            accuracy: 0.001,
+            "Expected lowered vertical compression resistance when capped error height is configured"
+        )
     }
 
     func testComposableContainerSignalsLayoutInvalidationWhenErrorLabelChanges() throws {
@@ -467,6 +473,49 @@ final class PayrailsTests: XCTestCase {
         element.onEndEditing?()
 
         XCTAssertGreaterThan(invalidationCount, 0, "Expected a layout invalidation signal after row error update")
+    }
+
+    func testComposableContainerBeginEditingInvalidatesLayoutOnlyWhenRowErrorTextChanges() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            label: "Card number",
+            placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        let element = container.create(input: input, options: CollectElementOptions(required: true))
+        var invalidationCount = 0
+        container.onLayoutInvalidationRequested = {
+            invalidationCount += 1
+        }
+
+        _ = try container.getComposableView()
+
+        element.onBeginEditing?()
+        XCTAssertEqual(
+            invalidationCount,
+            0,
+            "Typing with unchanged row error text should not trigger layout invalidation"
+        )
+
+        element.errorMessage.text = "Invalid card number"
+        element.onEndEditing?()
+        invalidationCount = 0
+
+        element.onBeginEditing?()
+        XCTAssertEqual(
+            invalidationCount,
+            1,
+            "Clearing a visible row error should trigger a single layout invalidation"
+        )
     }
 
     func testCardFormResolveComposableHorizontalInsetsUsesNilForDefaultWrapperPadding() {

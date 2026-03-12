@@ -77,13 +77,14 @@ public extension Container {
 
     internal func configureErrorLabel(_ label: UILabel) {
         let baseStyle = containerOptions?.errorTextStyles?.base
+        let hasExplicitVerticalCap = baseStyle?.height != nil || baseStyle?.maxHeight != nil
         label.translatesAutoresizingMaskIntoConstraints = false
         label.textColor = baseStyle?.textColor ?? .none
         label.font = baseStyle?.font ?? .none
         label.textAlignment = baseStyle?.textAlignment ?? .left
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
-        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentCompressionResistancePriority(hasExplicitVerticalCap ? .defaultHigh : .required, for: .vertical)
         label.setContentHuggingPriority(.required, for: .vertical)
 
         if let height = baseStyle?.height {
@@ -112,6 +113,11 @@ public extension Container {
         let layoutArray = layout
         let requestLayoutInvalidation = {
             self.onLayoutInvalidationRequested?()
+        }
+        let updateRowErrorLabels = {
+            let previousTexts = labelArray.map { $0.text ?? "" }
+            labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
+            return previousTexts != labelArray.map { $0.text ?? "" }
         }
 
         for i in layoutArray.indices {
@@ -159,7 +165,7 @@ public extension Container {
                 for element in elements {
                     element.onFocusIsTrue = {
                         errorList[element.elements.count] = ""
-                        labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
+                        _ = updateRowErrorLabels()
                         labelArray[i].textColor = self.containerOptions?.errorTextStyles?.focus?.textColor ?? self.containerOptions?.errorTextStyles?.base?.textColor ?? .none
                         labelArray[i].font = self.containerOptions?.errorTextStyles?.focus?.font ?? self.containerOptions?.errorTextStyles?.base?.font ?? .none
                         labelArray[i].textAlignment = self.containerOptions?.errorTextStyles?.focus?.textAlignment ?? self.containerOptions?.errorTextStyles?.base?.textAlignment ?? .left
@@ -172,13 +178,15 @@ public extension Container {
                         } else {
                             errorList[element.elements.count] = element.errorMessage.text! + ". "
                         }
-                        labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
-                        requestLayoutInvalidation()
+                        if updateRowErrorLabels() {
+                            requestLayoutInvalidation()
+                        }
                     }
                     element.onBeginEditing = {
                         errorList[element.elements.count] = ""
-                        labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
-                        requestLayoutInvalidation()
+                        if updateRowErrorLabels() {
+                            requestLayoutInvalidation()
+                        }
 
                         let elementState = element.state.getState()
                         let shouldAutoShiftFocus = shouldAutoShiftFocus(
