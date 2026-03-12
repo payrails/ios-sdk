@@ -313,7 +313,6 @@ internal enum CardNetwork: Equatable {
 internal enum FieldStaticIcon {
     case cardNumber
     case cvv
-    case cardholder
     case expiryDate
 
     private static let baseIconURL = PayrailsAssets.cardIconBaseURL
@@ -324,8 +323,6 @@ internal enum FieldStaticIcon {
             return .cardNumber
         case .CVV:
             return .cvv
-        case .CARDHOLDER_NAME:
-            return .cardholder
         case .EXPIRATION_DATE, .EXPIRATION_MONTH, .EXPIRATION_YEAR:
             return .expiryDate
         default:
@@ -340,8 +337,6 @@ internal enum FieldStaticIcon {
             fileName = "ic-card.png"
         case .cvv:
             fileName = "ic-cvv.png"
-        case .cardholder:
-            fileName = "ic-cardholder.png"
         case .expiryDate:
             fileName = "ic-expiration.png"
         }
@@ -354,8 +349,6 @@ internal enum FieldStaticIcon {
             return "creditcard"
         case .cvv:
             return "lock.shield"
-        case .cardholder:
-            return "person"
         case .expiryDate:
             return "calendar"
         }
