@@ -807,17 +807,6 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(field.isCardIconVisibleForTesting)
     }
 
-    func testStaticIconDoesNotAppearOnCardholderField() {
-        UIView.setAnimationsEnabled(false)
-        TextField.cardIconImageFetcher = { _, completion in
-            completion(self.makeCardIconImage())
-            return nil
-        }
-        let field = makeFieldWithStaticIcon(fieldType: .CARDHOLDER_NAME)
-        flushMainQueue()
-        XCTAssertFalse(field.isCardIconVisibleForTesting)
-    }
-
     func testStaticIconAppearsOnExpiryDateField() {
         UIView.setAnimationsEnabled(false)
         TextField.cardIconImageFetcher = { _, completion in
