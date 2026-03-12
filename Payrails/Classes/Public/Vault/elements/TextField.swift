@@ -824,6 +824,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal func showStaticFieldIcon() {
         guard self.options.enableCardIcon,
               self.fieldType != .CARD_NUMBER,
+              self.fieldType != .CARDHOLDER_NAME,
               let staticIcon = FieldStaticIcon.from(fieldType: self.fieldType) else {
             return
         }
