@@ -42,6 +42,21 @@ final class PayrailsTests: XCTestCase {
         }?.constant
     }
 
+    private func hasHeightConstraint(
+        for view: UIView,
+        in containerView: UIView,
+        relation: NSLayoutConstraint.Relation,
+        constant: CGFloat
+    ) -> Bool {
+        let allConstraints = view.constraints + containerView.constraints
+        return allConstraints.contains { constraint in
+            guard constraint.firstAttribute == .height else { return false }
+            guard constraint.relation == relation else { return false }
+            guard (constraint.firstItem as? UIView) === view else { return false }
+            return abs(constraint.constant - constant) < 0.001
+        }
+    }
+
     func testInitDataPublicInitializer() {
         let payload = "dummy-init-data-payload"
 
@@ -390,6 +405,117 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(fieldLeading ?? .nan, 6, accuracy: 0.001)
         XCTAssertEqual(labelLeading ?? .nan, 6, accuracy: 0.001)
         XCTAssertEqual(labelTrailing ?? .nan, -6, accuracy: 0.001)
+    }
+
+    func testComposableContainerErrorLabelAppliesConfiguredHeightConstraints() throws {
+        let client = Client()
+        let errorStyle = Style(minHeight: 14, maxHeight: 24, height: 18)
+        let options = ContainerOptions(
+            layout: [1],
+            errorTextStyles: Styles(base: errorStyle)
+        )
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            label: "Card number",
+            placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        _ = container.create(input: input, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard let rowLabel = composableView.subviews.first(where: { $0 is UILabel }) else {
+            XCTFail("Expected row error label")
+            return
+        }
+
+        XCTAssertTrue(hasHeightConstraint(for: rowLabel, in: composableView, relation: .equal, constant: 18))
+        XCTAssertTrue(hasHeightConstraint(for: rowLabel, in: composableView, relation: .greaterThanOrEqual, constant: 14))
+        XCTAssertTrue(hasHeightConstraint(for: rowLabel, in: composableView, relation: .lessThanOrEqual, constant: 24))
+        XCTAssertEqual(
+            rowLabel.contentCompressionResistancePriority(for: .vertical).rawValue,
+            UILayoutPriority.defaultHigh.rawValue,
+            accuracy: 0.001,
+            "Expected lowered vertical compression resistance when capped error height is configured"
+        )
+    }
+
+    func testComposableContainerSignalsLayoutInvalidationWhenErrorLabelChanges() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            label: "Card number",
+            placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        let element = container.create(input: input, options: CollectElementOptions(required: true))
+        var invalidationCount = 0
+        container.onLayoutInvalidationRequested = {
+            invalidationCount += 1
+        }
+
+        _ = try container.getComposableView()
+        element.errorMessage.text = "Invalid card number"
+        element.onEndEditing?()
+
+        XCTAssertGreaterThan(invalidationCount, 0, "Expected a layout invalidation signal after row error update")
+    }
+
+    func testComposableContainerBeginEditingInvalidatesLayoutOnlyWhenRowErrorTextChanges() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            label: "Card number",
+            placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        let element = container.create(input: input, options: CollectElementOptions(required: true))
+        var invalidationCount = 0
+        container.onLayoutInvalidationRequested = {
+            invalidationCount += 1
+        }
+
+        _ = try container.getComposableView()
+
+        element.onBeginEditing?()
+        XCTAssertEqual(
+            invalidationCount,
+            0,
+            "Typing with unchanged row error text should not trigger layout invalidation"
+        )
+
+        element.errorMessage.text = "Invalid card number"
+        element.onEndEditing?()
+        invalidationCount = 0
+
+        element.onBeginEditing?()
+        XCTAssertEqual(
+            invalidationCount,
+            1,
+            "Clearing a visible row error should trigger a single layout invalidation"
+        )
     }
 
     func testCardFormResolveComposableHorizontalInsetsUsesNilForDefaultWrapperPadding() {

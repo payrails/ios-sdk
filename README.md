@@ -346,6 +346,11 @@ Card icon and clear button behavior on iOS:
 - Card number does not show the clear button, so network icon behavior remains visible
 - The same clear-button behavior applies to both combined expiry (`EXPIRATION_DATE`) and split expiry (`EXPIRATION_MONTH` + `EXPIRATION_YEAR`) layouts
 
+Error text behavior in composable card forms:
+- Error labels support multiline wrapping by default.
+- `errorTextStyle.height`, `errorTextStyle.minHeight`, and `errorTextStyle.maxHeight` are applied to row error labels.
+- The form requests a layout refresh when row error text changes so wrapped errors can expand the form height.
+
 #### Field variant
 
 The `fieldVariant` property controls the border rendering style on each input field:

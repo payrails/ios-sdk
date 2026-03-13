@@ -74,6 +74,30 @@ public extension Container {
 
         return concatenatedString
     }
+
+    internal func configureErrorLabel(_ label: UILabel) {
+        let baseStyle = containerOptions?.errorTextStyles?.base
+        let hasExplicitVerticalCap = baseStyle?.height != nil || baseStyle?.maxHeight != nil
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.textColor = baseStyle?.textColor ?? .none
+        label.font = baseStyle?.font ?? .none
+        label.textAlignment = baseStyle?.textAlignment ?? .left
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(hasExplicitVerticalCap ? .defaultHigh : .required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
+
+        if let height = baseStyle?.height {
+            label.heightAnchor.constraint(equalToConstant: height).isActive = true
+        }
+        if let minHeight = baseStyle?.minHeight {
+            label.heightAnchor.constraint(greaterThanOrEqualToConstant: minHeight).isActive = true
+        }
+        if let maxHeight = baseStyle?.maxHeight {
+            label.heightAnchor.constraint(lessThanOrEqualToConstant: maxHeight).isActive = true
+        }
+    }
+
    internal func createDynamicViews(layout: [Int]) -> UIView {
         var errorList  = Array(repeating: "", count: elements.count)
         let parentView = UIView()
@@ -87,6 +111,14 @@ public extension Container {
         let rowWiseError = createRows(from: layout, numberOfRows: layout.count)
         var elementCount = 0
         let layoutArray = layout
+        let requestLayoutInvalidation = {
+            self.onLayoutInvalidationRequested?()
+        }
+        let updateRowErrorLabels = {
+            let previousTexts = labelArray.map { $0.text ?? "" }
+            labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
+            return previousTexts != labelArray.map { $0.text ?? "" }
+        }
 
         for i in layoutArray.indices {
             let childView = UIView()
@@ -94,10 +126,7 @@ public extension Container {
             parentView.addSubview(childView)
             parentView.addSubview(labelArray[i])
 
-            labelArray[i].translatesAutoresizingMaskIntoConstraints = false
-            labelArray[i].textColor = containerOptions?.errorTextStyles?.base?.textColor ?? .none
-            labelArray[i].font = containerOptions?.errorTextStyles?.base?.font ?? .none
-            labelArray[i].textAlignment = containerOptions?.errorTextStyles?.base?.textAlignment ?? .left
+            configureErrorLabel(labelArray[i])
             childView.translatesAutoresizingMaskIntoConstraints = false
 
             for j in 0..<layoutArray[i] {
@@ -136,10 +165,11 @@ public extension Container {
                 for element in elements {
                     element.onFocusIsTrue = {
                         errorList[element.elements.count] = ""
-                        labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
+                        _ = updateRowErrorLabels()
                         labelArray[i].textColor = self.containerOptions?.errorTextStyles?.focus?.textColor ?? self.containerOptions?.errorTextStyles?.base?.textColor ?? .none
                         labelArray[i].font = self.containerOptions?.errorTextStyles?.focus?.font ?? self.containerOptions?.errorTextStyles?.base?.font ?? .none
                         labelArray[i].textAlignment = self.containerOptions?.errorTextStyles?.focus?.textAlignment ?? self.containerOptions?.errorTextStyles?.base?.textAlignment ?? .left
+                        requestLayoutInvalidation()
                    }
 
                     element.onEndEditing = {
@@ -148,11 +178,15 @@ public extension Container {
                         } else {
                             errorList[element.elements.count] = element.errorMessage.text! + ". "
                         }
-                        labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
+                        if updateRowErrorLabels() {
+                            requestLayoutInvalidation()
+                        }
                     }
                     element.onBeginEditing = {
                         errorList[element.elements.count] = ""
-                        labelArray = self.updateErrorMessageInLabel(errorList: errorList, layout: layout, labelArray: labelArray, result: rowWiseError)
+                        if updateRowErrorLabels() {
+                            requestLayoutInvalidation()
+                        }
 
                         let elementState = element.state.getState()
                         let shouldAutoShiftFocus = shouldAutoShiftFocus(

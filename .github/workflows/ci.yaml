@@ -64,6 +64,12 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Install xcbeautify
+        run: |
+          if ! command -v xcbeautify >/dev/null 2>&1; then
+            brew install xcbeautify
+          fi
+
       - name: Cache SPM dependencies
         uses: actions/cache@v4
         with:
