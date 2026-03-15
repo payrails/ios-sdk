@@ -206,6 +206,31 @@ Notes:
 - SDK default colors semantic iOS colors and adapt to light/dark mode.
 - Merchant-provided style colors always take precedence over SDK defaults.
 
+### Tokenizing a Card (Save Without Payment)
+
+Use `cardForm.tokenize()` to encrypt card data and register it in the vault as a stored instrument without processing a payment:
+
+```swift
+let cardForm = Payrails.createCardForm()
+
+do {
+    let response = try await cardForm.tokenize(options: TokenizeOptions(
+        storeInstrument: true,
+        futureUsage: .cardOnFile // .subscription or .unscheduledCardOnFile
+    ))
+    print("Instrument saved: \(response.id)")
+    print("Card ending in: \(response.data.suffix ?? "")")
+} catch {
+    print("Tokenization failed: \(error)")
+}
+```
+
+The returned `SaveInstrumentResponse` contains instrument metadata (ID, BIN, suffix, network, expiry, fingerprint).
+
+`TokenizeOptions` defaults:
+- `storeInstrument`: `false`
+- `futureUsage`: `.cardOnFile`
+
 ## Apple Pay
 
 ```swift
@@ -289,6 +314,44 @@ let instrumentView = Payrails.createStoredInstrumentView(
 
 instrumentView.delegate = self
 instrumentView.setPresenter(self)
+```
+
+### Binding stored instruments to a payment button
+
+You can dynamically switch a `CardPaymentButton` between card form mode and stored instrument mode at runtime. This lets users pick a saved card from a list and pay with one tap.
+
+**Auto-binding via StoredInstruments list:**
+
+```swift
+let storedInstrumentsView = Payrails.createStoredInstruments(showPayButton: false)
+let payButton = Payrails.createCardPaymentButton(translations: buttonTranslations)
+
+// Wire the list to the button — selecting an instrument switches the button automatically
+storedInstrumentsView.bindCardPaymentButton(payButton)
+```
+
+**Manual binding:**
+
+```swift
+// Switch to stored instrument mode
+payButton.setStoredInstrument(instrument)
+
+// Revert to card form mode
+payButton.clearStoredInstrument()
+```
+
+**Listening for changes:**
+
+Implement the optional delegate method to react when the instrument changes:
+
+```swift
+func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {
+    if let instrument = instrument {
+        print("Paying with: \(instrument.description ?? instrument.id)")
+    } else {
+        print("Switched to card form mode")
+    }
+}
 ```
 
 ### Managing stored instruments
