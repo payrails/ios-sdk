@@ -1690,9 +1690,10 @@ final class PayrailsTests: XCTestCase {
             "fingerprint": "fp-abc",
             "futureUsage": "CardOnFile"
         }
-        """.data(using: .utf8)!
+        """
+        let jsonData = Data(json.utf8)
 
-        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: json)
+        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
 
         XCTAssertEqual(response.id, "instr-resp-1")
         XCTAssertEqual(response.holderId, "holder-1")
@@ -1717,9 +1718,10 @@ final class PayrailsTests: XCTestCase {
             "status": "disabled",
             "data": {}
         }
-        """.data(using: .utf8)!
+        """
+        let jsonData = Data(json.utf8)
 
-        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: json)
+        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
 
         XCTAssertEqual(response.id, "instr-resp-2")
         XCTAssertEqual(response.status, "disabled")
@@ -1755,9 +1757,10 @@ final class PayrailsTests: XCTestCase {
                 }
             }
         }
-        """.data(using: .utf8)!
+        """
+        let jsonData = Data(json.utf8)
 
-        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: json)
+        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
 
         XCTAssertNotNil(response.data.binLookup)
         XCTAssertEqual(response.data.binLookup?.bin, "411111")
@@ -1779,9 +1782,10 @@ final class PayrailsTests: XCTestCase {
             "status": "enabled",
             "data": {}
         }
-        """.data(using: .utf8)!
+        """
+        let jsonData = Data(json.utf8)
 
-        let saveResponse = try! JSONDecoder().decode(SaveInstrumentResponse.self, from: json)
+        let saveResponse = try! JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
         let apiResponse = InstrumentAPIResponse.save(saveResponse)
 
         switch apiResponse {
@@ -1825,9 +1829,10 @@ final class PayrailsTests: XCTestCase {
                 "expiryYear": "2028"
             }
         }
-        """.data(using: .utf8)!
+        """
+        let jsonData = Data(json.utf8)
 
-        let response = try JSONDecoder().decode(UpdateInstrumentResponse.self, from: json)
+        let response = try JSONDecoder().decode(UpdateInstrumentResponse.self, from: jsonData)
 
         XCTAssertEqual(response.id, "upd-instr-1")
         XCTAssertEqual(response.holderId, "holder-upd-1")
@@ -1841,9 +1846,10 @@ final class PayrailsTests: XCTestCase {
     func testDeleteInstrumentResponseDecoding() throws {
         let json = """
         {"success": true}
-        """.data(using: .utf8)!
+        """
+        let jsonData = Data(json.utf8)
 
-        let response = try JSONDecoder().decode(DeleteInstrumentResponse.self, from: json)
+        let response = try JSONDecoder().decode(DeleteInstrumentResponse.self, from: jsonData)
         XCTAssertTrue(response.success)
     }
 
