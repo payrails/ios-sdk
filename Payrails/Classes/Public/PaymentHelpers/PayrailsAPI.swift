@@ -184,6 +184,28 @@ class PayrailsAPI {
         )
     }
 
+    func saveInstrument(body: SaveInstrumentBody) async throws -> SaveInstrumentResponse {
+        guard let saveInstrumentLink = config.vaultConfiguration?.links?.saveInstrument,
+            let href = saveInstrumentLink.href,
+            !href.isEmpty else {
+            throw PayrailsError.missingData("saveInstrument link is missing from vault configuration")
+        }
+
+        guard let url = URL(string: href) else {
+            throw PayrailsError.missingData("Invalid saveInstrument URL: \(href)")
+        }
+
+        let method = Method(rawValue: saveInstrumentLink.method ?? "POST") ?? .POST
+        let jsonData = try JSONEncoder().encode(body)
+
+        return try await call(
+            url: url,
+            method: method,
+            body: jsonData,
+            type: SaveInstrumentResponse.self
+        )
+    }
+
     func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
         guard let instrumentUpdateLink = config.links?.instrumentUpdate,
             let href = instrumentUpdateLink.href,

@@ -482,4 +482,27 @@ public extension Payrails.Session {
     func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
         return try await payrailsAPI.updateInstrument(instrumentId: instrumentId, body: body)
     }
+
+    func tokenize(encryptedData: String, options: TokenizeOptions) async throws -> SaveInstrumentResponse {
+        guard let providerConfigId = config?.vaultConfiguration?.providerConfigId else {
+            throw PayrailsError.missingData("Vault configuration with providerConfigId is required for tokenization.")
+        }
+
+        guard let holderReference = config?.holderReference else {
+            throw PayrailsError.missingData("holderReference is required for tokenization.")
+        }
+
+        let body = SaveInstrumentBody(
+            holderReference: holderReference,
+            paymentMethod: "card",
+            storeInstrument: options.storeInstrument,
+            futureUsage: options.futureUsage.rawValue,
+            data: SaveInstrumentBodyData(
+                encryptedData: encryptedData,
+                vaultProviderConfigId: providerConfigId
+            )
+        )
+
+        return try await payrailsAPI.saveInstrument(body: body)
+    }
 }

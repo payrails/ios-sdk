@@ -125,6 +125,7 @@ public extension Payrails {
         private var instrumentViews: [Payrails.StoredInstrumentView] = []
         private var selectedInstrumentId: String?
         private let stackView: UIStackView
+        private weak var boundCardPaymentButton: Payrails.CardPaymentButton?
 
         public weak var delegate: PayrailsStoredInstrumentsDelegate?
         public weak var presenter: PaymentPresenter?
@@ -229,6 +230,20 @@ public extension Payrails {
             // Reload instruments
             loadStoredInstruments()
         }
+
+        /// Binds a CardPaymentButton to this instrument list.
+        /// When a user selects an instrument, the button automatically switches to that instrument.
+        /// When deselected, the button reverts to card form mode.
+        public func bindCardPaymentButton(_ button: Payrails.CardPaymentButton?) {
+            self.boundCardPaymentButton = button
+
+            if let selectedId = selectedInstrumentId,
+               let view = instrumentViews.first(where: { $0.getInstrument().id == selectedId }) {
+                button?.setStoredInstrument(view.getInstrument())
+            } else {
+                button?.clearStoredInstrument()
+            }
+        }
     }
 }
 
@@ -243,12 +258,13 @@ extension Payrails.StoredInstruments: PayrailsStoredInstrumentViewDelegate {
         }
 
         selectedInstrumentId = instrument.id
+        boundCardPaymentButton?.setStoredInstrument(instrument)
         delegate?.storedInstruments(self, didSelectInstrument: instrument)
     }
 
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didDeselectInstrument instrument: StoredInstrument) {
         selectedInstrumentId = nil
-        // Note: We don't forward deselection to the main delegate as it only has selection callback
+        boundCardPaymentButton?.clearStoredInstrument()
     }
 
     public func storedInstrumentView(_ view: Payrails.StoredInstrumentView, didCompletePaymentForInstrument instrument: StoredInstrument) {

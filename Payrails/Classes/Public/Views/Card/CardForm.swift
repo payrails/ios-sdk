@@ -33,6 +33,7 @@ public extension Payrails {
         private let holderReference: String
         public var cardContainer: CardCollectContainer?
         private var payrailsCSE: PayrailsCSE?
+        private weak var session: Payrails.Session?
 
         // Save instrument properties
         public var saveInstrument: Bool = false {
@@ -48,7 +49,8 @@ public extension Payrails {
             tableName: String,
             cseConfig: (data: String, version: String),
             holderReference: String,
-            cseInstance: PayrailsCSE
+            cseInstance: PayrailsCSE,
+            session: Payrails.Session? = nil
         ) {
             self.containerClient = Client()
             self.config = config
@@ -56,6 +58,7 @@ public extension Payrails {
             self.tableName = tableName
             self.holderReference = holderReference
             self.payrailsCSE = cseInstance
+            self.session = session
 
             super.init(frame: .zero)
 
@@ -418,6 +421,76 @@ public extension Payrails {
             }
 
             cardContainer?.collect(with: callback)
+        }
+
+        /// Encrypts card data by collecting form fields and encrypting via PayrailsCSE.
+        /// This is the async equivalent of the callback-based `collectFields()` flow.
+        private func encryptCardData() async throws -> String {
+            guard let container = self.container else {
+                throw PayrailsError.missingData("Card form container is not available")
+            }
+
+            let fields: [String: Any] = try await withCheckedThrowingContinuation { continuation in
+                let callback = CardCollectCallback()
+
+                callback.onSuccess = { responseBody in
+                    guard
+                        let response = responseBody as? [String: Any],
+                        let records = response["records"] as? [[String: Any]],
+                        let firstRecord = records.first,
+                        let fields = firstRecord["fields"] as? [String: Any]
+                    else {
+                        continuation.resume(throwing: PayrailsError.invalidDataFormat)
+                        return
+                    }
+                    continuation.resume(returning: fields)
+                }
+
+                callback.onFailure = { _ in
+                    continuation.resume(throwing: PayrailsError.invalidCardData)
+                }
+
+                self.cardContainer?.collect(with: callback)
+            }
+
+            guard
+                let cardNumber = fields["card_number"] as? String,
+                let securityCode = fields["security_code"] as? String
+            else {
+                throw PayrailsError.invalidCardData
+            }
+
+            guard let expiry = self.resolveExpiry(from: fields) else {
+                throw PayrailsError.invalidCardData
+            }
+
+            let payrailsCard = Card(
+                holderReference: self.holderReference,
+                cardNumber: cardNumber,
+                expiryMonth: expiry.month,
+                expiryYear: expiry.year,
+                holderName: fields["cardholder_name"] as? String,
+                securityCode: securityCode
+            )
+
+            guard let payrailsCSE = self.payrailsCSE else {
+                throw PayrailsError.missingData("CSE instance")
+            }
+
+            return try payrailsCSE.encryptCardData(card: payrailsCard)
+        }
+
+        /// Tokenizes the card form data — encrypts card details and registers the instrument
+        /// in the vault without processing a payment.
+        ///
+        /// This matches the web SDK's `cardForm.tokenize()` and Android SDK's `cardForm.tokenize()`.
+        public func tokenize(options: TokenizeOptions = TokenizeOptions()) async throws -> SaveInstrumentResponse {
+            guard let session = self.session else {
+                throw PayrailsError.missingData("Session is required for tokenization.")
+            }
+
+            let encryptedData = try await encryptCardData()
+            return try await session.tokenize(encryptedData: encryptedData, options: options)
         }
 
         private func notifyCollectionFailure(_ error: Error) {
