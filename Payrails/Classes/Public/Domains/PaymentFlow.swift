@@ -90,4 +90,74 @@ public struct UpdateInstrumentResponse: Decodable {
 public enum InstrumentAPIResponse {
     case delete(DeleteInstrumentResponse)
     case update(UpdateInstrumentResponse)
+    case save(SaveInstrumentResponse)
+}
+
+// MARK: - Tokenize / Save Instrument
+
+public enum FutureUsage: String, Encodable {
+    case cardOnFile = "CardOnFile"
+    case subscription = "Subscription"
+    case unscheduledCardOnFile = "UnscheduledCardOnFile"
+}
+
+public struct TokenizeOptions {
+    public let storeInstrument: Bool
+    public let futureUsage: FutureUsage
+
+    public init(
+        storeInstrument: Bool = false,
+        futureUsage: FutureUsage = .cardOnFile
+    ) {
+        self.storeInstrument = storeInstrument
+        self.futureUsage = futureUsage
+    }
+}
+
+struct SaveInstrumentBody: Encodable {
+    let holderReference: String
+    let paymentMethod: String
+    let storeInstrument: Bool
+    let futureUsage: String
+    let data: SaveInstrumentBodyData
+}
+
+struct SaveInstrumentBodyData: Encodable {
+    let encryptedData: String
+    let vaultProviderConfigId: String
+}
+
+public struct SaveInstrumentResponse: Decodable {
+    public let id: String
+    public let createdAt: String
+    public let holderId: String
+    public let paymentMethod: String
+    public let status: String
+    public let data: InstrumentData
+    public let fingerprint: String?
+    public let futureUsage: String?
+
+    public struct InstrumentData: Decodable {
+        public let bin: String?
+        public let binLookup: BinLookup?
+        public let holderName: String?
+        public let network: String?
+        public let suffix: String?
+        public let expiryMonth: String?
+        public let expiryYear: String?
+
+        public struct BinLookup: Decodable {
+            public let bin: String?
+            public let network: String?
+            public let issuer: String?
+            public let issuerCountry: IssuerCountry?
+            public let type: String?
+
+            public struct IssuerCountry: Decodable {
+                public let code: String?
+                public let name: String?
+                public let iso3: String?
+            }
+        }
+    }
 }
