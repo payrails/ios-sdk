@@ -221,7 +221,8 @@ public extension Payrails {
             tableName: "tableName",
             cseConfig: (data: "", version: ""),
             holderReference: holderReference,
-            cseInstance: cseInstance
+            cseInstance: cseInstance,
+            session: session
         )
 
         currentCardForm = cardForm
