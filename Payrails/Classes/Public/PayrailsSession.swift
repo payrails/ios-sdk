@@ -150,7 +150,13 @@ public extension Payrails {
                 return
             }
 
-            paymentHandler.makePayment(total: Double(paymentContext.amount.value)!, currency: paymentContext.amount.currency, presenter: presenter)
+            guard let total = Double(paymentContext.amount.value) else {
+                onResult(.error(.invalidDataFormat))
+                isPaymentInProgress = false
+                return
+            }
+
+            paymentHandler.makePayment(total: total, currency: paymentContext.amount.currency, presenter: presenter)
         }
 
         public func cancelPayment() {

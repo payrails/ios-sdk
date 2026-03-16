@@ -268,7 +268,7 @@ class PayrailsAPI {
             // Other payment types - use existing convertToJSON method
             var jsonBody = payload ?? [:]
             if let meta = paymentContext.getUpdatedMeta() {
-                jsonBody["meta"] = meta
+                jsonBody["meta"] = sanitizeForJSON(meta)
             }
             jsonData = convertToJSON(body: jsonBody)
         }
@@ -620,5 +620,26 @@ func convertToJSON(body: [String: Any]) -> Data? {
         Payrails.log("Error converting to JSON: \(error)")
         #endif
         return nil
+    }
+}
+
+/// Recursively converts a `[String: Any]` dictionary into a JSONSerialization-safe
+/// representation. Types that are not natively JSON-serializable (e.g. `Date`,
+/// `Decimal`) are converted to their `String` description so the call to
+/// `JSONSerialization.data(withJSONObject:)` never fails due to unsupported types.
+private func sanitizeForJSON(_ dict: [String: Any]) -> [String: Any] {
+    dict.mapValues { sanitizeValue($0) }
+}
+
+private func sanitizeValue(_ value: Any) -> Any {
+    switch value {
+    case is String, is Int, is Double, is Float, is Bool, is NSNull:
+        return value
+    case let dict as [String: Any]:
+        return sanitizeForJSON(dict)
+    case let array as [Any]:
+        return array.map { sanitizeValue($0) }
+    default:
+        return String(describing: value)
     }
 }
