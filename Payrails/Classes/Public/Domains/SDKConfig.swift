@@ -86,8 +86,8 @@ struct Workflow: Decodable {
 }
 
 struct Amount: Codable {
-  let value: String
-  let currency: String
+  var value: String
+  var currency: String
 }
 
 struct InitialResult: Decodable {
