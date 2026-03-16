@@ -6,13 +6,18 @@ public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton)
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton)
     func onAuthorizeFailed(_ button: Payrails.CardPaymentButton)
+    func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
+}
+
+public extension PayrailsCardPaymentButtonDelegate {
+    func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {}
 }
 
 public extension Payrails {
     final class CardPaymentButton: ActionButton {
         // Optional properties for dual mode support
         private let cardForm: Payrails.CardForm?
-        private let storedInstrument: StoredInstrument?
+        private var storedInstrument: StoredInstrument?
         private weak var session: Payrails.Session?
         private var heightConstraint: NSLayoutConstraint?
         private var paymentTask: Task<Void, Error>?
@@ -181,12 +186,12 @@ public extension Payrails {
         @objc private func payButtonTapped() {
             delegate?.onPaymentButtonClicked(self)
 
-            if let cardForm = cardForm {
+            if let storedInstrument = storedInstrument {
+                // Stored instrument mode: direct payment (takes priority over card form)
+                pay(with: storedInstrument.type, storedInstrument: storedInstrument)
+            } else if let cardForm = cardForm {
                 // Card form mode: collect card data first
                 cardForm.collectFields()
-            } else if let storedInstrument = storedInstrument {
-                // Stored instrument mode: direct payment
-                pay(with: storedInstrument.type, storedInstrument: storedInstrument)
             }
         }
 
@@ -266,6 +271,21 @@ public extension Payrails {
         // Public method to get the stored instrument (for stored instrument mode)
         public func getStoredInstrument() -> StoredInstrument? {
             return storedInstrument
+        }
+
+        /// Dynamically sets a stored instrument on this button, switching it to stored instrument mode.
+        /// When set, the button skips card form validation and pays directly with the instrument.
+        public func setStoredInstrument(_ instrument: StoredInstrument) {
+            self.storedInstrument = instrument
+            updateButtonTitle()
+            delegate?.onStoredInstrumentChanged(self, instrument: instrument)
+        }
+
+        /// Clears the stored instrument, reverting the button to card form mode.
+        public func clearStoredInstrument() {
+            self.storedInstrument = nil
+            updateButtonTitle()
+            delegate?.onStoredInstrumentChanged(self, instrument: nil)
         }
     }
 }

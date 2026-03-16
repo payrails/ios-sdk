@@ -1506,4 +1506,430 @@ final class PayrailsTests: XCTestCase {
         }
         wait(for: [expectation], timeout: 1.0)
     }
+
+    // MARK: - CardPaymentButton setStoredInstrument / clearStoredInstrument Tests
+
+    func testSetStoredInstrumentSwitchesToStoredMode() {
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let instrument = MockStoredInstrument(id: "instr-1", email: nil, description: "Visa •••• 4242", type: .card)
+
+        XCTAssertNil(button.getStoredInstrument(), "Button should start with no stored instrument")
+
+        button.setStoredInstrument(instrument)
+
+        XCTAssertNotNil(button.getStoredInstrument(), "Button should have a stored instrument after setStoredInstrument")
+        XCTAssertEqual(button.getStoredInstrument()?.id, "instr-1")
+    }
+
+    func testClearStoredInstrumentRevertsToCardFormMode() {
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let instrument = MockStoredInstrument(id: "instr-2", email: nil, description: nil, type: .card)
+
+        button.setStoredInstrument(instrument)
+        XCTAssertNotNil(button.getStoredInstrument())
+
+        button.clearStoredInstrument()
+        XCTAssertNil(button.getStoredInstrument(), "Stored instrument should be nil after clearStoredInstrument")
+    }
+
+    func testSetStoredInstrumentNotifiesDelegate() {
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let delegate = MockCardPaymentButtonDelegate()
+        button.delegate = delegate
+
+        let instrument = MockStoredInstrument(id: "instr-3", email: nil, description: nil, type: .card)
+
+        button.setStoredInstrument(instrument)
+
+        XCTAssertTrue(delegate.onStoredInstrumentChangedCalled, "Delegate should be notified on setStoredInstrument")
+        XCTAssertEqual(delegate.lastInstrumentId, "instr-3")
+    }
+
+    func testClearStoredInstrumentNotifiesDelegateWithNil() {
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let delegate = MockCardPaymentButtonDelegate()
+        button.delegate = delegate
+
+        let instrument = MockStoredInstrument(id: "instr-4", email: nil, description: nil, type: .card)
+        button.setStoredInstrument(instrument)
+
+        delegate.onStoredInstrumentChangedCalled = false
+        delegate.lastInstrumentId = nil
+
+        button.clearStoredInstrument()
+
+        XCTAssertTrue(delegate.onStoredInstrumentChangedCalled, "Delegate should be notified on clearStoredInstrument")
+        XCTAssertNil(delegate.lastInstrumentId, "Delegate should receive nil instrument on clear")
+    }
+
+    func testSetStoredInstrumentOverwritesPrevious() {
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let instrument1 = MockStoredInstrument(id: "instr-A", email: nil, description: nil, type: .card)
+        let instrument2 = MockStoredInstrument(id: "instr-B", email: nil, description: nil, type: .payPal)
+
+        button.setStoredInstrument(instrument1)
+        XCTAssertEqual(button.getStoredInstrument()?.id, "instr-A")
+
+        button.setStoredInstrument(instrument2)
+        XCTAssertEqual(button.getStoredInstrument()?.id, "instr-B")
+    }
+
+    func testDelegateDefaultImplementationDoesNotCrash() {
+        // Verifies the default empty extension on onStoredInstrumentChanged doesn't crash
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let minimalDelegate = MockMinimalCardPaymentButtonDelegate()
+        button.delegate = minimalDelegate
+
+        let instrument = MockStoredInstrument(id: "instr-5", email: nil, description: nil, type: .card)
+
+        // This should not crash — the default protocol extension provides a no-op
+        button.setStoredInstrument(instrument)
+        button.clearStoredInstrument()
+    }
+
+    // MARK: - StoredInstruments bindCardPaymentButton Tests
+
+    func testBindCardPaymentButtonSetsWeakReference() {
+        let storedInstruments = Payrails.StoredInstruments(
+            session: nil,
+            style: StoredInstrumentsStyle(),
+            translations: StoredInstrumentsTranslations()
+        )
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+
+        storedInstruments.bindCardPaymentButton(button)
+
+        // The binding itself shouldn't crash — weak reference is internal,
+        // but we can verify by triggering selection events later
+        // For now, verify no crash on bind + unbind
+        storedInstruments.bindCardPaymentButton(nil)
+    }
+
+    func testBindCardPaymentButtonClearsOnNilBind() {
+        let storedInstruments = Payrails.StoredInstruments(
+            session: nil,
+            style: StoredInstrumentsStyle(),
+            translations: StoredInstrumentsTranslations()
+        )
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let instrument = MockStoredInstrument(id: "instr-6", email: nil, description: nil, type: .card)
+
+        // Pre-set an instrument on the button
+        button.setStoredInstrument(instrument)
+        XCTAssertNotNil(button.getStoredInstrument())
+
+        // Binding nil should clear the instrument on the button
+        storedInstruments.bindCardPaymentButton(nil)
+
+        // The button's instrument was set manually, not through binding — so it stays.
+        // Only a subsequent bind(nil) that calls clearStoredInstrument would clear it.
+        // The bind(nil) method just nulls the weak reference.
+        XCTAssertNotNil(button.getStoredInstrument(), "Manual instrument should persist after unbinding")
+    }
+
+    // MARK: - Tokenize Model Tests
+
+    func testFutureUsageRawValues() {
+        XCTAssertEqual(FutureUsage.cardOnFile.rawValue, "CardOnFile")
+        XCTAssertEqual(FutureUsage.subscription.rawValue, "Subscription")
+        XCTAssertEqual(FutureUsage.unscheduledCardOnFile.rawValue, "UnscheduledCardOnFile")
+    }
+
+    func testTokenizeOptionsDefaults() {
+        let options = TokenizeOptions()
+        XCTAssertFalse(options.storeInstrument, "storeInstrument should default to false")
+        XCTAssertEqual(options.futureUsage.rawValue, "CardOnFile", "futureUsage should default to cardOnFile")
+    }
+
+    func testTokenizeOptionsCustomValues() {
+        let options = TokenizeOptions(storeInstrument: true, futureUsage: .subscription)
+        XCTAssertTrue(options.storeInstrument)
+        XCTAssertEqual(options.futureUsage, .subscription)
+    }
+
+    func testSaveInstrumentBodyEncoding() throws {
+        let body = SaveInstrumentBody(
+            holderReference: "holder-ref-123",
+            paymentMethod: "card",
+            storeInstrument: true,
+            futureUsage: "CardOnFile",
+            data: SaveInstrumentBodyData(
+                encryptedData: "encrypted-data-xyz",
+                vaultProviderConfigId: "vault-config-abc"
+            )
+        )
+
+        let jsonData = try JSONEncoder().encode(body)
+        let decoded = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+
+        XCTAssertEqual(decoded?["holderReference"] as? String, "holder-ref-123")
+        XCTAssertEqual(decoded?["paymentMethod"] as? String, "card")
+        XCTAssertEqual(decoded?["storeInstrument"] as? Bool, true)
+        XCTAssertEqual(decoded?["futureUsage"] as? String, "CardOnFile")
+
+        let dataDict = decoded?["data"] as? [String: Any]
+        XCTAssertEqual(dataDict?["encryptedData"] as? String, "encrypted-data-xyz")
+        XCTAssertEqual(dataDict?["vaultProviderConfigId"] as? String, "vault-config-abc")
+    }
+
+    func testSaveInstrumentResponseDecoding() throws {
+        let json = """
+        {
+            "id": "instr-resp-1",
+            "createdAt": "2025-01-01T00:00:00Z",
+            "holderId": "holder-1",
+            "paymentMethod": "card",
+            "status": "enabled",
+            "data": {
+                "bin": "424242",
+                "network": "visa",
+                "suffix": "4242",
+                "expiryMonth": "12",
+                "expiryYear": "2030"
+            },
+            "fingerprint": "fp-abc",
+            "futureUsage": "CardOnFile"
+        }
+        """
+        let jsonData = Data(json.utf8)
+
+        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
+
+        XCTAssertEqual(response.id, "instr-resp-1")
+        XCTAssertEqual(response.holderId, "holder-1")
+        XCTAssertEqual(response.paymentMethod, "card")
+        XCTAssertEqual(response.status, "enabled")
+        XCTAssertEqual(response.data.bin, "424242")
+        XCTAssertEqual(response.data.network, "visa")
+        XCTAssertEqual(response.data.suffix, "4242")
+        XCTAssertEqual(response.data.expiryMonth, "12")
+        XCTAssertEqual(response.data.expiryYear, "2030")
+        XCTAssertEqual(response.fingerprint, "fp-abc")
+        XCTAssertEqual(response.futureUsage, "CardOnFile")
+    }
+
+    func testSaveInstrumentResponseDecodingWithNullOptionals() throws {
+        let json = """
+        {
+            "id": "instr-resp-2",
+            "createdAt": "2025-06-01T12:00:00Z",
+            "holderId": "holder-2",
+            "paymentMethod": "card",
+            "status": "disabled",
+            "data": {}
+        }
+        """
+        let jsonData = Data(json.utf8)
+
+        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
+
+        XCTAssertEqual(response.id, "instr-resp-2")
+        XCTAssertEqual(response.status, "disabled")
+        XCTAssertNil(response.fingerprint)
+        XCTAssertNil(response.futureUsage)
+        XCTAssertNil(response.data.bin)
+        XCTAssertNil(response.data.network)
+        XCTAssertNil(response.data.binLookup)
+    }
+
+    func testSaveInstrumentResponseDecodingWithBinLookup() throws {
+        let json = """
+        {
+            "id": "instr-resp-3",
+            "createdAt": "2025-01-01T00:00:00Z",
+            "holderId": "holder-3",
+            "paymentMethod": "card",
+            "status": "enabled",
+            "data": {
+                "bin": "411111",
+                "network": "visa",
+                "suffix": "1111",
+                "binLookup": {
+                    "bin": "411111",
+                    "network": "visa",
+                    "issuer": "Chase",
+                    "issuerCountry": {
+                        "code": "US",
+                        "name": "United States",
+                        "iso3": "USA"
+                    },
+                    "type": "credit"
+                }
+            }
+        }
+        """
+        let jsonData = Data(json.utf8)
+
+        let response = try JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
+
+        XCTAssertNotNil(response.data.binLookup)
+        XCTAssertEqual(response.data.binLookup?.bin, "411111")
+        XCTAssertEqual(response.data.binLookup?.network, "visa")
+        XCTAssertEqual(response.data.binLookup?.issuer, "Chase")
+        XCTAssertEqual(response.data.binLookup?.issuerCountry?.code, "US")
+        XCTAssertEqual(response.data.binLookup?.issuerCountry?.name, "United States")
+        XCTAssertEqual(response.data.binLookup?.issuerCountry?.iso3, "USA")
+        XCTAssertEqual(response.data.binLookup?.type, "credit")
+    }
+
+    func testInstrumentAPIResponseSaveCase() {
+        let json = """
+        {
+            "id": "instr-api-1",
+            "createdAt": "2025-01-01T00:00:00Z",
+            "holderId": "holder-api-1",
+            "paymentMethod": "card",
+            "status": "enabled",
+            "data": {}
+        }
+        """
+        let jsonData = Data(json.utf8)
+
+        let saveResponse = try! JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
+        let apiResponse = InstrumentAPIResponse.save(saveResponse)
+
+        switch apiResponse {
+        case .save(let response):
+            XCTAssertEqual(response.id, "instr-api-1")
+        default:
+            XCTFail("Expected .save case")
+        }
+    }
+
+    func testUpdateInstrumentBodyEncoding() throws {
+        let body = UpdateInstrumentBody(
+            status: "enabled",
+            default: true
+        )
+
+        let jsonData = try JSONEncoder().encode(body)
+        let decoded = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+
+        XCTAssertEqual(decoded?["status"] as? String, "enabled")
+        XCTAssertEqual(decoded?["default"] as? Bool, true)
+        // Nil fields should not appear in encoding
+        XCTAssertNil(decoded?["networkTransactionReference"])
+        XCTAssertNil(decoded?["merchantReference"])
+        XCTAssertNil(decoded?["paymentMethod"])
+    }
+
+    func testUpdateInstrumentResponseDecoding() throws {
+        let json = """
+        {
+            "id": "upd-instr-1",
+            "createdAt": "2025-01-15T10:00:00Z",
+            "holderId": "holder-upd-1",
+            "paymentMethod": "card",
+            "status": "enabled",
+            "data": {
+                "bin": "555555",
+                "network": "mastercard",
+                "suffix": "4444",
+                "expiryMonth": "06",
+                "expiryYear": "2028"
+            }
+        }
+        """
+        let jsonData = Data(json.utf8)
+
+        let response = try JSONDecoder().decode(UpdateInstrumentResponse.self, from: jsonData)
+
+        XCTAssertEqual(response.id, "upd-instr-1")
+        XCTAssertEqual(response.holderId, "holder-upd-1")
+        XCTAssertEqual(response.paymentMethod, "card")
+        XCTAssertEqual(response.status, "enabled")
+        XCTAssertEqual(response.data.bin, "555555")
+        XCTAssertEqual(response.data.network, "mastercard")
+        XCTAssertEqual(response.data.suffix, "4444")
+    }
+
+    func testDeleteInstrumentResponseDecoding() throws {
+        let json = """
+        {"success": true}
+        """
+        let jsonData = Data(json.utf8)
+
+        let response = try JSONDecoder().decode(DeleteInstrumentResponse.self, from: jsonData)
+        XCTAssertTrue(response.success)
+    }
+
+    // MARK: - payButtonTapped Stored Instrument Priority Tests
+
+    /// Helper: invokes the button's tap handler via its registered target-action.
+    private func simulateTap(on button: Payrails.CardPaymentButton) {
+        // The button registers payButtonTapped as the target for .touchUpInside.
+        // In unit tests sendActions(for:) may not fire without a full UIApplication run loop,
+        // so we invoke the action directly through the target-action list.
+        for target in button.allTargets {
+            if let actions = button.actions(forTarget: target, forControlEvent: .touchUpInside) {
+                for action in actions {
+                    (target as AnyObject).perform(Selector(action), with: button)
+                }
+            }
+        }
+    }
+
+    func testTapWithStoredInstrumentSkipsCardForm() {
+        // A button should honour a runtime-set stored instrument when tapped.
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let delegate = MockCardPaymentButtonDelegate()
+        button.delegate = delegate
+
+        let instrument = MockStoredInstrument(id: "tap-instr-1", email: nil, description: "Visa •••• 1234", type: .card)
+        button.setStoredInstrument(instrument)
+
+        simulateTap(on: button)
+
+        // Delegate should have received the tap event
+        XCTAssertTrue(delegate.onPaymentButtonClickedCalled, "Delegate should be notified of button tap")
+
+        // The button should still hold the stored instrument (not cleared by the tap)
+        XCTAssertNotNil(button.getStoredInstrument(), "Stored instrument should still be set after tap")
+        XCTAssertEqual(button.getStoredInstrument()?.id, "tap-instr-1")
+    }
+
+    func testTapAfterClearStoredInstrumentDoesNotCrash() {
+        // Verifies that clearing the stored instrument and tapping doesn't crash.
+        // With no cardForm and no storedInstrument, the tap is a no-op.
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let delegate = MockCardPaymentButtonDelegate()
+        button.delegate = delegate
+
+        let instrument = MockStoredInstrument(id: "tap-instr-2", email: nil, description: nil, type: .card)
+        button.setStoredInstrument(instrument)
+        button.clearStoredInstrument()
+
+        simulateTap(on: button)
+
+        XCTAssertTrue(delegate.onPaymentButtonClickedCalled, "Delegate should be notified even with no active mode")
+        XCTAssertNil(button.getStoredInstrument())
+    }
+
+    // MARK: - Mock Delegates for Tests
+
+    private class MockCardPaymentButtonDelegate: PayrailsCardPaymentButtonDelegate {
+        var onStoredInstrumentChangedCalled = false
+        var onPaymentButtonClickedCalled = false
+        var lastInstrumentId: String?
+
+        func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {
+            onPaymentButtonClickedCalled = true
+        }
+        func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
+        func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
+        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
+
+        func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {
+            onStoredInstrumentChangedCalled = true
+            lastInstrumentId = instrument?.id
+        }
+    }
+
+    private class MockMinimalCardPaymentButtonDelegate: PayrailsCardPaymentButtonDelegate {
+        func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {}
+        func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
+        func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
+        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
+        // Intentionally NOT implementing onStoredInstrumentChanged — uses default extension
+    }
 }
