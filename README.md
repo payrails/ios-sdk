@@ -374,19 +374,19 @@ After initializing a session, you can update the payment amount and execution me
 ### Updating the amount
 
 ```swift
-session.update(UpdateOptions(value: "25.50", currency: "USD"))
+Payrails.update(UpdateOptions(value: "25.50", currency: "USD"))
 ```
 
 ### Updating execution metadata
 
 ```swift
-session.update(UpdateOptions(meta: ExecutionMetaUpdate(key: "orderId", value: "abc123")))
+Payrails.update(UpdateOptions(meta: ExecutionMetaUpdate(key: "orderId", value: "abc123")))
 ```
 
 ### Updating both
 
 ```swift
-session.update(UpdateOptions(
+Payrails.update(UpdateOptions(
     value: "25.50",
     currency: "USD",
     meta: ExecutionMetaUpdate(key: "orderId", value: "abc123")

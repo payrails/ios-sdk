@@ -369,6 +369,14 @@ public extension Payrails {
 
         return instruments
     }
+
+    static func update(_ options: UpdateOptions) {
+        guard let session = getCurrentSession() else {
+            Payrails.log("No active Payrails session. Call createSession() before update().")
+            return
+        }
+        session.update(options)
+    }
 }
 
 public extension Payrails {
