@@ -2,6 +2,7 @@ import Foundation
 
 class PayrailsAPI {
     let config: SDKConfig
+    let paymentContext: PaymentContext
 
     var isRunning = false
 
@@ -39,6 +40,7 @@ class PayrailsAPI {
         let amount: Amount
         let returnInfo: ReturnInfo
         let paymentComposition: [[String: Any]]
+        let meta: [String: Any]?
     }
 
     private var token: String {
@@ -59,11 +61,12 @@ class PayrailsAPI {
     }
 
     private var amount: Amount {
-        config.amount
+        paymentContext.amount
     }
 
-    init(config: SDKConfig) {
+    init(config: SDKConfig, paymentContext: PaymentContext) {
         self.config = config
+        self.paymentContext = paymentContext
     }
 
     func makePayment(
@@ -251,7 +254,8 @@ class PayrailsAPI {
                 cancel: "https://assets.payrails.io/html/payrails-cancel.html",
                 error: "https://assets.payrails.io/html/payrails-error.html"
             ),
-            paymentComposition: [paymentComposition]
+            paymentComposition: [paymentComposition],
+            meta: paymentContext.getUpdatedMeta()
         )
         let jsonEncoder = JSONEncoder()
 
@@ -262,7 +266,11 @@ class PayrailsAPI {
             jsonData = try jsonEncoder.encode(body)
         } else {
             // Other payment types - use existing convertToJSON method
-            jsonData = convertToJSON(body: payload ?? [:])
+            var jsonBody = payload ?? [:]
+            if let meta = paymentContext.getUpdatedMeta() {
+                jsonBody["meta"] = meta
+            }
+            jsonData = convertToJSON(body: jsonBody)
         }
 
         let authorizeResponse = try await call(
@@ -501,10 +509,37 @@ fileprivate extension PayrailsAPI.Body {
         try container.encode(amount, forKey: .amount)
         try container.encode(returnInfo, forKey: .returnInfo)
         try container.encode(paymentComposition, forKey: .paymentComposition)
+        if let meta = meta {
+            let wrappedMeta = meta.mapValues { AnyCodableValue($0) }
+            try container.encode(wrappedMeta, forKey: .meta)
+        }
     }
 
     private enum CodingKeys: CodingKey {
-        case amount, returnInfo, paymentComposition
+        case amount, returnInfo, paymentComposition, meta
+    }
+}
+
+/// Minimal type-erasing wrapper so arbitrary `[String: Any]` values
+/// produced by `PaymentContext.getUpdatedMeta()` can be encoded via `Codable`.
+private struct AnyCodableValue: Encodable {
+    let value: Any
+    init(_ value: Any) { self.value = value }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch value {
+        case let v as String:  try container.encode(v)
+        case let v as Int:     try container.encode(v)
+        case let v as Double:  try container.encode(v)
+        case let v as Bool:    try container.encode(v)
+        case let v as [String: Any]:
+            try container.encode(v.mapValues { AnyCodableValue($0) })
+        case let v as [Any]:
+            try container.encode(v.map { AnyCodableValue($0) })
+        default:
+            try container.encodeNil()
+        }
     }
 }
 
