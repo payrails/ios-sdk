@@ -186,12 +186,12 @@ public extension Payrails {
         @objc private func payButtonTapped() {
             delegate?.onPaymentButtonClicked(self)
 
-            if let cardForm = cardForm {
+            if let storedInstrument = storedInstrument {
+                // Stored instrument mode: direct payment (takes priority over card form)
+                pay(with: storedInstrument.type, storedInstrument: storedInstrument)
+            } else if let cardForm = cardForm {
                 // Card form mode: collect card data first
                 cardForm.collectFields()
-            } else if let storedInstrument = storedInstrument {
-                // Stored instrument mode: direct payment
-                pay(with: storedInstrument.type, storedInstrument: storedInstrument)
             }
         }
 

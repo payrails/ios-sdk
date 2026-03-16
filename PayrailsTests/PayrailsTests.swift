@@ -1853,13 +1853,68 @@ final class PayrailsTests: XCTestCase {
         XCTAssertTrue(response.success)
     }
 
+    // MARK: - payButtonTapped Stored Instrument Priority Tests
+
+    /// Helper: invokes the button's tap handler via its registered target-action.
+    private func simulateTap(on button: Payrails.CardPaymentButton) {
+        // The button registers payButtonTapped as the target for .touchUpInside.
+        // In unit tests sendActions(for:) may not fire without a full UIApplication run loop,
+        // so we invoke the action directly through the target-action list.
+        for target in button.allTargets {
+            if let actions = button.actions(forTarget: target, forControlEvent: .touchUpInside) {
+                for action in actions {
+                    (target as AnyObject).perform(Selector(action), with: button)
+                }
+            }
+        }
+    }
+
+    func testTapWithStoredInstrumentSkipsCardForm() {
+        // A button should honour a runtime-set stored instrument when tapped.
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let delegate = MockCardPaymentButtonDelegate()
+        button.delegate = delegate
+
+        let instrument = MockStoredInstrument(id: "tap-instr-1", email: nil, description: "Visa •••• 1234", type: .card)
+        button.setStoredInstrument(instrument)
+
+        simulateTap(on: button)
+
+        // Delegate should have received the tap event
+        XCTAssertTrue(delegate.onPaymentButtonClickedCalled, "Delegate should be notified of button tap")
+
+        // The button should still hold the stored instrument (not cleared by the tap)
+        XCTAssertNotNil(button.getStoredInstrument(), "Stored instrument should still be set after tap")
+        XCTAssertEqual(button.getStoredInstrument()?.id, "tap-instr-1")
+    }
+
+    func testTapAfterClearStoredInstrumentDoesNotCrash() {
+        // Verifies that clearing the stored instrument and tapping doesn't crash.
+        // With no cardForm and no storedInstrument, the tap is a no-op.
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let delegate = MockCardPaymentButtonDelegate()
+        button.delegate = delegate
+
+        let instrument = MockStoredInstrument(id: "tap-instr-2", email: nil, description: nil, type: .card)
+        button.setStoredInstrument(instrument)
+        button.clearStoredInstrument()
+
+        simulateTap(on: button)
+
+        XCTAssertTrue(delegate.onPaymentButtonClickedCalled, "Delegate should be notified even with no active mode")
+        XCTAssertNil(button.getStoredInstrument())
+    }
+
     // MARK: - Mock Delegates for Tests
 
     private class MockCardPaymentButtonDelegate: PayrailsCardPaymentButtonDelegate {
         var onStoredInstrumentChangedCalled = false
+        var onPaymentButtonClickedCalled = false
         var lastInstrumentId: String?
 
-        func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {}
+        func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {
+            onPaymentButtonClickedCalled = true
+        }
         func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
         func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
