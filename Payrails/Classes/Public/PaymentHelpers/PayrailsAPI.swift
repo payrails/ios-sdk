@@ -40,7 +40,6 @@ class PayrailsAPI {
         let amount: Amount
         let returnInfo: ReturnInfo
         let paymentComposition: [[String: Any]]
-        let meta: [String: Any]?
     }
 
     private var token: String {
@@ -254,8 +253,7 @@ class PayrailsAPI {
                 cancel: "https://assets.payrails.io/html/payrails-cancel.html",
                 error: "https://assets.payrails.io/html/payrails-error.html"
             ),
-            paymentComposition: [paymentComposition],
-            meta: paymentContext.getUpdatedMeta()
+            paymentComposition: [paymentComposition]
         )
         let jsonEncoder = JSONEncoder()
 
@@ -266,10 +264,7 @@ class PayrailsAPI {
             jsonData = try jsonEncoder.encode(body)
         } else {
             // Other payment types - use existing convertToJSON method
-            var jsonBody = payload ?? [:]
-            if let meta = paymentContext.getUpdatedMeta() {
-                jsonBody["meta"] = sanitizeForJSON(meta)
-            }
+            let jsonBody = payload ?? [:]
             jsonData = convertToJSON(body: jsonBody)
         }
 
@@ -509,39 +504,13 @@ fileprivate extension PayrailsAPI.Body {
         try container.encode(amount, forKey: .amount)
         try container.encode(returnInfo, forKey: .returnInfo)
         try container.encode(paymentComposition, forKey: .paymentComposition)
-        if let meta = meta {
-            let wrappedMeta = meta.mapValues { AnyCodableValue($0) }
-            try container.encode(wrappedMeta, forKey: .meta)
-        }
     }
 
     private enum CodingKeys: CodingKey {
-        case amount, returnInfo, paymentComposition, meta
+        case amount, returnInfo, paymentComposition
     }
 }
 
-/// Minimal type-erasing wrapper so arbitrary `[String: Any]` values
-/// produced by `PaymentContext.getUpdatedMeta()` can be encoded via `Codable`.
-private struct AnyCodableValue: Encodable {
-    let value: Any
-    init(_ value: Any) { self.value = value }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch value {
-        case let v as String:  try container.encode(v)
-        case let v as Int:     try container.encode(v)
-        case let v as Double:  try container.encode(v)
-        case let v as Bool:    try container.encode(v)
-        case let v as [String: Any]:
-            try container.encode(v.mapValues { AnyCodableValue($0) })
-        case let v as [Any]:
-            try container.encode(v.map { AnyCodableValue($0) })
-        default:
-            try container.encodeNil()
-        }
-    }
-}
 
 fileprivate extension PayrailsAPI.DataBody {
     func encode(to encoder: Encoder) throws {
@@ -623,23 +592,3 @@ func convertToJSON(body: [String: Any]) -> Data? {
     }
 }
 
-/// Recursively converts a `[String: Any]` dictionary into a JSONSerialization-safe
-/// representation. Types that are not natively JSON-serializable (e.g. `Date`,
-/// `Decimal`) are converted to their `String` description so the call to
-/// `JSONSerialization.data(withJSONObject:)` never fails due to unsupported types.
-private func sanitizeForJSON(_ dict: [String: Any]) -> [String: Any] {
-    dict.mapValues { sanitizeValue($0) }
-}
-
-private func sanitizeValue(_ value: Any) -> Any {
-    switch value {
-    case is String, is Int, is Double, is Float, is Bool, is NSNull:
-        return value
-    case let dict as [String: Any]:
-        return sanitizeForJSON(dict)
-    case let array as [Any]:
-        return array.map { sanitizeValue($0) }
-    default:
-        return String(describing: value)
-    }
-}

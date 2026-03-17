@@ -482,9 +482,6 @@ extension Payrails.Session {
         if let value = options.value, let currency = options.currency {
             paymentContext.updateAmount(value: value, currency: currency)
         }
-        if let meta = options.meta {
-            paymentContext.updateMeta(key: meta.key, value: meta.value)
-        }
     }
 }
 

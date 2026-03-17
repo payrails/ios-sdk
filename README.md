@@ -369,34 +369,13 @@ let result = try await Payrails.api("updateInstrument", instrumentId, body)
 
 ## Payment Amount Update
 
-After initializing a session, you can update the payment amount and execution metadata before executing a payment. This is useful when the backend updates the execution (e.g., via a lookup action) and the SDK needs to reflect the new values.
-
-### Updating the amount
+After initializing a session, you can update the payment amount before executing a payment. This is useful when the backend updates the execution (e.g., via a lookup action) and the SDK needs to reflect the new values.
 
 ```swift
 Payrails.update(UpdateOptions(value: "25.50", currency: "USD"))
 ```
 
-### Updating execution metadata
-
-```swift
-Payrails.update(UpdateOptions(meta: ExecutionMetaUpdate(key: "orderId", value: "abc123")))
-```
-
-### Updating both
-
-```swift
-Payrails.update(UpdateOptions(
-    value: "25.50",
-    currency: "USD",
-    meta: ExecutionMetaUpdate(key: "orderId", value: "abc123")
-))
-```
-
-Notes:
-- Amount update requires both `value` and `currency`. If either is nil, the amount is not changed.
-- Meta updates are deep-merged, so calling `update()` multiple times accumulates metadata.
-- `update()` only modifies local SDK state. The backend execution should already reflect the new values.
+> Both `value` and `currency` are required. If either is nil, the amount is not changed. `update()` only modifies local SDK state — the backend execution should already reflect the new values.
 
 ## Debugging
 

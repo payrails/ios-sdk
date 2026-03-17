@@ -1948,63 +1948,18 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(context.amount.currency, "EUR")
     }
 
-    func testPaymentContextUpdateMeta() {
-        let context = PaymentContext(amount: Amount(value: "1.00", currency: "EUR"))
-        XCTAssertNil(context.getUpdatedMeta())
-        context.updateMeta(key: "orderId", value: "abc123")
-        let meta = context.getUpdatedMeta()
-        XCTAssertNotNil(meta)
-        XCTAssertEqual(meta?["orderId"] as? String, "abc123")
-    }
-
-    func testPaymentContextUpdateMetaDeepMerge() {
-        let context = PaymentContext(amount: Amount(value: "1.00", currency: "EUR"))
-        context.updateMeta(key: "nested", value: ["a": 1, "b": 2])
-        context.updateMeta(key: "nested", value: ["b": 3, "c": 4])
-        let meta = context.getUpdatedMeta()
-        let nested = meta?["nested"] as? [String: Int]
-        XCTAssertEqual(nested?["a"], 1)
-        XCTAssertEqual(nested?["b"], 3)
-        XCTAssertEqual(nested?["c"], 4)
-    }
-
-    func testPaymentContextUpdateMetaOverwritesNonDict() {
-        let context = PaymentContext(amount: Amount(value: "1.00", currency: "EUR"))
-        context.updateMeta(key: "key", value: "first")
-        context.updateMeta(key: "key", value: "second")
-        XCTAssertEqual(context.getUpdatedMeta()?["key"] as? String, "second")
-    }
-
-    func testPaymentContextMultipleMetaKeys() {
-        let context = PaymentContext(amount: Amount(value: "1.00", currency: "EUR"))
-        context.updateMeta(key: "a", value: 1)
-        context.updateMeta(key: "b", value: "two")
-        let meta = context.getUpdatedMeta()
-        XCTAssertEqual(meta?.count, 2)
-        XCTAssertEqual(meta?["a"] as? Int, 1)
-        XCTAssertEqual(meta?["b"] as? String, "two")
-    }
-
     // MARK: - UpdateOptions Tests
 
     func testUpdateOptionsDefaults() {
         let opts = UpdateOptions()
         XCTAssertNil(opts.value)
         XCTAssertNil(opts.currency)
-        XCTAssertNil(opts.meta)
     }
 
     func testUpdateOptionsWithAmount() {
         let opts = UpdateOptions(value: "50.00", currency: "GBP")
         XCTAssertEqual(opts.value, "50.00")
         XCTAssertEqual(opts.currency, "GBP")
-    }
-
-    func testUpdateOptionsWithMeta() {
-        let meta = ExecutionMetaUpdate(key: "orderId", value: "xyz")
-        let opts = UpdateOptions(meta: meta)
-        XCTAssertEqual(opts.meta?.key, "orderId")
-        XCTAssertEqual(opts.meta?.value as? String, "xyz")
     }
 
     func testUpdateOptionsAmountRequiresBothFields() {
