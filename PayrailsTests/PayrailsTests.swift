@@ -15,6 +15,7 @@ final class PayrailsTests: XCTestCase {
         let email: String?
         let description: String?
         let type: Payrails.PaymentType
+        var isDefault: Bool = false
     }
 
     override func setUpWithError() throws {

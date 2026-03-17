@@ -270,11 +270,14 @@ struct PaymentOptions: Decodable {
             .card
         }
 
+        var isDefault: Bool { `default` == true }
+
         let createdAt: String
         let status: String
         let data: CardInstrumentData?
         let displayName: String?
         let paymentMethod: String?
+        let `default`: Bool?
     }
 
     struct CardInstrumentData: Decodable {
@@ -294,6 +297,8 @@ struct PaymentOptions: Decodable {
         var type: Payrails.PaymentType {
             .payPal
         }
+
+        var isDefault: Bool { false }
 
         let id: String
         let paymentMethod: String

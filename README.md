@@ -293,6 +293,30 @@ let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
 
 > **Refreshing after tokenization:** Stored instruments are baked into the session at init time. To see a newly saved card, re-initialize the session by calling `Payrails.createSession(with:)` with fresh init data from your backend, then rebuild any `StoredInstruments` UI components.
 
+### Default instrument
+
+Each `StoredInstrument` exposes `isDefault: Bool`, decoded from the `default` field in the server response. Use it to highlight the holder's default payment method in your UI or to conditionally enable a "Set as Default" action:
+
+```swift
+let cards = session.storedInstruments(for: .card)
+let defaultCard = cards.first { $0.isDefault }
+
+// Disable "Set as Default" when the card is already default
+setDefaultButton.isEnabled = !selectedCard.isDefault
+```
+
+To mark an instrument as default:
+
+```swift
+let result = try await Payrails.api(
+    "updateInstrument",
+    instrumentId,
+    UpdateInstrumentBody(default: true)
+)
+```
+
+> `isDefault` reflects the value baked into the session at init time. After calling `updateInstrument`, re-initialize the session to get updated `isDefault` values.
+
 ### Displaying stored instruments
 
 ```swift
