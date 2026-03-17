@@ -36,9 +36,9 @@ struct Link: Decodable {
 }
 
 struct LinkAction: Decodable {
-    let redirectMethod: String
-    let redirectUrl: String
-    let parameters: Parameters
+    let redirectMethod: String?
+    let redirectUrl: String?
+    let parameters: Parameters?
     let type: String?
 
     struct Parameters: Decodable {

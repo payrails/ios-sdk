@@ -61,9 +61,9 @@ extension PayPalHandler: PaymentHandler {
         self.confirmLink = confirmLink
 
         Checkout.setCreateOrderCallback { [weak self] createOrderActions in
-            if let billingAgreementToken = confirmLink.action?.parameters.tokenId {
+            if let billingAgreementToken = confirmLink.action?.parameters?.tokenId {
                 createOrderActions.set(billingAgreementToken: billingAgreementToken)
-            } else if let orderId = confirmLink.action?.parameters.orderId {
+            } else if let orderId = confirmLink.action?.parameters?.orderId {
                 createOrderActions.set(orderId: orderId)
             } else {
                 guard let self else { return }

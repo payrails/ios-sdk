@@ -194,6 +194,7 @@ public extension Payrails {
                 showCardIcon: customConfig.showCardIcon,
                 showRequiredAsterisk: customConfig.showRequiredAsterisk,
                 cardIconAlignment: customConfig.cardIconAlignment,
+                fieldVariant: customConfig.fieldVariant,
                 layout: customConfig.layout,
                 styles: finalStylesConfig,
                 translations: finalTranslations
