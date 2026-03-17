@@ -511,7 +511,6 @@ fileprivate extension PayrailsAPI.Body {
     }
 }
 
-
 fileprivate extension PayrailsAPI.DataBody {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -591,4 +590,3 @@ func convertToJSON(body: [String: Any]) -> Data? {
         return nil
     }
 }
-
