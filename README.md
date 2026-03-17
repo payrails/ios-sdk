@@ -289,6 +289,10 @@ Or via the static helper (uses the current session):
 let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
 ```
 
+> **Instrument visibility:** `storedInstruments(for:)` returns instruments whose status is `"enabled"` or `"created"` (case-insensitive). A freshly tokenized card typically has status `"created"` until it transitions to `"enabled"`, so it will appear immediately after a session re-init without needing to wait for the status change.
+
+> **Refreshing after tokenization:** Stored instruments are baked into the session at init time. To see a newly saved card, re-initialize the session by calling `Payrails.createSession(with:)` with fresh init data from your backend, then rebuild any `StoredInstruments` UI components.
+
 ### Displaying stored instruments
 
 ```swift
