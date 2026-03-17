@@ -423,10 +423,16 @@ public extension Payrails {
             cardContainer?.collect(with: callback)
         }
 
-        /// Encrypts card data by collecting form fields and encrypting via PayrailsCSE.
-        /// This is the async equivalent of the callback-based `collectFields()` flow.
-        private func encryptCardData() async throws -> String {
-            guard let container = self.container else {
+        /// Tokenizes the card form data — encrypts card details and registers the instrument
+        /// in the vault without processing a payment.
+        ///
+        /// This matches the web SDK's `cardForm.tokenize()` and Android SDK's `cardForm.tokenize()`.
+        public func tokenize(options: TokenizeOptions = TokenizeOptions()) async throws -> SaveInstrumentResponse {
+            guard let session = self.session else {
+                throw PayrailsError.missingData("Session is required for tokenization.")
+            }
+
+            guard self.container != nil else {
                 throw PayrailsError.missingData("Card form container is not available")
             }
 
@@ -464,6 +470,10 @@ public extension Payrails {
                 throw PayrailsError.invalidCardData
             }
 
+            guard let payrailsCSE = self.payrailsCSE else {
+                throw PayrailsError.missingData("CSE instance")
+            }
+
             let payrailsCard = Card(
                 holderReference: self.holderReference,
                 cardNumber: cardNumber,
@@ -473,23 +483,7 @@ public extension Payrails {
                 securityCode: securityCode
             )
 
-            guard let payrailsCSE = self.payrailsCSE else {
-                throw PayrailsError.missingData("CSE instance")
-            }
-
-            return try payrailsCSE.encryptCardData(card: payrailsCard)
-        }
-
-        /// Tokenizes the card form data — encrypts card details and registers the instrument
-        /// in the vault without processing a payment.
-        ///
-        /// This matches the web SDK's `cardForm.tokenize()` and Android SDK's `cardForm.tokenize()`.
-        public func tokenize(options: TokenizeOptions = TokenizeOptions()) async throws -> SaveInstrumentResponse {
-            guard let session = self.session else {
-                throw PayrailsError.missingData("Session is required for tokenization.")
-            }
-
-            let encryptedData = try await encryptCardData()
+            let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
             return try await session.tokenize(encryptedData: encryptedData, options: options)
         }
 
