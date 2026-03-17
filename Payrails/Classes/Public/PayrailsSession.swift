@@ -75,10 +75,21 @@ public extension Payrails {
             switch paymentInstruments {
             case let .paypal(intruments):
                 return intruments
-                    .filter { $0.status == "enabled" }
+                    .filter { Self.isStoredInstrumentRenderable($0.status) }
             case let .card(intruments):
                 return intruments
-                    .filter { $0.status == "enabled" }
+                    .filter { Self.isStoredInstrumentRenderable($0.status) }
+            }
+        }
+
+        /// Mirrors Android SDK's `isStoredInstrumentRenderable()`:
+        /// accepts "enabled" or "created", case-insensitive.
+        /// A freshly tokenized card typically arrives with status "created"
+        /// before it transitions to "enabled".
+        private static func isStoredInstrumentRenderable(_ status: String) -> Bool {
+            switch status.lowercased() {
+            case "enabled", "created": return true
+            default: return false
             }
         }
 
