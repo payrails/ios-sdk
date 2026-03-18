@@ -29,4 +29,10 @@ extension SDKConfig {
             option.paymentMethodCode == code
         }
     }
+
+    func allPaymentOptions() -> [PaymentOptions] {
+        execution?.initialResults
+            .first(where: { $0.body.name == "lookup" })?
+            .body.data.paymentOptions ?? []
+    }
 }
