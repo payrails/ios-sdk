@@ -212,17 +212,8 @@ public extension Payrails {
             )
         }
 
-        guard let cseInstance = session.getCSEInstance(),
-              let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
-            fatalError("CSE instance or holder reference not available in session.")
-        }
-
         let cardForm = Payrails.CardForm(
             config: finalConfig,
-            tableName: "tableName",
-            cseConfig: (data: "", version: ""),
-            holderReference: holderReference,
-            cseInstance: cseInstance,
             session: session
         )
 

@@ -44,20 +44,15 @@ public extension Payrails {
         internal let saveInstrumentToggle = UISwitch()
         internal let saveInstrumentLabel = UILabel()
 
-        public init(
+        init(
             config: CardFormConfig,
-            tableName: String,
-            cseConfig: (data: String, version: String),
-            holderReference: String,
-            cseInstance: PayrailsCSE,
-            session: Payrails.Session? = nil
+            session: Payrails.Session
         ) {
             self.containerClient = Client()
             self.config = config
-            // this is also skyflow leftover
-            self.tableName = tableName
-            self.holderReference = holderReference
-            self.payrailsCSE = cseInstance
+            self.tableName = "tableName"
+            self.holderReference = session.getSDKConfiguration()?.holderRefecerence ?? ""
+            self.payrailsCSE = session.getCSEInstance()
             self.session = session
 
             super.init(frame: .zero)
