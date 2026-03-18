@@ -523,4 +523,54 @@ extension Payrails.Session {
 
         return try await payrailsAPI.saveInstrument(body: body)
     }
+
+    // MARK: - Query
+
+    /// Read-only access to SDK configuration and session state.
+    /// Mirrors the web SDK's `payrails.query(key, params)` API.
+    func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult? {
+        switch key {
+        case .holderReference:
+            guard let value = config?.holderReference else { return nil }
+            return .string(value)
+
+        case .amount:
+            guard let amount = config?.amount else { return nil }
+            return .amount(PayrailsAmount(value: amount.value, currency: amount.currency))
+
+        case .executionId:
+            guard let id = config?.execution?.id else { return nil }
+            return .string(id)
+
+        case .binLookup:
+            guard let link = config?.execution?.links.lookup else { return nil }
+            return .link(PayrailsLink(method: link.method, href: link.href))
+
+        case .instrumentDelete:
+            guard let link = config?.links?.instrumentDelete else { return nil }
+            return .link(PayrailsLink(method: link.method, href: link.href))
+
+        case .instrumentUpdate:
+            guard let link = config?.links?.instrumentUpdate else { return nil }
+            return .link(PayrailsLink(method: link.method, href: link.href))
+
+        case .paymentMethodConfig(let code):
+            guard let config = config else { return nil }
+            let all = config.allPaymentOptions()
+            switch code {
+            case "all":
+                return .paymentOptions(all.map(PayrailsPaymentOption.init))
+            case "redirect":
+                let redirectOptions = all.filter { $0.clientConfig?.flow == "redirect" }
+                return .paymentOptions(redirectOptions.map(PayrailsPaymentOption.init))
+            default:
+                guard let option = all.first(where: { $0.paymentMethodCode == code }) else { return nil }
+                return .paymentOptions([PayrailsPaymentOption(from: option)])
+            }
+
+        case .paymentMethodInstruments(let type):
+            let instruments = storedInstruments(for: type)
+            return .storedInstruments(instruments)
+        }
+    }
 }
