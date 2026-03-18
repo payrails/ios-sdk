@@ -379,3 +379,12 @@ public extension Payrails {
         }
     }
 }
+
+public extension Payrails {
+    /// Query the SDK for configuration and session state.
+    /// Mirrors the web SDK's `payrails.query(key, params)` API.
+    /// Requires a session to be initialized via `Payrails.configure(...)`.
+    static func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult? {
+        return currentSession?.query(key)
+    }
+}
