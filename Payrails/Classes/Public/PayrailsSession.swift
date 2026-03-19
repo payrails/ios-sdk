@@ -6,7 +6,6 @@ public extension Payrails {
     class Session {
         private var config: SDKConfig!
         private var payrailsAPI: PayrailsAPI!
-        private(set) var paymentContext: PaymentContext!
         private let option: Payrails.Options
         var executionId: String?
 
@@ -31,8 +30,7 @@ public extension Payrails {
             self.option = configuration.option
             self.config = try parse(config: configuration)
 
-            self.paymentContext = PaymentContext(amount: config.amount)
-            self.payrailsAPI = PayrailsAPI(config: config, paymentContext: paymentContext)
+            self.payrailsAPI = PayrailsAPI(config: config)
 
             if isPaymentAvailable(type: .card),
                   let vaultId = config.vaultConfiguration?.vaultId,
@@ -121,8 +119,8 @@ public extension Payrails {
                     "integrationType": "api",
                     "paymentMethodCode": instrument.type.rawValue,
                     "amount": [
-                        "value": strongSelf.paymentContext.amount.value,
-                        "currency": strongSelf.paymentContext.amount.currency
+                        "value": strongSelf.config.amount.value,
+                        "currency": strongSelf.config.amount.currency
                     ],
                     "storeInstrument": false
                 ]
@@ -161,13 +159,13 @@ public extension Payrails {
                 return
             }
 
-            guard let total = Double(paymentContext.amount.value) else {
+            guard let total = Double(config.amount.value) else {
                 onResult(.error(.invalidDataFormat))
                 isPaymentInProgress = false
                 return
             }
 
-            paymentHandler.makePayment(total: total, currency: paymentContext.amount.currency, presenter: presenter)
+            paymentHandler.makePayment(total: total, currency: config.amount.currency, presenter: presenter)
         }
 
         func cancelPayment() {
@@ -319,7 +317,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
         case .success:
             handler.processSuccessPayload(
                 payload: payload,
-                amount: self.paymentContext.amount
+                amount: self.config.amount
             ) { [weak self] result in
                 guard let self = self else { return }
 
@@ -491,7 +489,7 @@ extension Payrails.Session {
 extension Payrails.Session {
     func update(_ options: UpdateOptions) {
         if let amount = options.amount {
-            paymentContext.updateAmount(value: amount.value, currency: amount.currency)
+            config.amount = Amount(value: amount.value, currency: amount.currency)
         }
     }
 }

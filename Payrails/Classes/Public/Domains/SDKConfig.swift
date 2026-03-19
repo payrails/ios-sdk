@@ -1,11 +1,11 @@
 import Foundation
 
-struct SDKConfig: Decodable {
+class SDKConfig: Decodable {
     let token: String
     let holderReference: String?
     let vaultConfiguration: VaultConfiguration?
     let execution: Execution?
-    let amount: Amount
+    var amount: Amount
     let links: SDKConfigLinks?
 }
 

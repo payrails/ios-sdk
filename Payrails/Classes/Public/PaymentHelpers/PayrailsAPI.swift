@@ -2,7 +2,6 @@ import Foundation
 
 class PayrailsAPI {
     let config: SDKConfig
-    let paymentContext: PaymentContext
 
     var isRunning = false
 
@@ -60,12 +59,11 @@ class PayrailsAPI {
     }
 
     private var amount: Amount {
-        paymentContext.amount
+        config.amount
     }
 
-    init(config: SDKConfig, paymentContext: PaymentContext) {
+    init(config: SDKConfig) {
         self.config = config
-        self.paymentContext = paymentContext
     }
 
     func makePayment(

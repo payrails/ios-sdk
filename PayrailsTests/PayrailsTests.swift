@@ -1934,21 +1934,6 @@ final class PayrailsTests: XCTestCase {
         // Intentionally NOT implementing onStoredInstrumentChanged — uses default extension
     }
 
-    // MARK: - PaymentContext Tests
-
-    func testPaymentContextUpdateAmount() {
-        let context = PaymentContext(amount: Amount(value: "10.00", currency: "EUR"))
-        context.updateAmount(value: "25.50", currency: "USD")
-        XCTAssertEqual(context.amount.value, "25.50")
-        XCTAssertEqual(context.amount.currency, "USD")
-    }
-
-    func testPaymentContextAmountUnchangedWithoutUpdate() {
-        let context = PaymentContext(amount: Amount(value: "10.00", currency: "EUR"))
-        XCTAssertEqual(context.amount.value, "10.00")
-        XCTAssertEqual(context.amount.currency, "EUR")
-    }
-
     // MARK: - UpdateOptions Tests
 
     func testUpdateOptionsDefaults() {
@@ -1963,15 +1948,15 @@ final class PayrailsTests: XCTestCase {
     }
 
     func testUpdateOptionsAmountRequiresBothFields() {
-        // If amount is nil, update() should not change the payment context amount
-        let context = PaymentContext(amount: Amount(value: "10.00", currency: "EUR"))
+        // If amount is nil, update() should not change the config amount
+        var config = Amount(value: "10.00", currency: "EUR")
         let opts = UpdateOptions()
         // Simulate what Session.update() does
         if let amount = opts.amount {
-            context.updateAmount(value: amount.value, currency: amount.currency)
+            config = Amount(value: amount.value, currency: amount.currency)
         }
         // Amount should remain unchanged since amount was nil
-        XCTAssertEqual(context.amount.value, "10.00")
-        XCTAssertEqual(context.amount.currency, "EUR")
+        XCTAssertEqual(config.value, "10.00")
+        XCTAssertEqual(config.currency, "EUR")
     }
 }
