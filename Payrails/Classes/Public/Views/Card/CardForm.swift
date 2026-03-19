@@ -50,7 +50,7 @@ public extension Payrails {
         ) {
             self.containerClient = Client()
             self.config = config
-            self.tableName = "tableName"
+            self.tableName = session.getSDKConfiguration()?.cardTableName ?? ""
             self.holderReference = session.getSDKConfiguration()?.holderRefecerence ?? ""
             self.payrailsCSE = session.getCSEInstance()
             self.session = session
