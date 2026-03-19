@@ -411,6 +411,6 @@ public struct PublicSDKConfig {
 
     internal init(from config: SDKConfig) {
         self.holderRefecerence = config.holderReference ?? ""
-        self.cardTableName = config.vaultConfiguration?.cardTableName ?? ""
+        self.cardTableName = config.vaultConfiguration?.cardTableName ?? "cards"
     }
 }

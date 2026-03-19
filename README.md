@@ -124,7 +124,7 @@ Notes:
 Payrails.createSession(with: configuration) { result in
     switch result {
     case .success(let session):
-        print("Session created: \(String(describing: session.executionId))")
+        print("Session created: \(String(describing: Payrails.executionId))")
     case .failure(let error):
         print("Initialization failed: \(error)")
     }
@@ -279,17 +279,11 @@ idealButton.delegate = self
 ### Accessing stored instruments
 
 ```swift
-let cards = session.storedInstruments(for: .card)
-let paypals = session.storedInstruments(for: .payPal)
+let cards = Payrails.getStoredInstruments(for: .card)
+let paypals = Payrails.getStoredInstruments(for: .payPal)
 ```
 
-Or via the static helper (uses the current session):
-
-```swift
-let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
-```
-
-> **Instrument visibility:** `storedInstruments(for:)` returns instruments whose status is `"enabled"` or `"created"` (case-insensitive). A freshly tokenized card typically has status `"created"` until it transitions to `"enabled"`, so it will appear immediately after a session re-init without needing to wait for the status change.
+> **Instrument visibility:** `getStoredInstruments(for:)` returns instruments whose status is `"enabled"` or `"created"` (case-insensitive). A freshly tokenized card typically has status `"created"` until it transitions to `"enabled"`, so it will appear immediately after a session re-init without needing to wait for the status change.
 
 > **Refreshing after tokenization:** Stored instruments are baked into the session at init time. To see a newly saved card, re-initialize the session by calling `Payrails.createSession(with:)` with fresh init data from your backend, then rebuild any `StoredInstruments` UI components.
 
@@ -298,7 +292,7 @@ let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
 Each `StoredInstrument` exposes `isDefault: Bool`, decoded from the `default` field in the server response. Use it to highlight the holder's default payment method in your UI or to conditionally enable a "Set as Default" action:
 
 ```swift
-let cards = session.storedInstruments(for: .card)
+let cards = Payrails.getStoredInstruments(for: .card)
 let defaultCard = cards.first { $0.isDefault }
 
 // Disable "Set as Default" when the card is already default

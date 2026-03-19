@@ -362,6 +362,84 @@ public extension Payrails {
         return instruments
     }
 
+    // MARK: - Payment State
+
+    public static var executionId: String? {
+        currentSession?.executionId
+    }
+
+    public static var isPaymentInProgress: Bool {
+        currentSession?.isPaymentInProgress ?? false
+    }
+
+    public static var isApplePayAvailable: Bool {
+        currentSession?.isApplePayAvailable ?? false
+    }
+
+    public static func isPaymentAvailable(type: Payrails.PaymentType) -> Bool {
+        currentSession?.isPaymentAvailable(type: type) ?? false
+    }
+
+    public static func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
+        currentSession?.isPaymentCodeAvailable(paymentMethodCode: paymentMethodCode) ?? false
+    }
+
+    // MARK: - Payment Execution
+
+    public static func cancelPayment() {
+        currentSession?.cancelPayment()
+    }
+
+    public static func executePayment(
+        with type: Payrails.PaymentType,
+        paymentMethodCode: String? = nil,
+        saveInstrument: Bool = false,
+        presenter: PaymentPresenter? = nil,
+        onResult: @escaping OnPayCallback
+    ) {
+        guard let session = currentSession else {
+            onResult(.error(.missingData("No active Payrails session. Please initialize a session first.")))
+            return
+        }
+        session.executePayment(with: type, paymentMethodCode: paymentMethodCode, saveInstrument: saveInstrument, presenter: presenter, onResult: onResult)
+    }
+
+    public static func executePayment(
+        withStoredInstrument instrument: StoredInstrument,
+        presenter: PaymentPresenter? = nil,
+        onResult: @escaping OnPayCallback
+    ) {
+        guard let session = currentSession else {
+            onResult(.error(.missingData("No active Payrails session. Please initialize a session first.")))
+            return
+        }
+        session.executePayment(withStoredInstrument: instrument, presenter: presenter, onResult: onResult)
+    }
+
+    @MainActor
+    public static func executePayment(
+        with type: Payrails.PaymentType,
+        paymentMethodCode: String? = nil,
+        saveInstrument: Bool = false,
+        presenter: PaymentPresenter?
+    ) async -> OnPayResult {
+        guard let session = currentSession else {
+            return .error(.missingData("No active Payrails session. Please initialize a session first."))
+        }
+        return await session.executePayment(with: type, paymentMethodCode: paymentMethodCode, saveInstrument: saveInstrument, presenter: presenter)
+    }
+
+    @MainActor
+    public static func executePayment(
+        withStoredInstrument instrument: StoredInstrument,
+        presenter: PaymentPresenter? = nil
+    ) async -> OnPayResult {
+        guard let session = currentSession else {
+            return .error(.missingData("No active Payrails session. Please initialize a session first."))
+        }
+        return await session.executePayment(withStoredInstrument: instrument, presenter: presenter)
+    }
+
     static func update(_ options: UpdateOptions) {
         guard let session = getCurrentSession() else {
             Payrails.log("No active Payrails session. Call createSession() before update().")
@@ -373,8 +451,9 @@ public extension Payrails {
 
 public extension Payrails {
     struct Debug {
-        public static func configViewer(session: Payrails.Session) -> some View {
-            SimplePayrailsViewer(config: session.debugConfig)
+        public static func configViewer() -> some View {
+            precondition(Payrails.getCurrentSession() != nil, "Payrails session must be initialized before using configViewer")
+            return SimplePayrailsViewer(config: Payrails.getCurrentSession()!.debugConfig)
         }
     }
 }

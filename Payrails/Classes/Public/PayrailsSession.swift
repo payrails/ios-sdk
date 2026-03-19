@@ -8,7 +8,7 @@ public extension Payrails {
         private var payrailsAPI: PayrailsAPI!
         private(set) var paymentContext: PaymentContext!
         private let option: Payrails.Options
-        public var executionId: String?
+        var executionId: String?
 
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
@@ -19,7 +19,7 @@ public extension Payrails {
             return self.config
         }
 
-        public private(set) var isPaymentInProgress = false {
+        private(set) var isPaymentInProgress = false {
             didSet {
                 payrailsAPI.isRunning = isPaymentInProgress
             }
@@ -50,19 +50,19 @@ public extension Payrails {
             }
         }
 
-        public func isPaymentAvailable(type: PaymentType) -> Bool {
+        func isPaymentAvailable(type: PaymentType) -> Bool {
             return config.paymentOption(for: type) != nil
         }
 
-        public var isApplePayAvailable: Bool {
+        var isApplePayAvailable: Bool {
             return config.paymentOption(for: .applePay) != nil
         }
 
-        public func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
+        func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
             return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
         }
 
-        public func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
+        func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
             guard let paymentInstruments = config.paymentOption(for: type, extra: {
                 guard let paymentInstruments = $0.paymentInstruments else { return false }
                 switch paymentInstruments {
@@ -94,11 +94,11 @@ public extension Payrails {
         }
 
         @available(*, deprecated)
-        public var storedInstruments: [StoredInstrument] {
+        var storedInstruments: [StoredInstrument] {
             storedInstruments(for: .payPal)
         }
 
-        public func executePayment(
+        func executePayment(
             withStoredInstrument instrument: StoredInstrument,
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
@@ -139,7 +139,7 @@ public extension Payrails {
             }
         }
 
-        public func executePayment(
+        func executePayment(
             with type: PaymentType,
             paymentMethodCode: String? = nil,
             saveInstrument: Bool = false,
@@ -170,7 +170,7 @@ public extension Payrails {
             paymentHandler.makePayment(total: total, currency: paymentContext.amount.currency, presenter: presenter)
         }
 
-        public func cancelPayment() {
+        func cancelPayment() {
             isPaymentInProgress = false
             currentTask?.cancel()
             currentTask = nil
@@ -444,7 +444,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 }
 
-public extension Payrails.Session {
+extension Payrails.Session {
     @MainActor
     func executePayment(
         with type: Payrails.PaymentType,
@@ -482,7 +482,7 @@ public extension Payrails.Session {
     }
 }
 
-public extension Payrails.Session {
+extension Payrails.Session {
     func getCSEInstance() -> PayrailsCSE? {
         return payrailsCSE
     }
@@ -496,7 +496,7 @@ extension Payrails.Session {
     }
 }
 
-public extension Payrails.Session {
+extension Payrails.Session {
     func getSDKConfiguration() -> PublicSDKConfig? {
         guard let config = self.config else { return nil }
         return PublicSDKConfig(from: config)
