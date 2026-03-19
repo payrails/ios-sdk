@@ -490,8 +490,8 @@ extension Payrails.Session {
 
 extension Payrails.Session {
     func update(_ options: UpdateOptions) {
-        if let value = options.value, let currency = options.currency {
-            paymentContext.updateAmount(value: value, currency: currency)
+        if let amount = options.amount {
+            paymentContext.updateAmount(value: amount.value, currency: amount.currency)
         }
     }
 }

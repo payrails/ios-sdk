@@ -1953,25 +1953,24 @@ final class PayrailsTests: XCTestCase {
 
     func testUpdateOptionsDefaults() {
         let opts = UpdateOptions()
-        XCTAssertNil(opts.value)
-        XCTAssertNil(opts.currency)
+        XCTAssertNil(opts.amount)
     }
 
     func testUpdateOptionsWithAmount() {
-        let opts = UpdateOptions(value: "50.00", currency: "GBP")
-        XCTAssertEqual(opts.value, "50.00")
-        XCTAssertEqual(opts.currency, "GBP")
+        let opts = UpdateOptions(amount: .init(value: "50.00", currency: "GBP"))
+        XCTAssertEqual(opts.amount?.value, "50.00")
+        XCTAssertEqual(opts.amount?.currency, "GBP")
     }
 
     func testUpdateOptionsAmountRequiresBothFields() {
-        // If only value is set but not currency, update() should not change amount
+        // If amount is nil, update() should not change the payment context amount
         let context = PaymentContext(amount: Amount(value: "10.00", currency: "EUR"))
-        let opts = UpdateOptions(value: "20.00")
+        let opts = UpdateOptions()
         // Simulate what Session.update() does
-        if let value = opts.value, let currency = opts.currency {
-            context.updateAmount(value: value, currency: currency)
+        if let amount = opts.amount {
+            context.updateAmount(value: amount.value, currency: amount.currency)
         }
-        // Amount should remain unchanged since currency was nil
+        // Amount should remain unchanged since amount was nil
         XCTAssertEqual(context.amount.value, "10.00")
         XCTAssertEqual(context.amount.currency, "EUR")
     }
