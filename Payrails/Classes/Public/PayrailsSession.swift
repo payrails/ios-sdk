@@ -535,6 +535,9 @@ extension Payrails.Session {
             return .string(value)
 
         case .amount:
+            // Note: reads from config.amount which is the same object mutated by update().
+            // If a PaymentContext is introduced as the runtime source of truth for amount,
+            // this must be updated to read from paymentContext.amount instead.
             guard let amount = config?.amount else { return nil }
             return .amount(PayrailsAmount(value: amount.value, currency: amount.currency))
 
