@@ -32,13 +32,6 @@ public extension Payrails {
 
             self.payrailsAPI = PayrailsAPI(config: config)
 
-            if isPaymentAvailable(type: .card),
-                  let vaultId = config.vaultConfiguration?.vaultId,
-                  let vaultUrl = config.vaultConfiguration?.vaultUrl,
-                  let token = config.vaultConfiguration?.token,
-               let tableName = config.vaultConfiguration?.cardTableName {
-            }
-
             executionId = config.execution?.id
 
             do {

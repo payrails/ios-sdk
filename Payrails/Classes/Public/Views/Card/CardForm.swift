@@ -44,13 +44,13 @@ public extension Payrails {
         internal let saveInstrumentToggle = UISwitch()
         internal let saveInstrumentLabel = UILabel()
 
-        init(
+        public init(
             config: CardFormConfig,
             session: Payrails.Session
         ) {
             self.containerClient = Client()
             self.config = config
-            self.tableName = session.getSDKConfiguration()?.cardTableName ?? ""
+            self.tableName = "cards"
             self.holderReference = session.getSDKConfiguration()?.holderRefecerence ?? ""
             self.payrailsCSE = session.getCSEInstance()
             self.session = session

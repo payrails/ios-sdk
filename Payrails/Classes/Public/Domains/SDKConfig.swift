@@ -407,10 +407,8 @@ struct PaymentOptions: Decodable {
 
 public struct PublicSDKConfig {
     public let holderRefecerence: String
-    public let cardTableName: String
 
     internal init(from config: SDKConfig) {
         self.holderRefecerence = config.holderReference ?? ""
-        self.cardTableName = config.vaultConfiguration?.cardTableName ?? "cards"
     }
 }
