@@ -535,9 +535,6 @@ extension Payrails.Session {
             return .string(value)
 
         case .amount:
-            // Note: reads from config.amount which is the same object mutated by update().
-            // If a PaymentContext is introduced as the runtime source of truth for amount,
-            // this must be updated to read from paymentContext.amount instead.
             guard let amount = config?.amount else { return nil }
             return .amount(PayrailsAmount(value: amount.value, currency: amount.currency))
 
@@ -557,16 +554,16 @@ extension Payrails.Session {
             guard let link = config?.links?.instrumentUpdate else { return nil }
             return .link(PayrailsLink(method: link.method, href: link.href))
 
-        case .paymentMethodConfig(let code):
+        case .paymentMethodConfig(let filter):
             guard let config = config else { return nil }
             let all = config.allPaymentOptions()
-            switch code {
-            case "all":
+            switch filter {
+            case .all:
                 return .paymentOptions(all.map(PayrailsPaymentOption.init))
-            case "redirect":
+            case .redirect:
                 let redirectOptions = all.filter { $0.clientConfig?.flow == "redirect" }
                 return .paymentOptions(redirectOptions.map(PayrailsPaymentOption.init))
-            default:
+            case .specific(let code):
                 guard let option = all.first(where: { $0.paymentMethodCode == code }) else { return nil }
                 return .paymentOptions([PayrailsPaymentOption(from: option)])
             }

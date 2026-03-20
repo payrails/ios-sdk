@@ -1942,7 +1942,7 @@ final class PayrailsTests: XCTestCase {
     }
 
     func testUpdateOptionsWithAmount() {
-        let opts = UpdateOptions(amount: .init(value: "50.00", currency: "GBP"))
+        let opts = UpdateOptions(amount: PayrailsAmount(value: "50.00", currency: "GBP"))
         XCTAssertEqual(opts.amount?.value, "50.00")
         XCTAssertEqual(opts.amount?.currency, "GBP")
     }
@@ -2111,7 +2111,7 @@ final class PayrailsTests: XCTestCase {
 
     func testQueryPaymentMethodConfigAll() throws {
         let session = try makeQueryTestSession()
-        let result = session.query(.paymentMethodConfig(paymentMethodCode: "all"))
+        let result = session.query(.paymentMethodConfig(.all))
         if case .paymentOptions(let options) = result {
             XCTAssertEqual(options.count, 2)
             XCTAssertTrue(options.contains { $0.paymentMethodCode == "card" })
@@ -2123,7 +2123,7 @@ final class PayrailsTests: XCTestCase {
 
     func testQueryPaymentMethodConfigRedirect() throws {
         let session = try makeQueryTestSession()
-        let result = session.query(.paymentMethodConfig(paymentMethodCode: "redirect"))
+        let result = session.query(.paymentMethodConfig(.redirect))
         if case .paymentOptions(let options) = result {
             XCTAssertEqual(options.count, 1)
             XCTAssertEqual(options.first?.paymentMethodCode, "payPal")
@@ -2135,7 +2135,7 @@ final class PayrailsTests: XCTestCase {
 
     func testQueryPaymentMethodConfigSpecific() throws {
         let session = try makeQueryTestSession()
-        let result = session.query(.paymentMethodConfig(paymentMethodCode: "card"))
+        let result = session.query(.paymentMethodConfig(.specific("card")))
         if case .paymentOptions(let options) = result {
             XCTAssertEqual(options.count, 1)
             XCTAssertEqual(options.first?.paymentMethodCode, "card")
@@ -2148,7 +2148,7 @@ final class PayrailsTests: XCTestCase {
 
     func testQueryPaymentMethodConfigUnknownReturnsNil() throws {
         let session = try makeQueryTestSession()
-        let result = session.query(.paymentMethodConfig(paymentMethodCode: "klarna"))
+        let result = session.query(.paymentMethodConfig(.specific("klarna")))
         XCTAssertNil(result)
     }
 

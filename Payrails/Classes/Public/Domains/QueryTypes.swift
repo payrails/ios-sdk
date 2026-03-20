@@ -5,6 +5,11 @@ import Foundation
 public struct PayrailsAmount {
     public let value: String
     public let currency: String
+
+    public init(value: String, currency: String) {
+        self.value = value
+        self.currency = currency
+    }
 }
 
 public struct PayrailsLink {
@@ -40,6 +45,18 @@ public struct PayrailsPaymentOption {
     }
 }
 
+// MARK: - Payment method filter
+
+/// Specifies which payment method configurations to retrieve.
+public enum PaymentMethodFilter {
+    /// Return all available payment methods.
+    case all
+    /// Return only payment methods with a redirect flow.
+    case redirect
+    /// Return the configuration for a single payment method code.
+    case specific(String)
+}
+
 // MARK: - Query key
 
 public enum PayrailsQueryKey {
@@ -55,10 +72,8 @@ public enum PayrailsQueryKey {
     case instrumentDelete
     /// API link for updating a stored instrument.
     case instrumentUpdate
-    /// Configuration for a specific payment method.
-    /// Pass `"all"` to return all methods, `"redirect"` for redirect-flow methods only,
-    /// or a specific `paymentMethodCode` for a single result.
-    case paymentMethodConfig(paymentMethodCode: String)
+    /// Configuration for payment methods matching the given filter.
+    case paymentMethodConfig(PaymentMethodFilter)
     /// Stored instruments for the given payment type.
     case paymentMethodInstruments(type: Payrails.PaymentType)
 }

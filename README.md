@@ -394,7 +394,7 @@ let result = try await Payrails.api("updateInstrument", instrumentId, body)
 After initializing a session, you can update the payment amount before executing a payment. This is useful when the backend updates the execution (e.g., via a lookup action) and the SDK needs to reflect the new values.
 
 ```swift
-Payrails.update(UpdateOptions(value: "25.50", currency: "USD"))
+Payrails.update(UpdateOptions(amount: PayrailsAmount(value: "25.50", currency: "USD")))
 ```
 
 > Both `value` and `currency` are required. If either is nil, the amount is not changed. `update()` only modifies local SDK state — the backend execution should already reflect the new values.
@@ -419,7 +419,7 @@ Returns `nil` if the SDK has not been initialized or the requested value is not 
 | `.binLookup` | `.link(PayrailsLink)` | API link for BIN lookup |
 | `.instrumentDelete` | `.link(PayrailsLink)` | API link for deleting a stored instrument |
 | `.instrumentUpdate` | `.link(PayrailsLink)` | API link for updating a stored instrument |
-| `.paymentMethodConfig(paymentMethodCode:)` | `.paymentOptions([PayrailsPaymentOption])` | Payment method configuration (see below) |
+| `.paymentMethodConfig(PaymentMethodFilter)` | `.paymentOptions([PayrailsPaymentOption])` | Payment method configuration (see below) |
 | `.paymentMethodInstruments(type:)` | `.storedInstruments([StoredInstrument])` | Stored instruments for a payment type |
 
 ### Examples
@@ -454,18 +454,20 @@ if case .link(let link) = Payrails.query(.instrumentUpdate) {
 }
 
 // Payment method configuration
-// Pass a specific paymentMethodCode for a single result:
-if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(paymentMethodCode: "card")) {
+// Use PaymentMethodFilter to specify which methods to retrieve:
+
+// A specific payment method code:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.specific("card"))) {
     print("Card integration: \(options.first?.integrationType ?? "")")
 }
 
-// Pass "all" to return every available method:
-if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(paymentMethodCode: "all")) {
+// All available methods:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.all)) {
     options.forEach { print($0.paymentMethodCode) }
 }
 
-// Pass "redirect" to return redirect-flow methods only:
-if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(paymentMethodCode: "redirect")) {
+// Only redirect-flow methods:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.redirect)) {
     options.forEach { print($0.paymentMethodCode) }
 }
 
