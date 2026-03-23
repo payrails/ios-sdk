@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.26.0] - 2026-03-23
 
 ### Added
-- `Payrails.api(...)` is now public — merchants can call `deleteInstrument` and `updateInstrument` directly (ONB-332)
-- `onThreeDSecureChallenge` callback now fires on `PayrailsCardPaymentButtonDelegate` during 3DS flows (ONB-332)
-- Structured documentation: `docs/public/` (8 merchant-facing docs) and `docs/internal/` (7 contributor docs) following the Divio documentation system (ONB-332)
+- `Payrails.api(...)` is now public — merchants can call `deleteInstrument` and `updateInstrument` directly
+- `onThreeDSecureChallenge` callback now fires on `PayrailsCardPaymentButtonDelegate` during 3DS flows
+- Structured documentation: `docs/public/` (8 merchant-facing docs) and `docs/internal/` (7 contributor docs) following the Divio documentation system
 - `/release-sdk` Claude skill for automated release preparation
 - `CHANGELOG.md` following Keep a Changelog format
 
