@@ -15,6 +15,7 @@
 		071E354F2A8B72AB007E5704 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 071E354E2A8B72AB007E5704 /* Media.xcassets */; };
 		071E35542A8B75A0007E5704 /* PayPalHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 071E35532A8B75A0007E5704 /* PayPalHandler.swift */; };
 		071E35562A8CD8EA007E5704 /* JSONDecoder+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 071E35552A8CD8EA007E5704 /* JSONDecoder+.swift */; };
+		9FB7EAB910CE14D2985C13A1 /* UpdateOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC019D70BC8BAF54F70F1AD /* UpdateOptions.swift */; };
 		07237D5F2A814824005BE43C /* SDKConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07237D5E2A814824005BE43C /* SDKConfig.swift */; };
 		07237D662A8248A2005BE43C /* KeyedDecodingContainer+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07237D652A8248A2005BE43C /* KeyedDecodingContainer+.swift */; };
 		073FF1EB2A837A2F00B50B76 /* PayrailsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073FF1EA2A837A2F00B50B76 /* PayrailsSession.swift */; };
@@ -128,6 +129,7 @@
 		071E354E2A8B72AB007E5704 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
 		071E35532A8B75A0007E5704 /* PayPalHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayPalHandler.swift; sourceTree = "<group>"; };
 		071E35552A8CD8EA007E5704 /* JSONDecoder+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "JSONDecoder+.swift"; sourceTree = "<group>"; };
+		3AC019D70BC8BAF54F70F1AD /* UpdateOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateOptions.swift; sourceTree = "<group>"; };
 		07237D5E2A814824005BE43C /* SDKConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDKConfig.swift; sourceTree = "<group>"; };
 		07237D652A8248A2005BE43C /* KeyedDecodingContainer+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeyedDecodingContainer+.swift"; sourceTree = "<group>"; };
 		07396BC9208AF89EE953C9BD /* LogView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
@@ -358,6 +360,7 @@
 				0781E6342A9F391D00073068 /* InitData.swift */,
 				071E35432A853040007E5704 /* PaymentFlow.swift */,
 				07237D5E2A814824005BE43C /* SDKConfig.swift */,
+				3AC019D70BC8BAF54F70F1AD /* UpdateOptions.swift */,
 				0776F2082A824F2800B238E6 /* PayrailsError.swift */,
 				076AACE22A8142D400D4DB6B /* Configuration.swift */,
 				0776F2062A824CEC00B238E6 /* Callbacks.swift */,
@@ -805,6 +808,7 @@
 				071E35442A853040007E5704 /* PaymentFlow.swift in Sources */,
 				078489762A8275FF00C29E6B /* SDKConfig+.swift in Sources */,
 				07237D5F2A814824005BE43C /* SDKConfig.swift in Sources */,
+				9FB7EAB910CE14D2985C13A1 /* UpdateOptions.swift in Sources */,
 				0776F2072A824CEC00B238E6 /* Callbacks.swift in Sources */,
 				078489712A826A9200C29E6B /* ApplePayButton.swift in Sources */,
 				071E35562A8CD8EA007E5704 /* JSONDecoder+.swift in Sources */,

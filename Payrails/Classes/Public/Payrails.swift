@@ -194,6 +194,7 @@ public extension Payrails {
                 showCardIcon: customConfig.showCardIcon,
                 showRequiredAsterisk: customConfig.showRequiredAsterisk,
                 cardIconAlignment: customConfig.cardIconAlignment,
+                fieldVariant: customConfig.fieldVariant,
                 layout: customConfig.layout,
                 styles: finalStylesConfig,
                 translations: finalTranslations
@@ -211,17 +212,8 @@ public extension Payrails {
             )
         }
 
-        guard let cseInstance = session.getCSEInstance(),
-              let holderReference = session.getSDKConfiguration()?.holderRefecerence else {
-            fatalError("CSE instance or holder reference not available in session.")
-        }
-
         let cardForm = Payrails.CardForm(
             config: finalConfig,
-            tableName: "tableName",
-            cseConfig: (data: "", version: ""),
-            holderReference: holderReference,
-            cseInstance: cseInstance,
             session: session
         )
 
@@ -369,12 +361,21 @@ public extension Payrails {
 
         return instruments
     }
+
+    static func update(_ options: UpdateOptions) {
+        guard let session = getCurrentSession() else {
+            Payrails.log("No active Payrails session. Call createSession() before update().")
+            return
+        }
+        session.update(options)
+    }
 }
 
 public extension Payrails {
     struct Debug {
-        public static func configViewer(session: Payrails.Session) -> some View {
-            SimplePayrailsViewer(config: session.debugConfig)
+        public static func configViewer() -> some View {
+            precondition(Payrails.getCurrentSession() != nil, "Payrails session must be initialized before using configViewer")
+            return SimplePayrailsViewer(config: Payrails.getCurrentSession()!.debugConfig)
         }
     }
 }

@@ -1,6 +1,5 @@
 import UIKit
 import Payrails
-import PayrailsCSE
 
 // Protocol for CardPaymentForm delegates
 public protocol PayrailsCardPaymentFormDelegate: AnyObject {
@@ -25,21 +24,14 @@ public extension Payrails {
 
         public init(
             config: CardFormConfig,
-            tableName: String,
-            cseConfig: (data: String, version: String),
-            holderReference: String,
-            cseInstance: PayrailsCSE,
-            session: Payrails.Session? = nil,
+            session: Payrails.Session,
             buttonTitle: String = "Pay Now"
         ) {
             self.stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
 
             self.cardForm = CardForm(
-                config: config, // Pass original config down
-                tableName: tableName,
-                cseConfig: cseConfig,
-                holderReference: holderReference,
-                cseInstance: cseInstance
+                config: config,
+                session: session
             )
 
             self.payButton = UIButton(type: .system)
@@ -113,11 +105,6 @@ public extension Payrails {
             // Add subviews
             self.addArrangedSubview(cardForm)
             self.addArrangedSubview(payButton)
-        }
-
-        // Method to update Payrails session if it's initialized later
-        public func updatePayrailsSession(_ session: Payrails.Session) {
-            self.payrails = session
         }
 
         @objc private func payButtonTapped() {

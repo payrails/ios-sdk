@@ -262,7 +262,8 @@ class PayrailsAPI {
             jsonData = try jsonEncoder.encode(body)
         } else {
             // Other payment types - use existing convertToJSON method
-            jsonData = convertToJSON(body: payload ?? [:])
+            let jsonBody = payload ?? [:]
+            jsonData = convertToJSON(body: jsonBody)
         }
 
         let authorizeResponse = try await call(

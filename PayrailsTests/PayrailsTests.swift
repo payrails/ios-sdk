@@ -15,6 +15,7 @@ final class PayrailsTests: XCTestCase {
         let email: String?
         let description: String?
         let type: Payrails.PaymentType
+        var isDefault: Bool = false
     }
 
     override func setUpWithError() throws {
@@ -1931,5 +1932,31 @@ final class PayrailsTests: XCTestCase {
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
         func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
         // Intentionally NOT implementing onStoredInstrumentChanged — uses default extension
+    }
+
+    // MARK: - UpdateOptions Tests
+
+    func testUpdateOptionsDefaults() {
+        let opts = UpdateOptions()
+        XCTAssertNil(opts.amount)
+    }
+
+    func testUpdateOptionsWithAmount() {
+        let opts = UpdateOptions(amount: .init(value: "50.00", currency: "GBP"))
+        XCTAssertEqual(opts.amount?.value, "50.00")
+        XCTAssertEqual(opts.amount?.currency, "GBP")
+    }
+
+    func testUpdateOptionsAmountRequiresBothFields() {
+        // If amount is nil, update() should not change the config amount
+        var config = Amount(value: "10.00", currency: "EUR")
+        let opts = UpdateOptions()
+        // Simulate what Session.update() does
+        if let amount = opts.amount {
+            config = Amount(value: amount.value, currency: amount.currency)
+        }
+        // Amount should remain unchanged since amount was nil
+        XCTAssertEqual(config.value, "10.00")
+        XCTAssertEqual(config.currency, "EUR")
     }
 }

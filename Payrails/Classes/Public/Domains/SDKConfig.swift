@@ -1,11 +1,11 @@
 import Foundation
 
-struct SDKConfig: Decodable {
+class SDKConfig: Decodable {
     let token: String
     let holderReference: String?
     let vaultConfiguration: VaultConfiguration?
     let execution: Execution?
-    let amount: Amount
+    var amount: Amount
     let links: SDKConfigLinks?
 }
 
@@ -36,9 +36,9 @@ struct Link: Decodable {
 }
 
 struct LinkAction: Decodable {
-    let redirectMethod: String
-    let redirectUrl: String
-    let parameters: Parameters
+    let redirectMethod: String?
+    let redirectUrl: String?
+    let parameters: Parameters?
     let type: String?
 
     struct Parameters: Decodable {
@@ -86,8 +86,8 @@ struct Workflow: Decodable {
 }
 
 struct Amount: Codable {
-  let value: String
-  let currency: String
+  var value: String
+  var currency: String
 }
 
 struct InitialResult: Decodable {
@@ -270,11 +270,14 @@ struct PaymentOptions: Decodable {
             .card
         }
 
+        var isDefault: Bool { `default` == true }
+
         let createdAt: String
         let status: String
         let data: CardInstrumentData?
         let displayName: String?
         let paymentMethod: String?
+        let `default`: Bool?
     }
 
     struct CardInstrumentData: Decodable {
@@ -294,6 +297,8 @@ struct PaymentOptions: Decodable {
         var type: Payrails.PaymentType {
             .payPal
         }
+
+        var isDefault: Bool { false }
 
         let id: String
         let paymentMethod: String

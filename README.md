@@ -124,7 +124,7 @@ Notes:
 Payrails.createSession(with: configuration) { result in
     switch result {
     case .success(let session):
-        print("Session created: \(String(describing: session.executionId))")
+        print("Session created: \(String(describing: Payrails.executionId))")
     case .failure(let error):
         print("Initialization failed: \(error)")
     }
@@ -279,15 +279,37 @@ idealButton.delegate = self
 ### Accessing stored instruments
 
 ```swift
-let cards = session.storedInstruments(for: .card)
-let paypals = session.storedInstruments(for: .payPal)
+let cards = Payrails.getStoredInstruments(for: .card)
+let paypals = Payrails.getStoredInstruments(for: .payPal)
 ```
 
-Or via the static helper (uses the current session):
+> **Instrument visibility:** `getStoredInstruments(for:)` returns instruments whose status is `"enabled"` or `"created"` (case-insensitive). A freshly tokenized card typically has status `"created"` until it transitions to `"enabled"`, so it will appear immediately after a session re-init without needing to wait for the status change.
+
+> **Refreshing after tokenization:** Stored instruments are baked into the session at init time. To see a newly saved card, re-initialize the session by calling `Payrails.createSession(with:)` with fresh init data from your backend, then rebuild any `StoredInstruments` UI components.
+
+### Default instrument
+
+Each `StoredInstrument` exposes `isDefault: Bool`, decoded from the `default` field in the server response. Use it to highlight the holder's default payment method in your UI or to conditionally enable a "Set as Default" action:
 
 ```swift
-let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
+let cards = Payrails.getStoredInstruments(for: .card)
+let defaultCard = cards.first { $0.isDefault }
+
+// Disable "Set as Default" when the card is already default
+setDefaultButton.isEnabled = !selectedCard.isDefault
 ```
+
+To mark an instrument as default:
+
+```swift
+let result = try await Payrails.api(
+    "updateInstrument",
+    instrumentId,
+    UpdateInstrumentBody(default: true)
+)
+```
+
+> `isDefault` reflects the value baked into the session at init time. After calling `updateInstrument`, re-initialize the session to get updated `isDefault` values.
 
 ### Displaying stored instruments
 
@@ -366,6 +388,16 @@ let result = try await Payrails.api("deleteInstrument", instrumentId)
 let body = UpdateInstrumentBody(default: true)
 let result = try await Payrails.api("updateInstrument", instrumentId, body)
 ```
+
+## Payment Amount Update
+
+After initializing a session, you can update the payment amount before executing a payment. This is useful when the backend updates the execution (e.g., via a lookup action) and the SDK needs to reflect the new values.
+
+```swift
+Payrails.update(UpdateOptions(value: "25.50", currency: "USD"))
+```
+
+> Both `value` and `currency` are required. If either is nil, the amount is not changed. `update()` only modifies local SDK state — the backend execution should already reflect the new values.
 
 ## Debugging
 
