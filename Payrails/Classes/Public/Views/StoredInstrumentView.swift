@@ -73,7 +73,7 @@ public extension Payrails {
 
         // Required initializers with warnings
         public required init?(coder: NSCoder) {
-            fatalError("Use Payrails.createStoredInstrumentView() instead")
+            fatalError("StoredInstrumentView does not support init(coder:)")
         }
 
         private func setupView() {
