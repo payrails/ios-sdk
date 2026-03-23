@@ -236,7 +236,7 @@ public extension Payrails {
         return storedInstruments
     }
 
-    static func api(_ operation: String, _ instrumentId: String, _ body: UpdateInstrumentBody? = nil) async throws -> InstrumentAPIResponse {
+    public static func api(_ operation: String, _ instrumentId: String, _ body: UpdateInstrumentBody? = nil) async throws -> InstrumentAPIResponse {
         guard let currentSession = getCurrentSession() else {
             throw PayrailsError.missingData("No active Payrails session. Please initialize a session first.")
         }

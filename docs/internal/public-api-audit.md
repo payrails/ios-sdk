@@ -20,7 +20,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.update(_:)` | PUBLIC | Runtime session state mutation (amount only) |
 | `Payrails.getStoredInstruments()` | PUBLIC | Convenience accessor; returns all card + PayPal |
 | `Payrails.getStoredInstruments(for:)` | PUBLIC | Type-filtered accessor |
-| `Payrails.api(_:_:_:)` | DISCUSS | String-based operation dispatch (`"deleteInstrument"`, `"updateInstrument"`). Consider typed replacements. |
+| `Payrails.api(_:_:_:)` | PUBLIC | String-based operation dispatch (`"deleteInstrument"`, `"updateInstrument"`). Matches Android SDK pattern. |
 | `Payrails.log(_:separator:terminator:file:function:line:)` | DISCUSS | Currently public — merchants could call this, but it's mainly internal. Consider making internal. |
 
 ---
