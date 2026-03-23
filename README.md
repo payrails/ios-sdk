@@ -107,7 +107,7 @@ let initData = Payrails.InitData(version: version, data: payload)
 // 3) Build configuration
 let configuration = Payrails.Configuration(
     initData: initData,
-    option: Payrails.Options(env: .dev) // .prod in production
+    option: Payrails.Options(env: .test) // .production in production
 )
 
 // 4) Initialize the SDK

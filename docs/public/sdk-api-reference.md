@@ -43,13 +43,13 @@ Runtime options passed to `Configuration`.
 
 ```swift
 public struct Payrails.Options {
-    public init(env: Payrails.Env = .prod)
+    public init(env: Payrails.Env = .production)
     public let env: Payrails.Env
 }
 
 public enum Payrails.Env: String {
-    case prod
-    case dev
+    case production
+    case test
 }
 ```
 

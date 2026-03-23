@@ -81,7 +81,7 @@ let initData = Payrails.InitData(
 
 let configuration = Payrails.Configuration(
     initData: initData,
-    option: Payrails.Options(env: .prod) // use .dev for sandbox
+    option: Payrails.Options(env: .production) // use .test for sandbox
 )
 
 do {
@@ -189,12 +189,12 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate {
 
 ## Step 7: Test with the sandbox environment
 
-Change the environment to `.dev` when initializing the session:
+Change the environment to `.test` when initializing the session:
 
 ```swift
 let configuration = Payrails.Configuration(
     initData: initData,
-    option: Payrails.Options(env: .dev)
+    option: Payrails.Options(env: .test)
 )
 ```
 
