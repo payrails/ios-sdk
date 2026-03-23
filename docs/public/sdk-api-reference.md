@@ -221,15 +221,6 @@ public static func createStoredInstruments(
     showUpdateButton: Bool = false,
     showPayButton: Bool = false
 ) -> Payrails.StoredInstruments
-
-public static func createStoredInstrumentView(
-    instrument: StoredInstrument,
-    style: StoredInstrumentsStyle? = nil,
-    translations: StoredInstrumentsTranslations? = nil,
-    showDeleteButton: Bool = false,
-    showUpdateButton: Bool = false,
-    showPayButton: Bool = false
-) -> Payrails.StoredInstrumentView
 ```
 
 ---

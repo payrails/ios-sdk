@@ -324,20 +324,6 @@ storedInstrumentsView.delegate = self
 storedInstrumentsView.presenter = self
 ```
 
-### Displaying a single stored instrument
-
-```swift
-let instrumentView = Payrails.createStoredInstrumentView(
-    instrument: instrument,
-    showDeleteButton: true,
-    showUpdateButton: true,
-    showPayButton: true
-)
-
-instrumentView.delegate = self
-instrumentView.setPresenter(self)
-```
-
 ### Binding stored instruments to a payment button
 
 You can dynamically switch a `CardPaymentButton` between card form mode and stored instrument mode at runtime. This lets users pick a saved card from a list and pay with one tap.

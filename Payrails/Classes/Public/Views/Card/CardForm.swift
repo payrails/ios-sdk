@@ -25,6 +25,41 @@ public extension Payrails {
     }
 
     class CardForm: UIStackView {
+        static let defaultConfig: CardFormConfig = {
+            let defaultErrorValues: [CardFieldType: String] = [
+                .CARDHOLDER_NAME: "Enter name as it appears on card",
+                .CARD_NUMBER: "Enter a valid card number",
+                .EXPIRATION_DATE: "Enter a valid expiry date (MM/YY)",
+                .CVV: "Enter the 3 or 4 digit code",
+                .EXPIRATION_MONTH: "Enter a valid month",
+                .EXPIRATION_YEAR: "Enter a valid year"
+            ]
+
+            let defaultTranslations = CardTranslations(
+                placeholders: CardTranslations.Placeholders(values: [
+                    .CARDHOLDER_NAME: "Full Name",
+                    .CARD_NUMBER: "Card Number",
+                    .EXPIRATION_DATE: "MM/YY",
+                    .CVV: "CVV",
+                    .EXPIRATION_MONTH: "MM",
+                    .EXPIRATION_YEAR: "YYYY"
+                ]),
+                labels: CardTranslations.Labels(
+                    saveInstrument: "Save card",
+                    storeInstrument: "Remember card",
+                    paymentInstallments: "Pay in installments"
+                ),
+                error: CardTranslations.ErrorMessages(
+                    values: defaultErrorValues
+                )
+            )
+
+            return CardFormConfig(
+                showNameField: false,
+                translations: defaultTranslations
+            )
+        }()
+
         public weak var delegate: PayrailsCardFormDelegate?
         private let config: CardFormConfig
         private let containerClient: Client

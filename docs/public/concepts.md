@@ -35,7 +35,6 @@ Elements are UIKit views that the SDK manages. You obtain them via factory metho
 | `Payrails.createPayPalButton()` | `PaypalElement` | PayPal checkout button |
 | `Payrails.createGenericRedirectButton(translations:paymentMethodCode:)` | `Payrails.GenericRedirectButton` | Button for redirect-based methods (e.g. iDEAL) |
 | `Payrails.createStoredInstruments()` | `Payrails.StoredInstruments` | List of previously saved payment methods |
-| `Payrails.createStoredInstrumentView(instrument:)` | `Payrails.StoredInstrumentView` | A single saved instrument row |
 
 All elements are UIView subclasses; add them to your view hierarchy with Auto Layout or frames.
 

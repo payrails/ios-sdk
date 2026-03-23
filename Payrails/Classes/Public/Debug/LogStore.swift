@@ -44,3 +44,16 @@ public extension Payrails {
         }
     }
 }
+
+// MARK: - SDK Logging
+
+extension Payrails {
+    static func log(_ items: Any..., separator: String = " ", terminator: String = "\n", file: String = #file, function: String = #function, line: UInt = #line) {
+        let output = items.map { "\($0)" }.joined(separator: separator)
+        let fileName = (file as NSString).lastPathComponent
+        let logMessage = "[\(fileName):\(line)] \(function) -> \(output)"
+
+        Swift.print(logMessage, terminator: terminator)
+        LogStore.shared.addLog(logMessage)
+    }
+}
