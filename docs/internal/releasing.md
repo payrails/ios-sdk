@@ -29,6 +29,32 @@ var SDK_VERSION = "1.25.3"
 
 ## Release workflow
 
+```
+Update version in two files
+(Payrails.podspec + Version.swift)
+        │
+        ▼
+Commit to main (or merge PR)
+        │
+        ▼
+Verify CI is green
+├── scripts/ci/build.sh
+├── scripts/ci/lint.sh
+└── scripts/ci/test.sh
+        │
+        ▼
+Create GitHub Release
+(tag: v<version>, target: main)
+        │
+        ├──── CocoaPods ──► CI runs `pod trunk push`
+        │                        │
+        │                   Consumers: pod install
+        │
+        └──── SPM ──► Tag is the release (no extra step)
+                           │
+                      Consumers: update package version
+```
+
 Releases are triggered by creating a **GitHub Release** with a version tag. The CI pipeline publishes to CocoaPods trunk automatically.
 
 ### Step-by-step

@@ -25,6 +25,29 @@ This created implicit coupling to internal session fields. The query API replace
 
 ## Architecture
 
+### Query dispatch flow
+
+```
+Merchant code
+      │
+      ▼
+Payrails.query(.amount)          ◄── static entry point
+      │
+      │  currentSession?.query(key)
+      ▼
+Session.query(_:)                ◄── internal dispatch
+      │
+      │  switch key {
+      │    case .amount:
+      │      return .amount(config.amount)
+      │    case .executionId:
+      │      return .string(config.execution.id)
+      │    ...
+      │  }
+      ▼
+PayrailsQueryResult?             ◄── typed result (nil if no session)
+```
+
 ### Entry point
 
 ```swift
@@ -73,6 +96,25 @@ Result types (`PayrailsAmount`, `PayrailsLink`, `PayrailsPaymentOption`) are pub
 ---
 
 ## Adding a new query key — step-by-step
+
+### Overview
+
+```
+Step 1                    Step 2                    Step 3
+Add key case              Add/reuse result type     Implement dispatch
+in QueryTypes.swift       in QueryTypes.swift       in PayrailsSession.swift
+        │                         │                         │
+        ▼                         ▼                         ▼
+PayrailsQueryKey {        PayrailsQueryResult {     switch key {
+  case myNewKey             case myNewResult          case .myNewKey:
+}                         }                           return .myNewResult(...)
+                                                    }
+        │                         │                         │
+        └─────────────────────────┴─────────────────────────┘
+                                  │
+                    Step 4: Write tests
+                    Step 5: Update public-api-audit.md
+```
 
 ### Step 1: Add the key case
 

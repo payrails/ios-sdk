@@ -48,7 +48,28 @@ https://github.com/payrails/ios-sdk.git
 A session wraps one checkout execution. The typical lifecycle is:
 
 ```
-viewDidLoad → fetch init payload from backend → createSession → build UI → payment
+viewDidLoad
+    │
+    ▼
+Fetch init payload from your backend
+    │
+    ▼
+Payrails.createSession(with: config)
+    │  (lightweight: JSON parse + CSE init)
+    ▼
+Build payment UI
+    │
+    ├── createCardForm()
+    ├── createCardPaymentButton()
+    ├── createApplePayButton()
+    ├── createPayPalButton()
+    ├── createStoredInstruments()
+    │
+    ▼
+User completes payment
+    │
+    ▼
+Verify result on your backend
 ```
 
 Session creation is a lightweight local operation (JSON parsing + CSE init). The network call happens on your backend, not in the SDK.
@@ -179,6 +200,26 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate, PaymentPres
 
 ## Stored instruments
 
+### Stored instrument payment flow
+
+```
+User selects stored instrument
+        │
+        ▼
+CardPaymentButton enters "stored instrument mode"
+        │
+        ▼
+User taps "Pay"
+        │
+        ▼
+SDK authorizes with stored instrument
+        │
+        ├──── Success ──► onAuthorizeSuccess
+        └──── Failure ──► onAuthorizeFailed
+```
+
+If the user deselects the instrument, the button returns to card form mode.
+
 ### Render a list with pay buttons
 
 ```swift
@@ -271,6 +312,31 @@ let iDEALButton = Payrails.createGenericRedirectButton(
 )
 iDEALButton.delegate = self
 view.addSubview(iDEALButton)
+```
+
+---
+
+## Button modes
+
+`CardPaymentButton` operates in two mutually exclusive modes:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                CardPaymentButton                     │
+│                                                      │
+│   ┌──────────────────┐    ┌───────────────────────┐  │
+│   │    Form Mode     │    │ Stored Instrument Mode│  │
+│   │                  │    │                       │  │
+│   │ Validates card   │    │ Skips card form       │  │
+│   │ form, encrypts,  │◄──►│ Uses stored data      │  │
+│   │ then authorizes  │    │ directly              │  │
+│   └──────────────────┘    └───────────────────────┘  │
+│                                                      │
+│   Switching:                                         │
+│   • setStoredInstrument() → enters stored mode       │
+│   • User deselects       → returns to form mode      │
+│   • clearStoredInstrument() → returns to form mode   │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---

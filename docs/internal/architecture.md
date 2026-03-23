@@ -52,6 +52,38 @@ The public API surface is tracked in [`public-api-audit.md`](public-api-audit.md
 
 ---
 
+## Layer diagram
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    Merchant App (UIKit)                       │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────┐  ┌─────────────┐  ┌──────────┐  ┌──────────┐ │
+│  │ CardForm │  │ CardPayment │  │ ApplePay │  │  PayPal  │ │
+│  │          │  │   Button    │  │  Button  │  │  Button  │ │
+│  └────┬─────┘  └──────┬──────┘  └────┬─────┘  └────┬─────┘ │
+│       │               │              │              │       │
+│       └───────┬───────┴──────────────┴──────────────┘       │
+│               │                                              │
+│        ┌──────┴──────┐                                       │
+│        │   Session   │                                       │
+│        └──────┬──────┘                                       │
+│               │                                              │
+│    ┌──────────┼──────────┐                                   │
+│    │          │          │                                    │
+│  ┌─┴──────┐ ┌┴────────┐ ┌┴───────────┐                      │
+│  │Vault/  │ │Payrails │ │  Payment   │                      │
+│  │CSE     │ │  API    │ │  Handlers  │                      │
+│  └────────┘ └─────────┘ └────────────┘                      │
+│                                                              │
+├──────────────────────────────────────────────────────────────┤
+│                      Payrails API                            │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Key subsystems
 
 ### Session (`PayrailsSession.swift`)
@@ -116,6 +148,31 @@ This makes the merchant API ergonomic (no dependency injection) at the cost of o
 
 ---
 
+## Element lifecycle
+
+Elements are tied to the session lifecycle:
+
+```
+Payrails.createSession() ──► Session active
+       │
+       ├── createCardForm()
+       ├── createCardPaymentButton()
+       ├── createApplePayButton()
+       ├── createPayPalButton()
+       ├── createStoredInstruments()
+       │
+       ▼
+Session deallocated
+       │
+       ▼
+All element references become stale
+Payment handlers cancelled
+```
+
+Unlike Android (which uses `ActivityLifecycleCallbacks` for auto-cleanup), the iOS SDK relies on ARC. When the `Payrails.currentSession` static var is overwritten or set to `nil`, handlers and in-flight tasks are cancelled via `deinit`.
+
+---
+
 ## UIKit architecture
 
 All UI elements are UIKit `UIView` or `UIControl` subclasses:
@@ -131,7 +188,39 @@ There is no SwiftUI layer in the payment elements (only the debug viewer uses Sw
 
 ---
 
-## 3DS flow
+## Card payment flow (happy path)
+
+```
+User fills card form
+        │
+        ▼
+User taps "Pay"
+        │
+        ▼
+SDK validates card data ──── Invalid? ──► Show field errors
+        │                                  (auto-clear on fix)
+        │ Valid
+        ▼
+Vault encrypts card data (via PayrailsCSE)
+        │
+        ▼
+SDK calls authorize API
+        │
+        ├──── Success ──────────────► onAuthorizeSuccess
+        │
+        ├──── 3DS Required ─────────► Open SFSafariViewController
+        │                                    │
+        │                              User completes 3DS
+        │                                    │
+        │                              SDK polls for result
+        │                                    │
+        │                              ├──── Success ──► onAuthorizeSuccess
+        │                              └──── Failure ──► onAuthorizeFailed
+        │
+        └──── Failure ──────────────► onAuthorizeFailed
+```
+
+## 3DS flow (detailed)
 
 ```
 CardPaymentButton.pay()
