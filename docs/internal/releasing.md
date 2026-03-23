@@ -17,12 +17,12 @@ Both must be updated to the same value before releasing.
 
 ```ruby
 # Payrails.podspec
-spec.version = "1.25.3"
+spec.version = "1.26.1"
 ```
 
 ```swift
 // Version.swift
-var SDK_VERSION = "1.25.3"
+var SDK_VERSION = "1.26.1"
 ```
 
 ---
@@ -67,7 +67,7 @@ Releases are triggered by creating a **GitHub Release** with a version tag. The 
    - Tests: `scripts/ci/test.sh`
 
 3. **Create a GitHub Release:**
-   - Tag: `v<version>` (e.g. `v1.25.3`) — must match `spec.version` exactly
+   - Tag: `v<version>` (e.g. `v1.26.1`) — must match `spec.version` exactly
    - Target: `main`
    - Title: `v<version>`
    - Body: changelog summary
