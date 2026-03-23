@@ -19,7 +19,7 @@ class PayPalHandler: NSObject {
         self.saveInstrument = saveInstrument
         let config = CheckoutConfig(
             clientID: config.clientId,
-            environment: environment == .dev ? .sandbox : .live
+            environment: environment == .test ? .sandbox : .live
         )
 
         Checkout.set(config: config)

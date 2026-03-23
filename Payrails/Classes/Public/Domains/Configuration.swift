@@ -15,13 +15,13 @@ public extension Payrails {
     }
 
     struct Options {
-        public init(env: Payrails.Env = .prod) {
+        public init(env: Payrails.Env = .production) {
             self.env = env
         }
         let env: Env
     }
 
     enum Env: String {
-        case prod, dev
+        case production, test
     }
 }

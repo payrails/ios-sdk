@@ -59,7 +59,7 @@ The SDK writes to `LogStore.shared` and also calls `Swift.print`. To see logs in
 
 **Session init works in debug but fails in release**
 - Check that your backend call succeeds in the production environment
-- Verify that the `env` option matches your backend environment (`.prod` vs `.dev`)
+- Verify that the `env` option matches your backend environment (`.production` vs `.test`)
 
 ---
 
@@ -145,6 +145,6 @@ The SDK writes to `LogStore.shared` and also calls `Swift.print`. To see logs in
 ## Getting help
 
 1. Enable debug logs and capture the output
-2. Reproduce the issue with `env: .dev` to rule out production-only configuration issues
+2. Reproduce the issue with `env: .test` to rule out production-only configuration issues
 3. Check the `PayrailsError.errorDescription` for the specific failure reason
 4. Open a support ticket with your `executionId` (from `Payrails.query(.executionId)`) and the full error description

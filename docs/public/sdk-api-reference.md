@@ -1,6 +1,6 @@
 # SDK API Reference
 
-**Current version:** 1.26.0
+**Current version:** 1.26.1
 **Minimum deployment target:** iOS 14.0
 **Swift version:** 5.0+
 **Distribution:** CocoaPods (`Payrails/Checkout`) · Swift Package Manager
@@ -12,7 +12,7 @@
 ### CocoaPods
 
 ```ruby
-pod 'Payrails/Checkout', '~> 1.25'
+pod 'Payrails/Checkout', '~> 1.26'
 ```
 
 ### Swift Package Manager
@@ -43,13 +43,13 @@ Runtime options passed to `Configuration`.
 
 ```swift
 public struct Payrails.Options {
-    public init(env: Payrails.Env = .prod)
+    public init(env: Payrails.Env = .production)
     public let env: Payrails.Env
 }
 
 public enum Payrails.Env: String {
-    case prod
-    case dev
+    case production
+    case test
 }
 ```
 
