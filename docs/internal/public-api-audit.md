@@ -57,7 +57,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.InitData.data` | PUBLIC | |
 | `Payrails.Configuration` | PUBLIC | |
 | `Payrails.Options` | PUBLIC | |
-| `Payrails.Env` | PUBLIC | `.prod`, `.dev` |
+| `Payrails.Env` | PUBLIC | `.production`, `.test` |
 
 ---
 

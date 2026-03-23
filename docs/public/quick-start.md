@@ -18,7 +18,7 @@ Get up and running with the Payrails iOS SDK in about 15 minutes. By the end you
 Add the dependency to your `Podfile`:
 
 ```ruby
-pod 'Payrails/Checkout', '~> 1.25'
+pod 'Payrails/Checkout', '~> 1.26'
 ```
 
 Then run:
@@ -41,7 +41,7 @@ Or add it directly to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/payrails/ios-sdk.git", from: "1.25.0")
+    .package(url: "https://github.com/payrails/ios-sdk.git", from: "1.26.1")
 ]
 ```
 
@@ -81,7 +81,7 @@ let initData = Payrails.InitData(
 
 let configuration = Payrails.Configuration(
     initData: initData,
-    option: Payrails.Options(env: .prod) // use .dev for sandbox
+    option: Payrails.Options(env: .production) // use .test for sandbox
 )
 
 do {
@@ -189,12 +189,12 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate {
 
 ## Step 7: Test with the sandbox environment
 
-Change the environment to `.dev` when initializing the session:
+Change the environment to `.test` when initializing the session:
 
 ```swift
 let configuration = Payrails.Configuration(
     initData: initData,
-    option: Payrails.Options(env: .dev)
+    option: Payrails.Options(env: .test)
 )
 ```
 

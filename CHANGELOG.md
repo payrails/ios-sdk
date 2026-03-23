@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.26.1] - 2026-03-23
+
+### Changed
+- `Payrails.Env` cases renamed: `.prod` → `.production` and `.dev` → `.test` for clearer environment naming (ONB-427)
+
+> ⚠️ **Breaking change:** Update all references to `.prod` → `.production` and `.dev` → `.test` in your integration.
+
 ## [1.26.0] - 2026-03-23
 
 ### Added

@@ -369,7 +369,7 @@ sequenceDiagram
 // 1. Initialize SDK Session
 let configuration = Payrails.Configuration(
     initData: response,
-    option: Payrails.Options(env: Payrails.Env.dev)
+    option: Payrails.Options(env: Payrails.Env.test)
 )
 let payrails = try await Payrails.createSession(with: configuration)
 

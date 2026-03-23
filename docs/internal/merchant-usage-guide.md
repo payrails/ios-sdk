@@ -90,7 +90,7 @@ class CheckoutViewController: UIViewController {
             let initData = Payrails.InitData(version: payload.version, data: payload.data)
             let config = Payrails.Configuration(
                 initData: initData,
-                option: Payrails.Options(env: .prod)
+                option: Payrails.Options(env: .production)
             )
             _ = try await Payrails.createSession(with: config)
             buildPaymentUI()
