@@ -6,6 +6,10 @@ Payrails iOS SDK provides UI components and payment flows for card payments, App
 
 This README is the canonical integration guide. The `docs/` folder contains supplemental examples and flow-specific notes.
 
+## Release Notes
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of releases, features, and fixes.
+
 ## CI Validation
 
 The repository uses GitHub Actions CI checks for the SDK:
