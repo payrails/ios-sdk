@@ -5,6 +5,6 @@
 import Foundation
 
 internal protocol SkyflowInternalValidationProtocol {
-    
+
     func validate(_ input: String?) -> Bool
 }

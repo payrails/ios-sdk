@@ -9,7 +9,7 @@ public protocol PayrailsCardFormDelegate: AnyObject {
 
 // Extension to Payrails for CardForm
 public extension Payrails {
-    
+
     final class CardCollectContainer: CardContainer {
         public let container: Container<ComposableContainer>
 
@@ -25,6 +25,41 @@ public extension Payrails {
     }
 
     class CardForm: UIStackView {
+        static let defaultConfig: CardFormConfig = {
+            let defaultErrorValues: [CardFieldType: String] = [
+                .CARDHOLDER_NAME: "Enter name as it appears on card",
+                .CARD_NUMBER: "Enter a valid card number",
+                .EXPIRATION_DATE: "Enter a valid expiry date (MM/YY)",
+                .CVV: "Enter the 3 or 4 digit code",
+                .EXPIRATION_MONTH: "Enter a valid month",
+                .EXPIRATION_YEAR: "Enter a valid year"
+            ]
+
+            let defaultTranslations = CardTranslations(
+                placeholders: CardTranslations.Placeholders(values: [
+                    .CARDHOLDER_NAME: "Full Name",
+                    .CARD_NUMBER: "Card Number",
+                    .EXPIRATION_DATE: "MM/YY",
+                    .CVV: "CVV",
+                    .EXPIRATION_MONTH: "MM",
+                    .EXPIRATION_YEAR: "YYYY"
+                ]),
+                labels: CardTranslations.Labels(
+                    saveInstrument: "Save card",
+                    storeInstrument: "Remember card",
+                    paymentInstallments: "Pay in installments"
+                ),
+                error: CardTranslations.ErrorMessages(
+                    values: defaultErrorValues
+                )
+            )
+
+            return CardFormConfig(
+                showNameField: false,
+                translations: defaultTranslations
+            )
+        }()
+
         public weak var delegate: PayrailsCardFormDelegate?
         private let config: CardFormConfig
         private let containerClient: Client
@@ -33,7 +68,8 @@ public extension Payrails {
         private let holderReference: String
         public var cardContainer: CardCollectContainer?
         private var payrailsCSE: PayrailsCSE?
-        
+        private weak var session: Payrails.Session?
+
         // Save instrument properties
         public var saveInstrument: Bool = false {
             didSet {
@@ -42,21 +78,18 @@ public extension Payrails {
         }
         internal let saveInstrumentToggle = UISwitch()
         internal let saveInstrumentLabel = UILabel()
-        
+
         public init(
             config: CardFormConfig,
-            tableName: String,
-            cseConfig: (data: String, version: String),
-            holderReference: String,
-            cseInstance: PayrailsCSE
+            session: Payrails.Session
         ) {
             self.containerClient = Client()
             self.config = config
-            // this is also skyflow leftover
-            self.tableName = tableName
-            self.holderReference = holderReference
-            self.payrailsCSE = cseInstance
-            
+            self.tableName = "cards"
+            self.holderReference = session.getSDKConfiguration()?.holderRefecerence ?? ""
+            self.payrailsCSE = session.getCSEInstance()
+            self.session = session
+
             super.init(frame: .zero)
 
             let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
@@ -77,12 +110,12 @@ public extension Payrails {
             } else {
                 self.clipsToBounds = false
             }
-            
+
             if let padding = wrapperStyle.padding {
                 self.layoutMargins = padding
             }
             self.isLayoutMarginsRelativeArrangement = true // Always true if using layoutMargins
-            
+
             setupViews()
         }
 
@@ -97,6 +130,8 @@ public extension Payrails {
             let defaultLabelStyle = CardStyle(textColor: .secondaryLabel)
             let defaultErrorStyle = CardStyle(textColor: .systemRed)
             let containerErrorStyle = stylesConfig.errorTextStyle ?? defaultErrorStyle
+            let containerHorizontalInsets = Self.resolveComposableHorizontalInsets(stylesConfig: stylesConfig)
+            let containerStyles = containerHorizontalInsets.map { Styles(base: Style(padding: $0)) }
             let iconAlignment = config.cardIconAlignment
             let layoutRows = sanitizedLayoutRows(from: resolvedLayoutRows())
 
@@ -109,6 +144,7 @@ public extension Payrails {
                 type: ContainerType.COMPOSABLE,
                 options: ContainerOptions(
                     layout: layoutRows.map(\.count),
+                    styles: containerStyles,
                     errorTextStyles: Styles(base: containerErrorStyle)
                 )
             ) else {
@@ -116,6 +152,10 @@ public extension Payrails {
                 return
             }
 
+            container.composableRowSpacing = stylesConfig.fieldSpacing
+            container.onLayoutInvalidationRequested = { [weak self] in
+                self?.requestLayoutRefresh()
+            }
             self.container = container
             self.cardContainer = CardCollectContainer(container: container)
 
@@ -131,9 +171,10 @@ public extension Payrails {
                 }
                 let options = CollectElementOptions(
                     required: true,
-                    enableCardIcon: config.showCardIcon && fieldType == .CARD_NUMBER,
-                    enableCopy: true,
-                    showRequiredAsterisk: config.showRequiredAsterisk
+                    enableCardIcon: config.showCardIcon,
+                    enableCopy: false,
+                    showRequiredAsterisk: config.showRequiredAsterisk,
+                    fieldVariant: config.fieldVariant
                 )
                 _ = container.create(input: input, options: options)
             }
@@ -153,6 +194,34 @@ public extension Payrails {
             if config.showSaveInstrument {
                 setupSaveInstrumentToggle()
             }
+        }
+
+        private func requestLayoutRefresh() {
+            // Defer invalidation to avoid re-entering UIKit fitting during an active layout pass.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.invalidateIntrinsicContentSize()
+                self.setNeedsLayout()
+                self.superview?.setNeedsLayout()
+            }
+        }
+
+        internal static func resolveComposableHorizontalInsets(stylesConfig: CardFormStylesConfig) -> UIEdgeInsets? {
+            guard let wrapperPadding = stylesConfig.wrapperStyle?.padding else {
+                return nil
+            }
+
+            let defaultHorizontalPadding = CardWrapperStyle.defaultStyle.padding ?? .zero
+            let isHorizontalPaddingUnchanged =
+                wrapperPadding.left == defaultHorizontalPadding.left &&
+                wrapperPadding.right == defaultHorizontalPadding.right
+
+            // Keep legacy default behavior unless merchant changed wrapper horizontal padding.
+            if isHorizontalPaddingUnchanged {
+                return nil
+            }
+
+            return UIEdgeInsets(top: 0, left: wrapperPadding.left, bottom: 0, right: wrapperPadding.right)
         }
 
         private func resolvedLayoutRows() -> [[CardFieldType]] {
@@ -202,9 +271,8 @@ public extension Payrails {
             let translation = getTranslation(for: fieldType)
             let inputStyle = stylesConfig.effectiveInputStyles(for: fieldType)
             let labelStyle = labelStyle(for: fieldType, stylesConfig: stylesConfig, defaultLabelStyle: defaultLabelStyle)
-            let iconStyle: Styles = fieldType == .CARD_NUMBER
-                ? Styles(base: CardStyle(cardIconAlignment: iconAlignment))
-                : Styles()
+            // Keep icon alignment available for both static icons and clear button behavior.
+            let iconStyle: Styles = Styles(base: CardStyle(cardIconAlignment: iconAlignment))
 
             return CollectElementInput(
                 table: tableName,
@@ -283,49 +351,49 @@ public extension Payrails {
         public class CardCollectCallback: Callback {
             var onSuccess: ((Any) -> Void)?
             var onFailure: ((Any) -> Void)?
-            
+
             public func onSuccess(_ responseBody: Any) {
                 onSuccess?(responseBody)
             }
-            
+
             public func onFailure(_ error: Any) {
                 onFailure?(error)
             }
         }
-        
+
         private func setupSaveInstrumentToggle() {
             // Configure label
             let labelText = config.translations?.labels.saveInstrument ?? "Save card"
             saveInstrumentLabel.text = labelText
             saveInstrumentLabel.font = UIFont.systemFont(ofSize: 14)
             saveInstrumentLabel.textColor = .secondaryLabel
-            
+
             // Create toggle container
             let toggleContainer = UIStackView()
             toggleContainer.axis = .horizontal
             toggleContainer.spacing = 8
             toggleContainer.alignment = .center
-            
+
             // Add toggle and label to container
             toggleContainer.addArrangedSubview(saveInstrumentLabel)
             toggleContainer.addArrangedSubview(saveInstrumentToggle)
-            
+
             // Add toggle container to main stack
             self.addArrangedSubview(toggleContainer)
-            
+
             // Link toggle to property
             saveInstrumentToggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
         }
-        
+
         @objc private func toggleChanged() {
             self.saveInstrument = saveInstrumentToggle.isOn
         }
-        
+
         public func collectFields() {
             guard let container = self.container else { return }
-            
+
             let callback = CardCollectCallback()
-            
+
             callback.onSuccess = { [weak self] responseBody in
                 guard let self = self else { return }
 
@@ -376,13 +444,77 @@ public extension Payrails {
                     self.notifyCollectionFailure(error)
                 }
             }
-            
+
             callback.onFailure = { [weak self] error in
                 print("Failed to collect card data:", error)
                 self?.notifyCollectionFailure(PayrailsError.invalidCardData)
             }
-            
+
             cardContainer?.collect(with: callback)
+        }
+
+        /// Tokenizes the card form data — encrypts card details and registers the instrument
+        /// in the vault without processing a payment.
+        ///
+        /// This matches the web SDK's `cardForm.tokenize()` and Android SDK's `cardForm.tokenize()`.
+        public func tokenize(options: TokenizeOptions = TokenizeOptions()) async throws -> SaveInstrumentResponse {
+            guard let session = self.session else {
+                throw PayrailsError.missingData("Session is required for tokenization.")
+            }
+
+            guard self.container != nil else {
+                throw PayrailsError.missingData("Card form container is not available")
+            }
+
+            let fields: [String: Any] = try await withCheckedThrowingContinuation { continuation in
+                let callback = CardCollectCallback()
+
+                callback.onSuccess = { responseBody in
+                    guard
+                        let response = responseBody as? [String: Any],
+                        let records = response["records"] as? [[String: Any]],
+                        let firstRecord = records.first,
+                        let fields = firstRecord["fields"] as? [String: Any]
+                    else {
+                        continuation.resume(throwing: PayrailsError.invalidDataFormat)
+                        return
+                    }
+                    continuation.resume(returning: fields)
+                }
+
+                callback.onFailure = { _ in
+                    continuation.resume(throwing: PayrailsError.invalidCardData)
+                }
+
+                self.cardContainer?.collect(with: callback)
+            }
+
+            guard
+                let cardNumber = fields["card_number"] as? String,
+                let securityCode = fields["security_code"] as? String
+            else {
+                throw PayrailsError.invalidCardData
+            }
+
+            guard let expiry = self.resolveExpiry(from: fields) else {
+                throw PayrailsError.invalidCardData
+            }
+
+            guard let payrailsCSE = self.payrailsCSE else {
+                throw PayrailsError.missingData("CSE instance")
+            }
+
+            let payrailsCard = Card(
+                holderReference: self.holderReference,
+                cardNumber: cardNumber,
+                expiryMonth: expiry.month,
+                expiryYear: expiry.year,
+                holderName: fields["cardholder_name"] as? String,
+                securityCode: securityCode
+            )
+
+            let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
+            return try await session.tokenize(encryptedData: encryptedData, options: options)
         }
 
         private func notifyCollectionFailure(_ error: Error) {
@@ -394,8 +526,7 @@ public extension Payrails {
         private func resolveExpiry(from fields: [String: Any]) -> (month: String, year: String)? {
             if
                 let expiryMonth = fields["expiry_month"] as? String,
-                let expiryYear = fields["expiry_year"] as? String
-            {
+                let expiryYear = fields["expiry_year"] as? String {
                 return (month: expiryMonth, year: expiryYear)
             }
 

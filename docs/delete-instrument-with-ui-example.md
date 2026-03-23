@@ -209,9 +209,8 @@ class IndividualInstrumentViewController: UIViewController {
         guard let config = getSDKConfig() else { return }
         payrailsAPI = PayrailsAPI(config: config)
         
-        // Create individual StoredInstrumentView with delete button
-        instrumentView = Payrails.createStoredInstrumentView(
-            instrument: instrument,
+        // Create StoredInstruments list with delete button
+        instrumentView = Payrails.createStoredInstruments(
             showDeleteButton: true
         )
         instrumentView.delegate = self

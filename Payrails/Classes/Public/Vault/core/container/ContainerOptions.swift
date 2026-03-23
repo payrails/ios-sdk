@@ -16,7 +16,7 @@ public struct ContainerOptions {
     var styles: Styles?
     var errorTextStyles: Styles?
 
-    public init(){
+    public init() {
         layout = [0]
     }
 

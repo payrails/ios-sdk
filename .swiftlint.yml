@@ -2,14 +2,25 @@ disabled_rules:
   - nesting
   - todo
   - explicit_acl
+  # ── Disabled for initial CI rollout (pre-existing code) ──
+  # Tighten these incrementally in follow-up PRs.
+  - identifier_name          # 125 violations – enum/var naming conventions
+  - line_length              # 93 violations – long lines in existing code
+  - force_cast               # 30 violations – requires safe-cast refactoring
+  - function_body_length     # 15 violations – large existing functions
+  - redundant_string_enum_value # 9 violations
+  - cyclomatic_complexity    # 8 violations – complex existing functions
+  - file_length              # 6 violations – large existing files
+  - for_where                # 5 violations
+  - type_body_length         # 4 violations – large existing types
+  - force_try                # 2 violations
+  - type_name                # 1 violation
+  - large_tuple              # 1 violation
+  - unused_setter_value      # 1 violation – intentional empty setter
 
 excluded:
-  - Tests
-  - Docs
-  - DerivedData
   - Pods
-
-line_length:
-  ignores_function_declarations: true
-  ignores_urls: true
-  warning: 140
+  - DerivedData
+  - .build
+  - docs
+  - Docs

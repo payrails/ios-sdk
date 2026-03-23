@@ -7,8 +7,7 @@ import Foundation
 import UIKit
 #endif
 
-internal class StateforText: State
-{
+internal class StateforText: State {
     /// true if `SkyflowTextField` input in valid
     internal(set) open var isValid = false
 
@@ -30,7 +29,7 @@ internal class StateforText: State
     internal(set) open var value: String?
     /// Array of `SkyflowValidationError`. Should be empty when textfield input is valid.
     internal(set) open var validationError = SkyflowValidationError()
-    
+
     internal(set) open var isCustomRuleFailed = false
     internal(set) open var isDefaultRuleFailed = false
     internal(set) open var selectedCardScheme: CardType?
@@ -39,26 +38,20 @@ internal class StateforText: State
         super.init(columnName: tf.columnName, isRequired: tf.isRequired)
 
         validationError = tf.validate()
-        
-        
+
         isDefaultRuleFailed = validationError.count != 0
         let customError = tf.validateCustomRules()
         isCustomRuleFailed = customError.count != 0
         isValid = !(isDefaultRuleFailed || isCustomRuleFailed)
-        
-        
-        
+
         isEmpty = (tf.textField.getSecureRawText?.count == 0)
-        
-        
+
         isDirty = tf.isDirty
         inputLength = tf.textField.getSecureRawText?.count ?? 0
         elementType = tf.collectInput.type
         isFocused = tf.hasFocus
         selectedCardScheme = tf.selectedCardBrand
-        
-    
-        
+
         if tf.contextOptions.env == .DEV {
             value = tf.actualValue
         } else {
@@ -72,7 +65,7 @@ internal class StateforText: State
                 }
             }
         }
-        
+
         if validationError.count == 0 {
             validationError = customError
         }

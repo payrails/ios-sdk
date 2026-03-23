@@ -31,7 +31,7 @@ public extension Payrails {
             backgroundColor = UIColor(white: 0.1, alpha: 0.85)
             layer.cornerRadius = 10
             layer.masksToBounds = true
-            
+
             // Title Label
             titleLabel.text = "Payrails SDK Logs"
             titleLabel.textColor = .white
@@ -57,7 +57,7 @@ public extension Payrails {
             clearButton.backgroundColor = UIColor(white: 0.3, alpha: 1.0)
             clearButton.layer.cornerRadius = 5
             addSubview(clearButton)
-            
+
             // TextView
             textView.isEditable = false
             textView.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .regular)
@@ -75,7 +75,7 @@ public extension Payrails {
                 closeButton.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
                 closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
                 closeButton.widthAnchor.constraint(equalToConstant: 60),
-                
+
                 clearButton.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
                 clearButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
                 clearButton.widthAnchor.constraint(equalToConstant: 60),

@@ -35,12 +35,11 @@ internal enum Message {
     case GET_BY_ID_TRIGGERED
     case GET_TRIGGERED
 
-    //Used in tests
+    // Used in tests
     case CLIENT_CONNECTION
     case CANNOT_CHANGE_ELEMENT
 
-    
-    //Warnings
+    // Warnings
     case INVALID_EXPIRYDATE_FORMAT
     case VAULT_ID_EMPTY_WARNING
     case VAULT_URL_EMPTY_WARNING
@@ -50,7 +49,6 @@ internal enum Message {
     case FORMAT_AND_TRANSLATION
     case EMPTY_TRANSLATION_VALUE
     case VALIDATE_COMPOSABLE_RECORDS
-
 
     var description: String {
         switch self {
@@ -76,13 +74,12 @@ internal enum Message {
         case .INSERT_TRIGGERED: return "Insert method triggered."
         case .DETOKENIZE_TRIGGERED: return "Detokenize method triggered."
         case .GET_BY_ID_TRIGGERED: return "Get by ID triggered."
-            
-        //Used in tests
+
+        // Used in tests
         case .CLIENT_CONNECTION: return "client connection not established" // A
         case .CANNOT_CHANGE_ELEMENT: return "Element can't be changed" // A
 
-            
-        //Warnings
+        // Warnings
         case .INVALID_EXPIRYDATE_FORMAT: return "<FORMAT> is not a valid date format"
         case .VAULT_ID_EMPTY_WARNING: return "Invalid client credentials. VaultID is required."
         case .VAULT_URL_EMPTY_WARNING: return "Invalid client credentials. VaultURL cannot be empty."

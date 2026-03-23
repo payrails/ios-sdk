@@ -10,7 +10,7 @@ let package = Package(
         .library(
             name: "Payrails",
             targets: ["Payrails"]
-        ),
+        )
     ],
     dependencies: [
         // Existing dependency on PayPal Checkout SDK
@@ -33,5 +33,10 @@ let package = Package(
                 .process("Classes/Public/Assets/Media.xcassets")
             ]
         ),
+        .testTarget(
+            name: "PayrailsTests",
+            dependencies: ["Payrails"],
+            path: "PayrailsTests"
+        )
     ]
 )

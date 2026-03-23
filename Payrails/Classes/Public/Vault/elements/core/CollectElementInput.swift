@@ -51,5 +51,5 @@ public struct CollectElementInput {
         self.validations = validations
         self.customErrorMessage = customErrorMessage
     }
-    
+
 }

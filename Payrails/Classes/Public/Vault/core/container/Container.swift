@@ -10,16 +10,19 @@
 //
 
 import Foundation
+import CoreGraphics
 
 public class Container<T: ContainerProtocol> {
     internal var skyflow: Client
     internal var elements: [TextField] = []
-    internal var containerOptions: ContainerOptions? = nil
+    internal var containerOptions: ContainerOptions?
+    internal var composableRowSpacing: CGFloat?
+    internal var onLayoutInvalidationRequested: (() -> Void)?
 
     internal init(skyflow: Client) {
         self.skyflow = skyflow
     }
-    internal init(skyflow: Client, options: ContainerOptions? = nil){
+    internal init(skyflow: Client, options: ContainerOptions? = nil) {
         self.containerOptions = options
         self.skyflow = skyflow
     }

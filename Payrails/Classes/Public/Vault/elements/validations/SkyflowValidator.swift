@@ -5,8 +5,7 @@
 import Foundation
 
 internal struct SkyflowValidator {
-    
-    
+
   internal static func validate(input: String?, rules: ValidationSet) -> SkyflowValidationError {
       let errors = rules.rules
         .filter { !($0 as! SkyflowInternalValidationProtocol).validate(input) }

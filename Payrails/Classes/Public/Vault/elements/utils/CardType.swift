@@ -11,6 +11,10 @@
 
 import Foundation
 
+internal enum PayrailsAssets {
+    static let cardIconBaseURL = "https://assets.payrails.io/img/logos/card"
+}
+
 internal class CreditCard {
     var defaultName: String
     var regex: String
@@ -56,7 +60,7 @@ public enum  CardType: CaseIterable {
 
     var instance: CreditCard {
         switch self {
-        case .VISA : return CreditCard(
+        case .VISA: return CreditCard(
             defaultName: "Visa", regex: "^4\\d*", cardLengths: [13, 16],
             formatPattern: "#### #### #### ####", securityCodeLength: 3,
             securityCodeName: SecurityCode.cvv.rawValue, imageName: "Visa-Card")
@@ -66,7 +70,7 @@ public enum  CardType: CaseIterable {
             cardLengths: [16], formatPattern: "#### #### #### ####",
             securityCodeLength: 3, securityCodeName: SecurityCode.cvc.rawValue, imageName: "Mastercard-Card")
 
-        case .DISCOVER : return CreditCard(
+        case .DISCOVER: return CreditCard(
             defaultName: "Discover", regex: "^(6011|65|64[4-9]|622)\\d*",
             cardLengths: [16, 17, 18, 19],
             formatPattern: "#### #### #### #### ###", securityCodeLength: 3, securityCodeName: SecurityCode.cid.rawValue, imageName: "Discover-Card")
@@ -78,7 +82,7 @@ public enum  CardType: CaseIterable {
 
         case .DINERS_CLUB: return CreditCard(
             defaultName: "DinersClub", regex: "^(36|38|30[0-5])\\d*",
-            cardLengths: [14,15,16, 17, 18, 19],
+            cardLengths: [14, 15, 16, 17, 18, 19],
             formatPattern: "#### ###### #########", securityCodeLength: 3,
             securityCodeName: SecurityCode.cvv.rawValue, imageName: "Diners-Card")
 
@@ -124,17 +128,15 @@ public enum  CardType: CaseIterable {
             }
         }
 
-
         private static func forCardPattern(cardNumber: String) -> CardType {
             for card in CardType.allCases {
-                if NSPredicate(format: "SELF MATCHES %@", card.instance.regex).evaluate(with: cardNumber){
+                if NSPredicate(format: "SELF MATCHES %@", card.instance.regex).evaluate(with: cardNumber) {
                     return card
                 }
             }
             return CardType.EMPTY
         }
 }
-
 
 internal enum SecurityCode: String {
     case cvv = "cvv"
@@ -158,9 +160,9 @@ internal enum CardNetwork: Equatable {
     case UNIONPAY
     case UNKNOWN
 
-    private static let baseIconURL = "https://assets.payrails.io/img/logos/card"
+    private static let baseIconURL = PayrailsAssets.cardIconBaseURL
     private static let genericCardIconURL = "\(baseIconURL)/ic-card.png"
-    
+
     private struct NetworkConfig {
         let network: CardNetwork
         let detectionRegex: String?
@@ -168,7 +170,7 @@ internal enum CardNetwork: Equatable {
         let cardTypes: [CardType]
         let schemeAliases: [String]
     }
-    
+
     // Keep Android parity by preserving this config order for PAN detection.
     private static let configs: [NetworkConfig] = [
         NetworkConfig(
@@ -251,7 +253,7 @@ internal enum CardNetwork: Equatable {
         guard let cardType else {
             return nil
         }
-        
+
         return configs.first(where: { $0.cardTypes.contains(cardType) })?.network
     }
 
@@ -276,10 +278,10 @@ internal enum CardNetwork: Equatable {
                 return config.network
             }
         }
-        
+
         return nil
     }
-    
+
     internal static func resolve(schemeName: String?, cardType: CardType?, pan: String) -> CardNetwork {
         from(schemeName: schemeName)
             ?? from(cardType: cardType)
@@ -295,7 +297,7 @@ internal enum CardNetwork: Equatable {
               let iconFileName = config.iconFileName else {
             return nil
         }
-        
+
         return URL(string: "\(Self.baseIconURL)/\(iconFileName)")
     }
 
@@ -305,5 +307,50 @@ internal enum CardNetwork: Equatable {
 
     private static func matches(_ value: String, regex: String) -> Bool {
         value.range(of: regex, options: .regularExpression) != nil
+    }
+}
+
+internal enum FieldStaticIcon {
+    case cardNumber
+    case cvv
+    case expiryDate
+
+    private static let baseIconURL = PayrailsAssets.cardIconBaseURL
+
+    static func from(fieldType: ElementType) -> FieldStaticIcon? {
+        switch fieldType {
+        case .CARD_NUMBER:
+            return .cardNumber
+        case .CVV:
+            return .cvv
+        case .EXPIRATION_DATE, .EXPIRATION_MONTH, .EXPIRATION_YEAR:
+            return .expiryDate
+        default:
+            return nil
+        }
+    }
+
+    var iconURL: URL? {
+        let fileName: String
+        switch self {
+        case .cardNumber:
+            fileName = "ic-card.png"
+        case .cvv:
+            fileName = "ic-cvv.png"
+        case .expiryDate:
+            fileName = "ic-expiration.png"
+        }
+        return URL(string: "\(Self.baseIconURL)/\(fileName)")
+    }
+
+    var sfSymbolFallback: String {
+        switch self {
+        case .cardNumber:
+            return "creditcard"
+        case .cvv:
+            return "lock.shield"
+        case .expiryDate:
+            return "calendar"
+        }
     }
 }

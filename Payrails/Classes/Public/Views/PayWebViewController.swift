@@ -20,7 +20,7 @@ internal class PayWebViewController: UIViewController {
      }
 
     required init?(coder: NSCoder) { nil }
-    
+
     deinit {
         dismissalCallback?()
     }

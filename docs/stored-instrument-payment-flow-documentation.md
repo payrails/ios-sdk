@@ -362,30 +362,6 @@ storedInstrumentsView.presenter = self
 stackView.addArrangedSubview(storedInstrumentsView)
 ```
 
-### Single Instrument Integration
-
-```swift
-// Get a specific stored instrument
-let cardInstruments = payrails.storedInstruments(for: .card)
-guard let instrument = cardInstruments.first else { return }
-
-// Create single instrument view
-let singleInstrumentView = Payrails.createStoredInstrumentView(
-    instrument: instrument,
-    style: customStyle,
-    translations: customTranslations,
-    showDeleteButton: true,
-    showPayButton: true
-)
-
-// Set delegates
-singleInstrumentView.delegate = self
-singleInstrumentView.setPresenter(self)
-
-// Add to UI
-stackView.addArrangedSubview(singleInstrumentView)
-```
-
 ### Delegate Implementation
 
 ```swift

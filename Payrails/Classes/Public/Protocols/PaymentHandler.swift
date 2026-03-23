@@ -6,7 +6,7 @@ protocol PaymentHandler {
     )
 
     func handlePendingState(with: GetExecutionResult)
-    
+
     func processSuccessPayload(
         payload: [String: Any]?,
         amount: Amount,
@@ -15,7 +15,7 @@ protocol PaymentHandler {
 }
 
 // Add a default implementation
-//extension PaymentHandler {
+// extension PaymentHandler {
 //    func processSuccessPayload(
 //        payload: [String: Any]?,
 //        amount: Amount,
@@ -23,4 +23,4 @@ protocol PaymentHandler {
 //    ) {
 //        completion(.failure(PayrailsError.unsupportedPayment(type: .card)))
 //    }
-//}
+// }

@@ -7,18 +7,18 @@ public extension Payrails {
         private var config: SDKConfig!
         private var payrailsAPI: PayrailsAPI!
         private let option: Payrails.Options
-        public var executionId: String?
+        var executionId: String?
 
         private var onResult: OnPayCallback?
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
         private var payrailsCSE: PayrailsCSE?
-        
+
         var debugConfig: SDKConfig {
             return self.config
         }
-     
-        public private(set) var isPaymentInProgress = false {
+
+        private(set) var isPaymentInProgress = false {
             didSet {
                 payrailsAPI.isRunning = isPaymentInProgress
             }
@@ -28,41 +28,32 @@ public extension Payrails {
             _ configuration: Payrails.Configuration
         ) throws {
             self.option = configuration.option
-            self.config = try parse(config: configuration);
+            self.config = try parse(config: configuration)
 
             self.payrailsAPI = PayrailsAPI(config: config)
-            
-            if isPaymentAvailable(type: .card),
-                  let vaultId = config.vaultConfiguration?.vaultId,
-                  let vaultUrl = config.vaultConfiguration?.vaultUrl,
-                  let token = config.vaultConfiguration?.token,
-               let tableName = config.vaultConfiguration?.cardTableName {
-            }
 
             executionId = config.execution?.id
-            
+
             do {
                 self.payrailsCSE = try PayrailsCSE(data: configuration.initData.data, version: configuration.initData.version)
             } catch {
                 print("Failed to initialize PayrailsCSE:", error)
             }
         }
-        
 
-        
-        public func isPaymentAvailable(type: PaymentType) -> Bool {
+        func isPaymentAvailable(type: PaymentType) -> Bool {
             return config.paymentOption(for: type) != nil
         }
 
-        public var isApplePayAvailable: Bool {
+        var isApplePayAvailable: Bool {
             return config.paymentOption(for: .applePay) != nil
         }
-        
-        public func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
+
+        func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
             return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
         }
 
-        public func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
+        func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
             guard let paymentInstruments = config.paymentOption(for: type, extra: {
                 guard let paymentInstruments = $0.paymentInstruments else { return false }
                 switch paymentInstruments {
@@ -75,26 +66,37 @@ public extension Payrails {
             switch paymentInstruments {
             case let .paypal(intruments):
                 return intruments
-                    .filter { $0.status == "enabled" }
+                    .filter { Self.isStoredInstrumentRenderable($0.status) }
             case let .card(intruments):
                 return intruments
-                    .filter { $0.status == "enabled" }
+                    .filter { Self.isStoredInstrumentRenderable($0.status) }
+            }
+        }
+
+        /// Mirrors Android SDK's `isStoredInstrumentRenderable()`:
+        /// accepts "enabled" or "created", case-insensitive.
+        /// A freshly tokenized card typically arrives with status "created"
+        /// before it transitions to "enabled".
+        private static func isStoredInstrumentRenderable(_ status: String) -> Bool {
+            switch status.lowercased() {
+            case "enabled", "created": return true
+            default: return false
             }
         }
 
         @available(*, deprecated)
-        public var storedInstruments: [StoredInstrument] {
+        var storedInstruments: [StoredInstrument] {
             storedInstruments(for: .payPal)
         }
 
-        public func executePayment(
+        func executePayment(
             withStoredInstrument instrument: StoredInstrument,
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
         ) {
             isPaymentInProgress = true
             self.onResult = onResult
-            
+
             guard prepareHandler(
                 for: instrument.type,
                 saveInstrument: false,
@@ -128,7 +130,7 @@ public extension Payrails {
             }
         }
 
-        public func executePayment(
+        func executePayment(
             with type: PaymentType,
             paymentMethodCode: String? = nil,
             saveInstrument: Bool = false,
@@ -136,10 +138,10 @@ public extension Payrails {
             onResult: @escaping OnPayCallback
         ) {
             weak var presenter = presenter
-            
+
             isPaymentInProgress = true
             self.onResult = onResult
-            
+
             guard prepareHandler(
                 for: type,
                 paymentMethodCode: paymentMethodCode,
@@ -149,11 +151,17 @@ public extension Payrails {
                 let paymentHandler else {
                 return
             }
-            
-            paymentHandler.makePayment(total: Double(config.amount.value)!, currency: config.amount.currency, presenter: presenter)
+
+            guard let total = Double(config.amount.value) else {
+                onResult(.error(.invalidDataFormat))
+                isPaymentInProgress = false
+                return
+            }
+
+            paymentHandler.makePayment(total: total, currency: config.amount.currency, presenter: presenter)
         }
 
-        public func cancelPayment() {
+        func cancelPayment() {
             isPaymentInProgress = false
             currentTask?.cancel()
             currentTask = nil
@@ -164,20 +172,20 @@ public extension Payrails {
             paymentMethodCode: String? = nil,
             saveInstrument: Bool,
             presenter: PaymentPresenter?
-        ) -> Bool {            
+        ) -> Bool {
             let paymentComposition: PaymentOptions?
             if let code = paymentMethodCode {
                 paymentComposition = config.paymentOption(forPaymentMethodCode: code)
             } else {
                 paymentComposition = config.paymentOption(for: type)
             }
-            
+
             guard let paymentComposition = paymentComposition else {
                 isPaymentInProgress = false
                 onResult?(.error(.unsupportedPayment(type: type)))
                 return false
             }
-            
+
             switch type {
             case .payPal:
                 switch paymentComposition.config {
@@ -243,7 +251,7 @@ private extension Payrails.Session {
         guard let data = Data(base64Encoded: config.initData.data) else {
             throw(PayrailsError.invalidDataFormat)
         }
-        
+
         let jsonDecoder = JSONDecoder.API()
         do {
             return try jsonDecoder.decode(SDKConfig.self, from: data)
@@ -283,11 +291,16 @@ extension Payrails.Session: PaymentHandlerDelegate {
             DispatchQueue.main.async {
                 cardFormDelegate.onThreeDSecureChallenge()
             }
-        } else {
-            print("Session Warning: CardPaymentHandler's presenter does not conform to PayrailsCardPaymentFormDelegate.")
+        }
+
+        // Notify button-based delegate (PayrailsCardPaymentButtonDelegate)
+        if let button = Payrails.currentCardPaymentButton {
+            DispatchQueue.main.async {
+                button.delegate?.onThreeDSecureChallenge(button)
+            }
         }
     }
-    
+
     func paymentHandlerDidFinish(
         handler: PaymentHandler,
         type: Payrails.PaymentType,
@@ -298,14 +311,14 @@ extension Payrails.Session: PaymentHandlerDelegate {
         case .canceled:
             isPaymentInProgress = false
             onResult?(.cancelledByUser)
-            
+
         case .success:
             handler.processSuccessPayload(
                 payload: payload,
                 amount: self.config.amount
             ) { [weak self] result in
                 guard let self = self else { return }
-                
+
                 switch result {
                 case .success(let body):
                     self.currentTask = Task {
@@ -319,7 +332,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
                             self.handle(error: error)
                         }
                     }
-                    
+
                 case .failure(let error):
                     if let payrailsError = error as? PayrailsError {
                         self.handle(error: payrailsError)
@@ -328,7 +341,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
                     }
                 }
             }
-            
+
         case let .error(error):
             isPaymentInProgress = false
             let finalError = error ?? PayrailsError.unknown(error: nil)
@@ -337,7 +350,6 @@ extension Payrails.Session: PaymentHandlerDelegate {
             paymentHandler = nil
         }
     }
-
 
     func paymentHandlerDidFail(
         handler: PaymentHandler,
@@ -428,7 +440,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 }
 
-public extension Payrails.Session {
+extension Payrails.Session {
     @MainActor
     func executePayment(
         with type: Payrails.PaymentType,
@@ -466,23 +478,104 @@ public extension Payrails.Session {
     }
 }
 
-public extension Payrails.Session {
+extension Payrails.Session {
     func getCSEInstance() -> PayrailsCSE? {
         return payrailsCSE
     }
 }
 
-public extension Payrails.Session {
+extension Payrails.Session {
+    func update(_ options: UpdateOptions) {
+        if let amount = options.amount {
+            config.amount = Amount(value: amount.value, currency: amount.currency)
+        }
+    }
+}
+
+extension Payrails.Session {
     func getSDKConfiguration() -> PublicSDKConfig? {
         guard let config = self.config else { return nil }
         return PublicSDKConfig(from: config)
     }
-    
+
     func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
         return try await payrailsAPI.deleteInstrument(instrumentId: instrumentId)
     }
-    
+
     func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
         return try await payrailsAPI.updateInstrument(instrumentId: instrumentId, body: body)
+    }
+
+    func tokenize(encryptedData: String, options: TokenizeOptions) async throws -> SaveInstrumentResponse {
+        guard let providerConfigId = config?.vaultConfiguration?.providerConfigId else {
+            throw PayrailsError.missingData("Vault configuration with providerConfigId is required for tokenization.")
+        }
+
+        guard let holderReference = config?.holderReference else {
+            throw PayrailsError.missingData("holderReference is required for tokenization.")
+        }
+
+        let body = SaveInstrumentBody(
+            holderReference: holderReference,
+            paymentMethod: "card",
+            storeInstrument: options.storeInstrument,
+            futureUsage: options.futureUsage.rawValue,
+            data: SaveInstrumentBodyData(
+                encryptedData: encryptedData,
+                vaultProviderConfigId: providerConfigId
+            )
+        )
+
+        return try await payrailsAPI.saveInstrument(body: body)
+    }
+
+    // MARK: - Query
+
+    /// Read-only access to SDK configuration and session state.
+    /// Mirrors the web SDK's `payrails.query(key, params)` API.
+    func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult? {
+        switch key {
+        case .holderReference:
+            guard let value = config?.holderReference else { return nil }
+            return .string(value)
+
+        case .amount:
+            guard let amount = config?.amount else { return nil }
+            return .amount(PayrailsAmount(value: amount.value, currency: amount.currency))
+
+        case .executionId:
+            guard let id = config?.execution?.id else { return nil }
+            return .string(id)
+
+        case .binLookup:
+            guard let link = config?.execution?.links.lookup else { return nil }
+            return .link(PayrailsLink(method: link.method, href: link.href))
+
+        case .instrumentDelete:
+            guard let link = config?.links?.instrumentDelete else { return nil }
+            return .link(PayrailsLink(method: link.method, href: link.href))
+
+        case .instrumentUpdate:
+            guard let link = config?.links?.instrumentUpdate else { return nil }
+            return .link(PayrailsLink(method: link.method, href: link.href))
+
+        case .paymentMethodConfig(let filter):
+            guard let config = config else { return nil }
+            let all = config.allPaymentOptions()
+            switch filter {
+            case .all:
+                return .paymentOptions(all.map(PayrailsPaymentOption.init))
+            case .redirect:
+                let redirectOptions = all.filter { $0.clientConfig?.flow == "redirect" }
+                return .paymentOptions(redirectOptions.map(PayrailsPaymentOption.init))
+            case .specific(let code):
+                guard let option = all.first(where: { $0.paymentMethodCode == code }) else { return nil }
+                return .paymentOptions([PayrailsPaymentOption(from: option)])
+            }
+
+        case .paymentMethodInstruments(let type):
+            let instruments = storedInstruments(for: type)
+            return .storedInstruments(instruments)
+        }
     }
 }

@@ -10,7 +10,7 @@ public protocol PayrailsStoredInstrumentPaymentButtonDelegate: AnyObject {
 public struct StoredInstrumentButtonTranslations {
     public let label: String
     public let processingLabel: String
-    
+
     public init(label: String = "Pay", processingLabel: String = "Processing...") {
         self.label = label
         self.processingLabel = processingLabel
@@ -26,7 +26,7 @@ public struct StoredInstrumentButtonStyle {
     public let borderWidth: CGFloat
     public let borderColor: UIColor
     public let contentEdgeInsets: UIEdgeInsets
-    
+
     public init(
         backgroundColor: UIColor = .systemBlue,
         textColor: UIColor = .white,
@@ -46,7 +46,7 @@ public struct StoredInstrumentButtonStyle {
         self.borderColor = borderColor
         self.contentEdgeInsets = contentEdgeInsets
     }
-    
+
     public static let defaultStyle = StoredInstrumentButtonStyle()
 }
 
@@ -64,10 +64,10 @@ public extension Payrails {
                 updateButtonTitle()
             }
         }
-        
+
         public weak var delegate: PayrailsStoredInstrumentPaymentButtonDelegate?
         public weak var presenter: PaymentPresenter?
-        
+
         // Internal initializer used by factory method
         internal init(
             storedInstrument: StoredInstrument,
@@ -79,19 +79,19 @@ public extension Payrails {
             self.session = session
             self.translations = translations
             super.init()
-            
+
             setupButton(style: style)
         }
-        
+
         // Required initializers with warnings
         public required init() {
             fatalError("Use Payrails.createStoredInstruments() instead")
         }
-        
+
         public required init?(coder: NSCoder) {
             fatalError("Use Payrails.createStoredInstruments() instead")
         }
-        
+
         deinit {
             paymentTask?.cancel()
             if let session = session,
@@ -99,7 +99,7 @@ public extension Payrails {
                 session.cancelPayment()
             }
         }
-        
+
         private func setupButton(style: StoredInstrumentButtonStyle) {
             updateButtonTitle()
             backgroundColor = style.backgroundColor
@@ -109,41 +109,41 @@ public extension Payrails {
             layer.borderWidth = style.borderWidth
             layer.borderColor = style.borderColor.cgColor
             contentEdgeInsets = style.contentEdgeInsets
-            
+
             // Set height constraint
             heightAnchor.constraint(equalToConstant: style.height).isActive = true
-            
+
             addTarget(self, action: #selector(payButtonTapped), for: .touchUpInside)
         }
-        
+
         private func updateButtonTitle() {
             let title = isProcessing ? translations.processingLabel : translations.label
             setTitle(title, for: .normal)
         }
-        
+
         @objc private func payButtonTapped() {
             delegate?.onPaymentButtonClicked(self)
             pay()
         }
-        
+
         public func pay() {
             guard let presenter = self.presenter else {
                 Payrails.log("Payment presenter not set")
                 return
             }
-            
+
             guard let session = session else {
                 Payrails.log("Session not available")
                 return
             }
             print("🧩🧩🧩🧩🧩🧩🧩🧩🧩🧩")
             print("pay with stored instrument")
-            
+
             paymentTask = Task { [weak self, weak session] in
                 await MainActor.run {
                     self?.isProcessing = true
                 }
-                
+
                 var result: OnPayResult?
                 if let session = session {
                     result = await session.executePayment(
@@ -151,14 +151,14 @@ public extension Payrails {
                         presenter: presenter
                     )
                 }
-                
+
                 await MainActor.run {
                     self?.handlePaymentResult(result)
                     self?.isProcessing = false
                 }
             }
         }
-        
+
         private func handlePaymentResult(_ result: OnPayResult?) {
             switch result {
             case .success:
@@ -167,7 +167,7 @@ public extension Payrails {
                 delegate?.onAuthorizeFailed(self)
             case .failure:
                 delegate?.onAuthorizeFailed(self)
-            case .error(_):
+            case .error:
                 delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
@@ -175,7 +175,7 @@ public extension Payrails {
                 Payrails.log("Payment result: unknown state")
             }
         }
-        
+
         public func getStoredInstrument() -> StoredInstrument {
             return storedInstrument
         }

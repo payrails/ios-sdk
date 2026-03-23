@@ -67,7 +67,7 @@ public struct Style {
         self.placeholderColor = placeholderColor
         self.cardIconAlignment = cardIconAlignment
     }
-    
+
     func merged(over base: Style?) -> Style {
         let baseStyle = base ?? Style()
         return Style(

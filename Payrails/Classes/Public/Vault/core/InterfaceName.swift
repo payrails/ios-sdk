@@ -21,7 +21,7 @@ internal enum InterfaceName {
     case GETBYID
     case GET
     case EMPTY
-    
+
     var description: String {
         switch self {
         case .COLLECT_CONTAINER: return "collect container"

@@ -6,6 +6,10 @@ Payrails iOS SDK provides UI components and payment flows for card payments, App
 
 This README is the canonical integration guide. The `docs/` folder contains supplemental examples and flow-specific notes.
 
+## Release Notes
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of releases, features, and fixes.
+
 ## Installation
 
 ### CocoaPods
@@ -86,7 +90,7 @@ Notes:
 Payrails.createSession(with: configuration) { result in
     switch result {
     case .success(let session):
-        print("Session created: \(String(describing: session.executionId))")
+        print("Session created: \(String(describing: Payrails.executionId))")
     case .failure(let error):
         print("Initialization failed: \(error)")
     }
@@ -168,6 +172,31 @@ Notes:
 - SDK default colors semantic iOS colors and adapt to light/dark mode.
 - Merchant-provided style colors always take precedence over SDK defaults.
 
+### Tokenizing a Card (Save Without Payment)
+
+Use `cardForm.tokenize()` to encrypt card data and register it in the vault as a stored instrument without processing a payment:
+
+```swift
+let cardForm = Payrails.createCardForm()
+
+do {
+    let response = try await cardForm.tokenize(options: TokenizeOptions(
+        storeInstrument: true,
+        futureUsage: .cardOnFile // .subscription or .unscheduledCardOnFile
+    ))
+    print("Instrument saved: \(response.id)")
+    print("Card ending in: \(response.data.suffix ?? "")")
+} catch {
+    print("Tokenization failed: \(error)")
+}
+```
+
+The returned `SaveInstrumentResponse` contains instrument metadata (ID, BIN, suffix, network, expiry, fingerprint).
+
+`TokenizeOptions` defaults:
+- `storeInstrument`: `false`
+- `futureUsage`: `.cardOnFile`
+
 ## Apple Pay
 
 ```swift
@@ -216,15 +245,37 @@ idealButton.delegate = self
 ### Accessing stored instruments
 
 ```swift
-let cards = session.storedInstruments(for: .card)
-let paypals = session.storedInstruments(for: .payPal)
+let cards = Payrails.getStoredInstruments(for: .card)
+let paypals = Payrails.getStoredInstruments(for: .payPal)
 ```
 
-Or via the static helper (uses the current session):
+> **Instrument visibility:** `getStoredInstruments(for:)` returns instruments whose status is `"enabled"` or `"created"` (case-insensitive). A freshly tokenized card typically has status `"created"` until it transitions to `"enabled"`, so it will appear immediately after a session re-init without needing to wait for the status change.
+
+> **Refreshing after tokenization:** Stored instruments are baked into the session at init time. To see a newly saved card, re-initialize the session by calling `Payrails.createSession(with:)` with fresh init data from your backend, then rebuild any `StoredInstruments` UI components.
+
+### Default instrument
+
+Each `StoredInstrument` exposes `isDefault: Bool`, decoded from the `default` field in the server response. Use it to highlight the holder's default payment method in your UI or to conditionally enable a "Set as Default" action:
 
 ```swift
-let payPalInstruments = Payrails.getStoredInstruments(for: .payPal)
+let cards = Payrails.getStoredInstruments(for: .card)
+let defaultCard = cards.first { $0.isDefault }
+
+// Disable "Set as Default" when the card is already default
+setDefaultButton.isEnabled = !selectedCard.isDefault
 ```
+
+To mark an instrument as default:
+
+```swift
+let result = try await Payrails.api(
+    "updateInstrument",
+    instrumentId,
+    UpdateInstrumentBody(default: true)
+)
+```
+
+> `isDefault` reflects the value baked into the session at init time. After calling `updateInstrument`, re-initialize the session to get updated `isDefault` values.
 
 ### Displaying stored instruments
 
@@ -239,18 +290,42 @@ storedInstrumentsView.delegate = self
 storedInstrumentsView.presenter = self
 ```
 
-### Displaying a single stored instrument
+### Binding stored instruments to a payment button
+
+You can dynamically switch a `CardPaymentButton` between card form mode and stored instrument mode at runtime. This lets users pick a saved card from a list and pay with one tap.
+
+**Auto-binding via StoredInstruments list:**
 
 ```swift
-let instrumentView = Payrails.createStoredInstrumentView(
-    instrument: instrument,
-    showDeleteButton: true,
-    showUpdateButton: true,
-    showPayButton: true
-)
+let storedInstrumentsView = Payrails.createStoredInstruments(showPayButton: false)
+let payButton = Payrails.createCardPaymentButton(translations: buttonTranslations)
 
-instrumentView.delegate = self
-instrumentView.setPresenter(self)
+// Wire the list to the button — selecting an instrument switches the button automatically
+storedInstrumentsView.bindCardPaymentButton(payButton)
+```
+
+**Manual binding:**
+
+```swift
+// Switch to stored instrument mode
+payButton.setStoredInstrument(instrument)
+
+// Revert to card form mode
+payButton.clearStoredInstrument()
+```
+
+**Listening for changes:**
+
+Implement the optional delegate method to react when the instrument changes:
+
+```swift
+func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {
+    if let instrument = instrument {
+        print("Paying with: \(instrument.description ?? instrument.id)")
+    } else {
+        print("Switched to card form mode")
+    }
+}
 ```
 
 ### Managing stored instruments
@@ -264,6 +339,112 @@ let result = try await Payrails.api("deleteInstrument", instrumentId)
 // Update (set as default)
 let body = UpdateInstrumentBody(default: true)
 let result = try await Payrails.api("updateInstrument", instrumentId, body)
+```
+
+## Payment Amount Update
+
+After initializing a session, you can update the payment amount before executing a payment. This is useful when the backend updates the execution (e.g., via a lookup action) and the SDK needs to reflect the new values.
+
+```swift
+Payrails.update(UpdateOptions(amount: PayrailsAmount(value: "25.50", currency: "USD")))
+```
+
+> Both `value` and `currency` are required. If either is nil, the amount is not changed. `update()` only modifies local SDK state — the backend execution should already reflect the new values.
+
+## Querying SDK State
+
+`Payrails.query(_:)` is a read-only accessor for session configuration state. Use it to retrieve execution details, payment method configuration, stored instruments, and API links without holding a reference to the session object.
+
+```swift
+let result = Payrails.query(.holderReference)
+```
+
+Returns `nil` if the SDK has not been initialized or the requested value is not present.
+
+### Available query keys
+
+| Key | Return case | Description |
+|-----|-------------|-------------|
+| `.holderReference` | `.string(String)` | The holder reference for the current session |
+| `.amount` | `.amount(PayrailsAmount)` | Payment amount and currency |
+| `.executionId` | `.string(String)` | The execution ID |
+| `.binLookup` | `.link(PayrailsLink)` | API link for BIN lookup |
+| `.instrumentDelete` | `.link(PayrailsLink)` | API link for deleting a stored instrument |
+| `.instrumentUpdate` | `.link(PayrailsLink)` | API link for updating a stored instrument |
+| `.paymentMethodConfig(PaymentMethodFilter)` | `.paymentOptions([PayrailsPaymentOption])` | Payment method configuration (see below) |
+| `.paymentMethodInstruments(type:)` | `.storedInstruments([StoredInstrument])` | Stored instruments for a payment type |
+
+### Examples
+
+```swift
+// Holder reference
+if case .string(let ref) = Payrails.query(.holderReference) {
+    print("Holder: \(ref)")
+}
+
+// Payment amount
+if case .amount(let amount) = Payrails.query(.amount) {
+    print("\(amount.value) \(amount.currency)")
+}
+
+// Execution ID
+if case .string(let id) = Payrails.query(.executionId) {
+    print("Execution: \(id)")
+}
+
+// BIN lookup link
+if case .link(let link) = Payrails.query(.binLookup) {
+    print("\(link.method ?? "") \(link.href ?? "")")
+}
+
+// Instrument management links
+if case .link(let link) = Payrails.query(.instrumentDelete) {
+    print("Delete URL: \(link.href ?? "")")
+}
+if case .link(let link) = Payrails.query(.instrumentUpdate) {
+    print("Update URL: \(link.href ?? "")")
+}
+
+// Payment method configuration
+// Use PaymentMethodFilter to specify which methods to retrieve:
+
+// A specific payment method code:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.specific("card"))) {
+    print("Card integration: \(options.first?.integrationType ?? "")")
+}
+
+// All available methods:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.all)) {
+    options.forEach { print($0.paymentMethodCode) }
+}
+
+// Only redirect-flow methods:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.redirect)) {
+    options.forEach { print($0.paymentMethodCode) }
+}
+
+// Stored instruments for a payment type
+if case .storedInstruments(let instruments) = Payrails.query(.paymentMethodInstruments(type: .card)) {
+    instruments.forEach { print($0.id) }
+}
+```
+
+### PayrailsPaymentOption fields
+
+```swift
+public struct PayrailsPaymentOption {
+    public let paymentMethodCode: String
+    public let description: String?
+    public let integrationType: String
+    public let clientConfig: ClientConfig?
+
+    public struct ClientConfig {
+        public let displayName: String?
+        public let flow: String?
+        public let supportsSaveInstrument: Bool?
+        public let supportsBillingInfo: Bool?
+    }
+}
 ```
 
 ## Debugging
@@ -289,27 +470,60 @@ The current implementation exposes styling, fonts, colors, and text labels, with
 - The save-instrument toggle layout is not configurable.
 - Advanced constraint-based composition is not yet available.
 
-## Card Form Customization (Iteration 1)
+### Card Form Customization
 
-The SDK now supports advanced customization for the card form, including:
-- Show/hide card brand icon (`showCardIcon`)
+The SDK supports advanced card form customization, including:
+- Show/hide static empty-state field icons (`showCardIcon`)
 - Card icon alignment (`cardIconAlignment`)
 - Show/hide required asterisk (`showRequiredAsterisk`)
 - Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
 - Card payment button customization via `createCardPaymentButton` (`CardButtonStyle`, including `height`)
+- Configurable field arrangement and ordering via `CardLayoutConfig`
+- Field border variant (`fieldVariant`): `.outlined` for full box borders or `.filled` for bottom-line-only styling
 
-### Example Usage
+Card icon and clear button behavior on iOS:
+- `showCardIcon: true`: shows static empty-state icons for supported fields
+- `showCardIcon: false`: hides static empty-state icons
+- Card-number network detection remains enabled (brand icon updates based on PAN)
+- Clear button (`x`) is always available on iOS for non-card-number fields when they contain input
+- Card number does not show the clear button, so network icon behavior remains visible
+- The same clear-button behavior applies to both combined expiry (`EXPIRATION_DATE`) and split expiry (`EXPIRATION_MONTH` + `EXPIRATION_YEAR`) layouts
+
+Error text behavior in composable card forms:
+- Error labels support multiline wrapping by default.
+- `errorTextStyle.height`, `errorTextStyle.minHeight`, and `errorTextStyle.maxHeight` are applied to row error labels.
+- The form requests a layout refresh when row error text changes so wrapped errors can expand the form height.
+
+#### Field variant
+
+The `fieldVariant` property controls the border rendering style on each input field:
+
+- `.outlined` (default) — renders full box borders using `borderColor`, `borderWidth`, and `cornerRadius` from the configured `Style`
+- `.filled` — renders a single bottom line using the same `borderColor` and `borderWidth`, while clearing box borders and corner radius
+
+```swift
+// Outlined (default)
+let outlinedConfig = CardFormConfig(fieldVariant: .outlined)
+
+// Filled
+let filledConfig = CardFormConfig(fieldVariant: .filled)
+```
+
+Both variants respect all other style properties (background color, font, text color, padding) and work with any `CardLayoutConfig`.
+
+#### Example Usage
 
 ```swift
 let config = CardFormConfig(
     showNameField: true,
     showSaveInstrument: false,
-    showCardIcon: true,              // NEW
-    cardIconAlignment: .right,       // NEW
-    showRequiredAsterisk: false,     // NEW
+    showCardIcon: true,
+    cardIconAlignment: .right,
+    showRequiredAsterisk: false,
+    fieldVariant: .outlined,
     styles: CardFormStylesConfig(
-        fieldSpacing: 12,            // NEW
-        sectionSpacing: 20           // NEW
+        fieldSpacing: 12,
+        sectionSpacing: 20
     )
 )
 
@@ -330,11 +544,7 @@ let payButton = Payrails.createCardPaymentButton(
 - `fieldSpacing`: Sets the spacing between input fields (see CardForm)
 - If color properties are omitted, SDK fallbacks use theme-aware semantic iOS colors.
 
-## Card Form Layout Customization (Iteration 2 / Phase 2)
-
-The SDK now supports configurable field arrangement and ordering via `CardLayoutConfig`.
-
-### Layout presets
+#### Layout presets
 
 ```swift
 let standard = CardLayoutConfig.standard
@@ -342,7 +552,7 @@ let compact = CardLayoutConfig.compact
 let minimal = CardLayoutConfig.minimal
 ```
 
-### Custom rows and field order
+#### Custom rows and field order
 
 ```swift
 let config = CardFormConfig(

@@ -2,7 +2,6 @@
  * Copyright (c) 2022 Skyflow
 */
 
-
 import Foundation
 
 /**
@@ -11,10 +10,10 @@ import Foundation
 public struct ElementValueMatchRule: ValidationRule {
     /// element to be matched against
     private let element: TextField
-    
+
     /// Validation Error
     public let error: SkyflowValidationError
-    
+
     public init(element: TextField, error: SkyflowValidationError? = nil) {
         self.element = element
         if error != nil {

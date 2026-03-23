@@ -10,7 +10,6 @@ import Foundation
 import UIKit
 #endif
 
-
 public class SkyflowElement: UIView {
     internal var isRequired = false
     internal var fieldType: ElementType!
@@ -52,7 +51,6 @@ public class SkyflowElement: UIView {
         initialization()
     }
 
-
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
@@ -68,7 +66,6 @@ public class SkyflowElement: UIView {
     internal func getOutput() -> String? {
             return ""
     }
-
 
    internal func validate() -> SkyflowValidationError {
         return SkyflowValidationError()
@@ -108,10 +105,6 @@ public extension SkyflowElement {
         set {
             layer.borderColor = newValue?.cgColor
         }
-    }
-
-     override func prepareForInterfaceBuilder() {
-        super.prepareForInterfaceBuilder()
     }
 }
 
