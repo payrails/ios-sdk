@@ -1942,7 +1942,7 @@ final class PayrailsTests: XCTestCase {
     }
 
     func testUpdateOptionsWithAmount() {
-        let opts = UpdateOptions(amount: .init(value: "50.00", currency: "GBP"))
+        let opts = UpdateOptions(amount: PayrailsAmount(value: "50.00", currency: "GBP"))
         XCTAssertEqual(opts.amount?.value, "50.00")
         XCTAssertEqual(opts.amount?.currency, "GBP")
     }
@@ -1958,5 +1958,224 @@ final class PayrailsTests: XCTestCase {
         // Amount should remain unchanged since amount was nil
         XCTAssertEqual(config.value, "10.00")
         XCTAssertEqual(config.currency, "EUR")
+    }
+
+    // MARK: - query() tests
+
+    /// Builds a base64-encoded SDKConfig JSON fixture and returns a live Session.
+    private func makeQueryTestSession(
+        holderReference: String = "holder-ref-123",
+        includeLinks: Bool = true,
+        includeCardInstruments: Bool = false
+    ) throws -> Payrails.Session {
+        let instrumentsJSON: String
+        if includeCardInstruments {
+            instrumentsJSON = """
+            ,"paymentInstruments": [
+              {"id": "inst-1", "createdAt": "2024-01-01T00:00:00Z", "status": "enabled",
+               "data": {"bin": "411111", "suffix": "1111"}}
+            ]
+            """
+        } else {
+            instrumentsJSON = ""
+        }
+
+        let linksJSON = includeLinks ? """
+        "links": {
+          "instrumentDelete": {"method": "DELETE", "href": "https://api.payrails.com/instruments/del"},
+          "instrumentUpdate": {"method": "PATCH",  "href": "https://api.payrails.com/instruments/upd"}
+        },
+        """ : ""
+
+        let json = """
+        {
+          "token": "test-token",
+          "holderReference": "\(holderReference)",
+          "amount": {"value": "99.00", "currency": "EUR"},
+          \(linksJSON)
+          "execution": {
+            "id": "exec-abc-123",
+            "status": [{"code": "pending", "time": "2024-01-01T00:00:00Z"}],
+            "createdAt": "2024-01-01T00:00:00Z",
+            "merchantReference": "merchant-ref",
+            "holderReference": "\(holderReference)",
+            "holderId": "holder-id",
+            "workflow": {"code": "default", "version": 1.0},
+            "links": {
+              "self": "https://api.payrails.com/executions/exec-abc-123",
+              "lookup": {"method": "POST", "href": "https://api.payrails.com/binlookup"}
+            },
+            "initialResults": [
+              {
+                "httpCode": 200,
+                "body": {
+                  "name": "lookup",
+                  "actionId": "action-1",
+                  "executedAt": "2024-01-01T00:00:00Z",
+                  "data": {
+                    "paymentCompositionOptions": [
+                      {
+                        "integrationType": "api",
+                        "paymentMethodCode": "card",
+                        "clientConfig": {"flow": "inline", "displayName": "Credit Card"}
+                        \(instrumentsJSON)
+                      },
+                      {
+                        "integrationType": "hpp",
+                        "paymentMethodCode": "payPal",
+                        "clientConfig": {"flow": "redirect", "displayName": "PayPal"}
+                      }
+                    ]
+                  },
+                  "links": {
+                    "execution": "https://api.payrails.com/executions/exec-abc-123",
+                    "authorize": {"method": "POST", "href": "https://api.payrails.com/authorize"}
+                  }
+                }
+              }
+            ]
+          }
+        }
+        """
+        let base64 = Data(json.utf8).base64EncodedString()
+        let config = Payrails.Configuration(
+            initData: Payrails.InitData(version: "1", data: base64),
+            option: Payrails.Options()
+        )
+        return try Payrails.Session(config)
+    }
+
+    func testQueryHolderReference() throws {
+        let session = try makeQueryTestSession(holderReference: "holder-ref-123")
+        let result = session.query(.holderReference)
+        if case .string(let value) = result {
+            XCTAssertEqual(value, "holder-ref-123")
+        } else {
+            XCTFail("Expected .string result for holderReference")
+        }
+    }
+
+    func testQueryAmount() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.amount)
+        if case .amount(let amount) = result {
+            XCTAssertEqual(amount.value, "99.00")
+            XCTAssertEqual(amount.currency, "EUR")
+        } else {
+            XCTFail("Expected .amount result")
+        }
+    }
+
+    func testQueryExecutionId() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.executionId)
+        if case .string(let value) = result {
+            XCTAssertEqual(value, "exec-abc-123")
+        } else {
+            XCTFail("Expected .string result for executionId")
+        }
+    }
+
+    func testQueryBinLookup() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.binLookup)
+        if case .link(let link) = result {
+            XCTAssertEqual(link.method, "POST")
+            XCTAssertEqual(link.href, "https://api.payrails.com/binlookup")
+        } else {
+            XCTFail("Expected .link result for binLookup")
+        }
+    }
+
+    func testQueryInstrumentDelete() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.instrumentDelete)
+        if case .link(let link) = result {
+            XCTAssertEqual(link.method, "DELETE")
+            XCTAssertEqual(link.href, "https://api.payrails.com/instruments/del")
+        } else {
+            XCTFail("Expected .link result for instrumentDelete")
+        }
+    }
+
+    func testQueryInstrumentUpdate() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.instrumentUpdate)
+        if case .link(let link) = result {
+            XCTAssertEqual(link.method, "PATCH")
+            XCTAssertEqual(link.href, "https://api.payrails.com/instruments/upd")
+        } else {
+            XCTFail("Expected .link result for instrumentUpdate")
+        }
+    }
+
+    func testQueryPaymentMethodConfigAll() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.paymentMethodConfig(.all))
+        if case .paymentOptions(let options) = result {
+            XCTAssertEqual(options.count, 2)
+            XCTAssertTrue(options.contains { $0.paymentMethodCode == "card" })
+            XCTAssertTrue(options.contains { $0.paymentMethodCode == "payPal" })
+        } else {
+            XCTFail("Expected .paymentOptions result")
+        }
+    }
+
+    func testQueryPaymentMethodConfigRedirect() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.paymentMethodConfig(.redirect))
+        if case .paymentOptions(let options) = result {
+            XCTAssertEqual(options.count, 1)
+            XCTAssertEqual(options.first?.paymentMethodCode, "payPal")
+            XCTAssertEqual(options.first?.clientConfig?.flow, "redirect")
+        } else {
+            XCTFail("Expected .paymentOptions result for redirect filter")
+        }
+    }
+
+    func testQueryPaymentMethodConfigSpecific() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.paymentMethodConfig(.specific("card")))
+        if case .paymentOptions(let options) = result {
+            XCTAssertEqual(options.count, 1)
+            XCTAssertEqual(options.first?.paymentMethodCode, "card")
+            XCTAssertEqual(options.first?.clientConfig?.displayName, "Credit Card")
+            XCTAssertEqual(options.first?.clientConfig?.flow, "inline")
+        } else {
+            XCTFail("Expected .paymentOptions result for 'card'")
+        }
+    }
+
+    func testQueryPaymentMethodConfigUnknownReturnsNil() throws {
+        let session = try makeQueryTestSession()
+        let result = session.query(.paymentMethodConfig(.specific("klarna")))
+        XCTAssertNil(result)
+    }
+
+    func testQueryInstrumentDeleteReturnsNilWhenLinksAbsent() throws {
+        let session = try makeQueryTestSession(includeLinks: false)
+        XCTAssertNil(session.query(.instrumentDelete))
+        XCTAssertNil(session.query(.instrumentUpdate))
+    }
+
+    func testQueryStoredInstruments() throws {
+        let session = try makeQueryTestSession(includeCardInstruments: true)
+        let result = session.query(.paymentMethodInstruments(type: .card))
+        if case .storedInstruments(let instruments) = result {
+            XCTAssertEqual(instruments.count, 1)
+            XCTAssertEqual(instruments.first?.id, "inst-1")
+        } else {
+            XCTFail("Expected .storedInstruments result")
+        }
+    }
+
+    func testQueryStoredInstrumentsEmptyWhenNone() throws {
+        let session = try makeQueryTestSession(includeCardInstruments: false)
+        let result = session.query(.paymentMethodInstruments(type: .card))
+        if case .storedInstruments(let instruments) = result {
+            XCTAssertTrue(instruments.isEmpty)
+        } else {
+            XCTFail("Expected .storedInstruments result")
+        }
     }
 }

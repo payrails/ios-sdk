@@ -394,10 +394,106 @@ let result = try await Payrails.api("updateInstrument", instrumentId, body)
 After initializing a session, you can update the payment amount before executing a payment. This is useful when the backend updates the execution (e.g., via a lookup action) and the SDK needs to reflect the new values.
 
 ```swift
-Payrails.update(UpdateOptions(value: "25.50", currency: "USD"))
+Payrails.update(UpdateOptions(amount: PayrailsAmount(value: "25.50", currency: "USD")))
 ```
 
 > Both `value` and `currency` are required. If either is nil, the amount is not changed. `update()` only modifies local SDK state — the backend execution should already reflect the new values.
+
+## Querying SDK State
+
+`Payrails.query(_:)` is a read-only accessor for session configuration state. Use it to retrieve execution details, payment method configuration, stored instruments, and API links without holding a reference to the session object.
+
+```swift
+let result = Payrails.query(.holderReference)
+```
+
+Returns `nil` if the SDK has not been initialized or the requested value is not present.
+
+### Available query keys
+
+| Key | Return case | Description |
+|-----|-------------|-------------|
+| `.holderReference` | `.string(String)` | The holder reference for the current session |
+| `.amount` | `.amount(PayrailsAmount)` | Payment amount and currency |
+| `.executionId` | `.string(String)` | The execution ID |
+| `.binLookup` | `.link(PayrailsLink)` | API link for BIN lookup |
+| `.instrumentDelete` | `.link(PayrailsLink)` | API link for deleting a stored instrument |
+| `.instrumentUpdate` | `.link(PayrailsLink)` | API link for updating a stored instrument |
+| `.paymentMethodConfig(PaymentMethodFilter)` | `.paymentOptions([PayrailsPaymentOption])` | Payment method configuration (see below) |
+| `.paymentMethodInstruments(type:)` | `.storedInstruments([StoredInstrument])` | Stored instruments for a payment type |
+
+### Examples
+
+```swift
+// Holder reference
+if case .string(let ref) = Payrails.query(.holderReference) {
+    print("Holder: \(ref)")
+}
+
+// Payment amount
+if case .amount(let amount) = Payrails.query(.amount) {
+    print("\(amount.value) \(amount.currency)")
+}
+
+// Execution ID
+if case .string(let id) = Payrails.query(.executionId) {
+    print("Execution: \(id)")
+}
+
+// BIN lookup link
+if case .link(let link) = Payrails.query(.binLookup) {
+    print("\(link.method ?? "") \(link.href ?? "")")
+}
+
+// Instrument management links
+if case .link(let link) = Payrails.query(.instrumentDelete) {
+    print("Delete URL: \(link.href ?? "")")
+}
+if case .link(let link) = Payrails.query(.instrumentUpdate) {
+    print("Update URL: \(link.href ?? "")")
+}
+
+// Payment method configuration
+// Use PaymentMethodFilter to specify which methods to retrieve:
+
+// A specific payment method code:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.specific("card"))) {
+    print("Card integration: \(options.first?.integrationType ?? "")")
+}
+
+// All available methods:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.all)) {
+    options.forEach { print($0.paymentMethodCode) }
+}
+
+// Only redirect-flow methods:
+if case .paymentOptions(let options) = Payrails.query(.paymentMethodConfig(.redirect)) {
+    options.forEach { print($0.paymentMethodCode) }
+}
+
+// Stored instruments for a payment type
+if case .storedInstruments(let instruments) = Payrails.query(.paymentMethodInstruments(type: .card)) {
+    instruments.forEach { print($0.id) }
+}
+```
+
+### PayrailsPaymentOption fields
+
+```swift
+public struct PayrailsPaymentOption {
+    public let paymentMethodCode: String
+    public let description: String?
+    public let integrationType: String
+    public let clientConfig: ClientConfig?
+
+    public struct ClientConfig {
+        public let displayName: String?
+        public let flow: String?
+        public let supportsSaveInstrument: Bool?
+        public let supportsBillingInfo: Bool?
+    }
+}
+```
 
 ## Debugging
 

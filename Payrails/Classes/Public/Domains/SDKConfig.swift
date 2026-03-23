@@ -298,7 +298,7 @@ struct PaymentOptions: Decodable {
             .payPal
         }
 
-        var isDefault: Bool { false }
+        var isDefault: Bool { `default` == true }
 
         let id: String
         let paymentMethod: String
@@ -306,6 +306,7 @@ struct PaymentOptions: Decodable {
         let createdAt: String
         let status: String
         let data: PayPalInstrumentData?
+        let `default`: Bool?
     }
 
     struct PayPalInstrumentData: Decodable {
