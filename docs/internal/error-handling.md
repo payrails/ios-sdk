@@ -145,7 +145,7 @@ Note: `.failure` and `.error` both call `onAuthorizeFailed`. Merchants cannot di
 
 ## 3DS error path
 
-When a 3DS challenge is required, `CardPaymentHandler` notifies the session via `paymentHandlerWillRequestChallengePresentation`. The session delegates to the `PayrailsCardPaymentFormDelegate.onThreeDSecureChallenge()`. Errors after 3DS are handled the same way as other payment errors.
+When a 3DS challenge is required, `CardPaymentHandler` notifies the session via `paymentHandlerWillRequestChallengePresentation`. The session notifies both `PayrailsCardPaymentFormDelegate.onThreeDSecureChallenge()` and `PayrailsCardPaymentButtonDelegate.onThreeDSecureChallenge(_:)` (via `Payrails.currentCardPaymentButton`). Errors after 3DS are handled the same way as other payment errors.
 
 ---
 

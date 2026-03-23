@@ -231,11 +231,12 @@ CardPaymentButton.pay()
                           └── payrailsAPI.confirmPayment(link:)
                                 — polls until final status
                           └── paymentHandlerWillRequestChallengePresentation()
-                                └── cardFormDelegate.onThreeDSecureChallenge()
+                                ├── cardFormDelegate.onThreeDSecureChallenge()
+                                └── cardPaymentButton.delegate.onThreeDSecureChallenge(button)
                                       — SFSafariViewController presented
 ```
 
-The `PaymentPresenter` protocol is the seam: the session calls `paymentHandlerWillRequestChallengePresentation`, which triggers `onThreeDSecureChallenge` on the delegate (which is typically the view controller). The view controller then presents the `SFSafariViewController` it receives via `presentPayment(_:)`.
+The `PaymentPresenter` protocol is the seam: the session calls `paymentHandlerWillRequestChallengePresentation`, which triggers `onThreeDSecureChallenge` on both the `PayrailsCardPaymentFormDelegate` (if the presenter conforms) and the `PayrailsCardPaymentButtonDelegate` (via `Payrails.currentCardPaymentButton`). The view controller then presents the `SFSafariViewController` it receives via `presentPayment(_:)`.
 
 ---
 
