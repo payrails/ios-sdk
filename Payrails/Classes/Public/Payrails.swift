@@ -6,6 +6,7 @@ import PassKit
 public class Payrails {
     private static var currentSession: Payrails.Session?
     private static var currentCardForm: Payrails.CardForm?
+    private(set) static weak var currentCardPaymentButton: Payrails.CardPaymentButton?
 
     static func createSession(
         with configuration: Payrails.Configuration,
@@ -95,6 +96,7 @@ public extension Payrails {
             buttonStyle: buttonStyle
         )
 
+        currentCardPaymentButton = button
         return button
     }
 
@@ -117,6 +119,7 @@ public extension Payrails {
             buttonStyle: buttonStyle
         )
 
+        currentCardPaymentButton = button
         return button
     }
 

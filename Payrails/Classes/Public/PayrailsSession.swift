@@ -291,8 +291,13 @@ extension Payrails.Session: PaymentHandlerDelegate {
             DispatchQueue.main.async {
                 cardFormDelegate.onThreeDSecureChallenge()
             }
-        } else {
-            print("Session Warning: CardPaymentHandler's presenter does not conform to PayrailsCardPaymentFormDelegate.")
+        }
+
+        // Notify button-based delegate (PayrailsCardPaymentButtonDelegate)
+        if let button = Payrails.currentCardPaymentButton {
+            DispatchQueue.main.async {
+                button.delegate?.onThreeDSecureChallenge(button)
+            }
         }
     }
 
