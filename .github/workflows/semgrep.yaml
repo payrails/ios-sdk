@@ -10,6 +10,31 @@ on:
 
 jobs:
   semgrep:
-    uses: payrails/actions/.github/workflows/reusable-semgrep.yaml@main
-    with:
-      extra_rules: p/swift
+    name: Scan
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep
+    # Skip any PR created by dependabot to avoid permission issues
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      # Fetch project source
+      - uses: actions/checkout@v4
+
+      - run: semgrep ci
+        # run: semgrep scan --sarif --output=semgrep.sarif
+        env:
+          # more rules at semgrep.dev/explore
+          SEMGREP_RULES: >-
+            p/security-audit
+            p/secrets
+            p/supply-chain
+            p/owasp-top-ten
+            p/swift
+            p/ci
+            p/r2c-ci
+            p/semgrep-go-correctness
+            p/insecure-transport
+            p/terraform
+          SEMGREP_SEND_METRICS: off
+          SEMGREP_TIMEOUT: 1800
+          #SEMGREP_BASELINE_REF: master
