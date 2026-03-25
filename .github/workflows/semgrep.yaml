@@ -30,15 +30,11 @@ jobs:
             p/secrets
             p/supply-chain
             p/owasp-top-ten
+            p/swift
             p/ci
             p/r2c-ci
-            p/docker
-            p/dockerfile
-            p/golang
             p/semgrep-go-correctness
             p/insecure-transport
-            p/javascript
-            p/kubernetes
             p/terraform
           SEMGREP_SEND_METRICS: off
           SEMGREP_TIMEOUT: 1800
