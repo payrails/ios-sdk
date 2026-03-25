@@ -1,0 +1,39 @@
+rules:
+  - id: unpinned-third-party-actions
+    languages:
+      - yaml
+    message:
+      Actions sourced from a third-party repository (not from the official Actions
+      repository) should be pinned to a commit SHA. Tag-references are not immutable.
+      In case of a compromise, it can be force-updated or re-tagged, indirectly forcing
+      us to run the compromised code. Pinning to a full-length SHA of the commit (which
+      may resolve to a particular tag) ensures we're not at risk of compromise.
+    metadata:
+      category: security
+      cwe:
+        - "CWE-1357: Reliance on Insufficiently Trustworthy Component"
+        - "CWE-353: Missing Support for Integrity Check"
+      owasp: A06:2021 - Vulnerable and Outdated Components
+      references:
+        - https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
+      technology:
+        - github-actions
+      confidence: HIGH
+    patterns:
+      - pattern-inside: "{steps: ...}"
+      - pattern: |
+          uses: "$USES"
+      - metavariable-pattern:
+          metavariable: $USES
+          language: generic
+          patterns:
+            - pattern-not-regex: ^[.]/ # local actions
+            - pattern-not-regex: ^actions/
+            - pattern-not-regex: ^payrails/actions/ # reusable workflows
+            - pattern-not-regex: ^github/
+            - pattern-not-regex: "@[0-9a-f]{40}$" # actions with a SHA
+    severity: WARNING
+    paths:
+      include:
+      - "**/.github/workflows/**"
