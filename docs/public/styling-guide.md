@@ -47,7 +47,8 @@ let styles = CardFormStylesConfig(
             borderWidth: 1,
             borderColor: .systemGray4,
             textColor: .label,
-            font: .systemFont(ofSize: 16)
+            font: .systemFont(ofSize: 16),
+            fieldInsets: .fieldInsets(left: 16, right: 16)  // field-to-container spacing
         ),
         focus: Style(borderColor: .systemBlue),
         completed: Style(borderColor: .systemGreen),
@@ -60,6 +61,45 @@ let styles = CardFormStylesConfig(
 let config = CardFormConfig(styles: styles)
 let cardForm = Payrails.createCardForm(config: config)
 ```
+
+### Field insets
+
+`fieldInsets` controls the spacing between a field and its container edge. It is independent of `padding`, which controls the text inset inside the field.
+
+```swift
+// padding  = space between the field border and the text inside
+// fieldInsets = space between the container edge and the field border
+```
+
+Use the convenience method `.fieldInsets(top:left:bottom:right:)` — defaults are `(0, 16, 0, 16)`, so only specify what you need:
+
+```swift
+// Only change horizontal insets
+base: Style(fieldInsets: .fieldInsets(left: 24, right: 24))
+
+// Only change top
+base: Style(fieldInsets: .fieldInsets(top: 8))
+
+// Edge-to-edge (no insets)
+base: Style(fieldInsets: .zero)
+```
+
+Per-field-type overrides are supported via `inputFieldStyles`:
+
+```swift
+let styles = CardFormStylesConfig(
+    allInputFieldStyles: CardFieldSpecificStyles(
+        base: Style(fieldInsets: .fieldInsets(left: 16, right: 16))
+    ),
+    inputFieldStyles: [
+        .CARD_NUMBER: CardFieldSpecificStyles(
+            base: Style(fieldInsets: .fieldInsets(left: 24, right: 24))
+        )
+    ]
+)
+```
+
+When an explicit `width` is set on a field, `fieldInsets` is ignored — the field uses a fixed-width constraint instead.
 
 ### Per-field overrides
 
@@ -104,6 +144,7 @@ let styles = CardFormStylesConfig(
 | `wrapperStyle.padding` | `UIEdgeInsets(16, 16, 16, 16)` |
 | `allInputFieldStyles.base.cornerRadius` | `2` |
 | `allInputFieldStyles.base.padding` | `UIEdgeInsets(10, 10, 10, 10)` |
+| `allInputFieldStyles.base.fieldInsets` | `nil` (defaults to `UIEdgeInsets(0, 16, 0, 16)`) |
 | `allInputFieldStyles.base.borderWidth` | `1` |
 | `allInputFieldStyles.focus.borderColor` | `.systemBlue` |
 | `allInputFieldStyles.completed.borderColor` | `.systemGreen` |
