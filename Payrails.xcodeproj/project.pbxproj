@@ -52,6 +52,7 @@
 		24AA5DCE4285E2F2744F44E9 /* SkyflowElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB54DF558581CC0DDB97D3B /* SkyflowElement.swift */; };
 		2575C590744209AFF84776C8 /* ContainerOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B448C3D4CB4D77C8385B044C /* ContainerOptions.swift */; };
 		2DD82AFBFBFEADC03C262F30 /* Style.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A99DD47FC6280B6F94CA0E1 /* Style.swift */; };
+		2DD82AFC0000000000000001 /* UIEdgeInsets+FieldInsets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD82AFD0000000000000001 /* UIEdgeInsets+FieldInsets.swift */; };
 		2E5CC5501AC53372F5999BBF /* ContainerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CDEDF6BD590810C0C6FAC8 /* ContainerProtocol.swift */; };
 		31460625D471404D8ED026D6 /* PayrailsUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D7E757BE647F03252D169F /* PayrailsUI.swift */; };
 		32B36423D6EF32AF5DBAD9DA /* LengthMatchRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B6D7E16E3B0716A5A719EBE /* LengthMatchRule.swift */; };
@@ -177,6 +178,7 @@
 		2D449AD34CC6AF3FB7A61211 /* AutoshiftAllowed.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutoshiftAllowed.swift; sourceTree = "<group>"; };
 		2FB54DF558581CC0DDB97D3B /* SkyflowElement.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkyflowElement.swift; sourceTree = "<group>"; };
 		3A99DD47FC6280B6F94CA0E1 /* Style.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Style.swift; sourceTree = "<group>"; };
+		2DD82AFD0000000000000001 /* UIEdgeInsets+FieldInsets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "UIEdgeInsets+FieldInsets.swift"; sourceTree = "<group>"; };
 		3AC783B47E093073D6DD8912 /* ErrorCodes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ErrorCodes.swift; sourceTree = "<group>"; };
 		3BB4B0FB2E3429B777BCA73D /* Message.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
 		3D55CD917B179E2E24E5AFB7 /* LogStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
@@ -639,6 +641,7 @@
 			children = (
 				87B5FD5170FE1B04ACCE9675 /* Styles.swift */,
 				3A99DD47FC6280B6F94CA0E1 /* Style.swift */,
+				2DD82AFD0000000000000001 /* UIEdgeInsets+FieldInsets.swift */,
 			);
 			name = styles;
 			path = styles;
@@ -878,6 +881,7 @@
 				0C35EA88ECCB1706E9BE461C /* State.swift in Sources */,
 				9DC3639F28D2CD4DF58CBBE9 /* Styles.swift in Sources */,
 				2DD82AFBFBFEADC03C262F30 /* Style.swift in Sources */,
+				2DD82AFC0000000000000001 /* UIEdgeInsets+FieldInsets.swift in Sources */,
 				7A60FFCDD00F21617B4BC20D /* EventName.swift in Sources */,
 				74090DEF7DEC9B5A4FCCF819 /* CharacterSet.swift in Sources */,
 				0AB60F32C816755430FC3A65 /* CardBin.swift in Sources */,
