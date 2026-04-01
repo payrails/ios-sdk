@@ -104,9 +104,8 @@ public extension Container {
         var previousChildView: UIView?
         var previousLabel: UILabel?
         let rowSpacing = composableRowSpacing ?? 10.0
-        let horizontalPadding = containerOptions?.styles?.base?.padding
-        let leadingInset = horizontalPadding?.left ?? 6.0
-        let trailingInset = horizontalPadding?.right ?? 6.0
+        let defaultFieldInsets = UIEdgeInsets.fieldInsets()
+        let fieldInsets = containerOptions?.styles?.base?.fieldInsets ?? defaultFieldInsets
         var labelArray: [UILabel] = (0..<layout.count).map { _ in UILabel() }
         let rowWiseError = createRows(from: layout, numberOfRows: layout.count)
         var elementCount = 0
@@ -151,15 +150,15 @@ public extension Container {
                     elements[elementCount].widthAnchor.constraint(equalTo: elements[elementCount - j].widthAnchor).isActive = true
                 } else if j == 0 {
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
-                    elements[elementCount].leadingAnchor.constraint(equalTo: childView.leadingAnchor, constant: leadingInset).isActive = true
+                    elements[elementCount].leadingAnchor.constraint(equalTo: childView.leadingAnchor, constant: fieldInsets.left).isActive = true
                 }
-                elements[elementCount].topAnchor.constraint(equalTo: childView.topAnchor).isActive = true
-                elements[elementCount].bottomAnchor.constraint(equalTo: childView.bottomAnchor).isActive = true
+                elements[elementCount].topAnchor.constraint(equalTo: childView.topAnchor, constant: fieldInsets.top).isActive = true
+                elements[elementCount].bottomAnchor.constraint(equalTo: childView.bottomAnchor, constant: -fieldInsets.bottom).isActive = true
 
                 // Last element in the row gets a trailing constraint so fields stretch to fill the row width.
                 // Skip when an explicit width is set on the row to avoid over-constraining the layout.
                 if j == layoutArray[i] - 1 && containerOptions?.styles?.base?.width == nil {
-                    elements[elementCount].trailingAnchor.constraint(equalTo: childView.trailingAnchor, constant: -trailingInset).isActive = true
+                    elements[elementCount].trailingAnchor.constraint(equalTo: childView.trailingAnchor, constant: -fieldInsets.right).isActive = true
                 }
 
                 for element in elements {
@@ -211,8 +210,8 @@ public extension Container {
             childView.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
 
             labelArray[i].translatesAutoresizingMaskIntoConstraints = false
-            labelArray[i].leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: leadingInset).isActive = true
-            labelArray[i].trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -trailingInset).isActive = true
+            labelArray[i].leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: fieldInsets.left).isActive = true
+            labelArray[i].trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -fieldInsets.right).isActive = true
             labelArray[i].topAnchor.constraint(equalTo: childView.bottomAnchor, constant: 5.0).isActive = true
 
             previousChildView = childView
