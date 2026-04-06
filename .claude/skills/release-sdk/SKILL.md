@@ -63,7 +63,7 @@ Read each file in `docs/public/` and cross-reference with the changelog:
 | `quick-start.md` | Setup steps, dependencies, version references current? |
 | `sdk-api-reference.md` | Covers all current public APIs? Missing any new ones? |
 | `concepts.md` | Architectural descriptions still accurate? |
-| `styling-guide.md` | Styling examples up to date? |
+| `merchant-styling-guide.md` | Styling examples up to date? |
 | `how-to-tokenize-card.md` | Code examples working with current API? |
 | `how-to-query-session-data.md` | Query examples current? |
 | `how-to-update-checkout-amount.md` | Update flow current? |

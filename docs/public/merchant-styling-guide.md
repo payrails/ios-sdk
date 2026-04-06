@@ -397,17 +397,17 @@ Control the arrangement of fields using built-in presets or a custom layout:
 // Standard (default):
 // Row 1: [Card Number]
 // Row 2: [CVV] [Expiry Month] [Expiry Year]
-let config = CardFormConfig(layout: CardLayoutConfig(preset: .standard))
+let config = CardFormConfig(layout: .standard)
 
 // Compact:
 // Row 1: [Card Number]
 // Row 2: [Expiry Month] [Expiry Year] [CVV]
-let config = CardFormConfig(layout: CardLayoutConfig(preset: .compact))
+let config = CardFormConfig(layout: .compact)
 
 // Minimal (no name field, compact layout):
 // Row 1: [Card Number]
 // Row 2: [Expiry Month] [Expiry Year] [CVV]
-let config = CardFormConfig(layout: CardLayoutConfig(preset: .minimal))
+let config = CardFormConfig(layout: .minimal)
 ```
 
 ### Combined Expiry Date Field
@@ -416,10 +416,7 @@ Replace separate month/year fields with a single MM/YY field:
 
 ```swift
 let config = CardFormConfig(
-    layout: CardLayoutConfig(
-        preset: .standard,
-        useCombinedExpiryDateField: true
-    )
+    layout: .preset(.standard, useCombinedExpiryDateField: true)
 )
 // Row 1: [Card Number]
 // Row 2: [CVV] [MM/YY]
@@ -432,12 +429,12 @@ Define exactly which fields appear on each row:
 ```swift
 let config = CardFormConfig(
     showNameField: true,
-    layout: CardLayoutConfig(
-        preset: .custom([
+    layout: .custom(
+        [
             [.CARDHOLDER_NAME],           // Row 1
             [.CARD_NUMBER],               // Row 2
             [.EXPIRATION_DATE, .CVV]      // Row 3
-        ]),
+        ],
         useCombinedExpiryDateField: true
     )
 )
@@ -638,32 +635,34 @@ Override placeholder text, labels, and error messages:
 
 ```swift
 let translations = CardTranslations(
-    placeholders: CardTranslations.Placeholders(
-        cardNumber: "Card number",
-        cardholderName: "Name on card",
-        cvv: "CVV",
-        expirationDate: "MM/YY",
-        expirationMonth: "MM",
-        expirationYear: "YY"
-    ),
+    placeholders: CardTranslations.Placeholders(values: [
+        .CARD_NUMBER: "Card number",
+        .CARDHOLDER_NAME: "Name on card",
+        .CVV: "CVV",
+        .EXPIRATION_DATE: "MM/YY",
+        .EXPIRATION_MONTH: "MM",
+        .EXPIRATION_YEAR: "YY"
+    ]),
     labels: CardTranslations.Labels(
-        cardNumber: "Card Number",
-        cardholderName: "Cardholder Name",
-        cvv: "Security Code",
-        expirationDate: "Expiry Date",
-        expirationMonth: "Expiry Month",
-        expirationYear: "Expiry Year",
+        values: [
+            .CARD_NUMBER: "Card Number",
+            .CARDHOLDER_NAME: "Cardholder Name",
+            .CVV: "Security Code",
+            .EXPIRATION_DATE: "Expiry Date",
+            .EXPIRATION_MONTH: "Expiry Month",
+            .EXPIRATION_YEAR: "Expiry Year"
+        ],
         saveInstrument: "Save card for future payments",
         storeInstrument: "Store this card"
     ),
-    errorMessages: CardTranslations.ErrorMessages(
-        cardNumber: "Please enter a valid card number",
-        cardholderName: "Cardholder name is required",
-        cvv: "Invalid security code",
-        expirationDate: "Invalid expiry date",
-        expirationMonth: "Invalid month",
-        expirationYear: "Invalid year"
-    )
+    error: CardTranslations.ErrorMessages(values: [
+        .CARD_NUMBER: "Please enter a valid card number",
+        .CARDHOLDER_NAME: "Cardholder name is required",
+        .CVV: "Invalid security code",
+        .EXPIRATION_DATE: "Invalid expiry date",
+        .EXPIRATION_MONTH: "Invalid month",
+        .EXPIRATION_YEAR: "Invalid year"
+    ])
 )
 
 let config = CardFormConfig(
@@ -676,7 +675,7 @@ let config = CardFormConfig(
 ```swift
 // Card payment button
 let payButton = session.createCardPaymentButton(
-    translations: CardPaymentButtonTranslations(label: "Complete Purchase")
+    translations: CardPaymenButtonTranslations(label: "Complete Purchase")
 )
 
 // Stored instrument pay button
@@ -801,10 +800,7 @@ class CheckoutViewController: UIViewController {
             showCardIcon: true,
             cardIconAlignment: .right,
             fieldVariant: .outlined,
-            layout: CardLayoutConfig(
-                preset: .standard,
-                useCombinedExpiryDateField: true
-            ),
+            layout: .preset(.standard, useCombinedExpiryDateField: true),
             styles: CardFormStylesConfig(
                 wrapperStyle: CardWrapperStyle(
                     backgroundColor: UIColor(white: 0.12, alpha: 1),
@@ -845,18 +841,18 @@ class CheckoutViewController: UIViewController {
                 sectionSpacing: 20
             ),
             translations: CardTranslations(
-                placeholders: CardTranslations.Placeholders(
-                    cardNumber: "1234 5678 9012 3456",
-                    cardholderName: "John Doe",
-                    cvv: "123",
-                    expirationDate: "MM/YY"
-                ),
-                labels: CardTranslations.Labels(
-                    cardNumber: "CARD NUMBER",
-                    cardholderName: "NAME ON CARD",
-                    cvv: "CVV",
-                    expirationDate: "EXPIRY"
-                )
+                placeholders: CardTranslations.Placeholders(values: [
+                    .CARD_NUMBER: "1234 5678 9012 3456",
+                    .CARDHOLDER_NAME: "John Doe",
+                    .CVV: "123",
+                    .EXPIRATION_DATE: "MM/YY"
+                ]),
+                labels: CardTranslations.Labels(values: [
+                    .CARD_NUMBER: "CARD NUMBER",
+                    .CARDHOLDER_NAME: "NAME ON CARD",
+                    .CVV: "CVV",
+                    .EXPIRATION_DATE: "EXPIRY"
+                ])
             )
         ))
 
@@ -869,7 +865,7 @@ class CheckoutViewController: UIViewController {
                 cornerRadius: 14,
                 height: 52
             ),
-            translations: CardPaymentButtonTranslations(label: "Pay $49.99")
+            translations: CardPaymenButtonTranslations(label: "Pay $49.99")
         )
 
         // 3. Layout
