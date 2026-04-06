@@ -297,9 +297,9 @@ final class PayrailsTests: XCTestCase {
 
     func testComposableContainerUsesConfiguredHorizontalPaddingForFieldsAndLabels() throws {
         let client = Client()
+        let insets = UIEdgeInsets(top: 0, left: 18, bottom: 0, right: 14)
         let options = ContainerOptions(
-            layout: [1],
-            styles: Styles(base: Style(fieldInsets: UIEdgeInsets(top: 0, left: 18, bottom: 0, right: 14)))
+            layout: [1]
         )
 
         guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
@@ -310,6 +310,7 @@ final class PayrailsTests: XCTestCase {
         let input = CollectElementInput(
             table: "cards",
             column: "card_number",
+            inputStyles: Styles(base: Style(fieldInsets: insets)),
             label: "Card number",
             placeholder: "Card number",
             type: .CARD_NUMBER
@@ -403,9 +404,9 @@ final class PayrailsTests: XCTestCase {
             secondAttribute: .trailing
         )
 
-        XCTAssertEqual(fieldLeading ?? .nan, 16, accuracy: 0.001, "Default fieldInsets.left should be 16")
-        XCTAssertEqual(labelLeading ?? .nan, 16, accuracy: 0.001, "Default fieldInsets.left should apply to labels")
-        XCTAssertEqual(labelTrailing ?? .nan, -16, accuracy: 0.001, "Default fieldInsets.right should apply to labels")
+        XCTAssertEqual(fieldLeading ?? .nan, 6, accuracy: 0.001, "Default fieldInsets.left should be 6")
+        XCTAssertEqual(labelLeading ?? .nan, 6, accuracy: 0.001, "Default fieldInsets.left should apply to labels")
+        XCTAssertEqual(labelTrailing ?? .nan, -6, accuracy: 0.001, "Default fieldInsets.right should apply to labels")
     }
 
     func testComposableContainerErrorLabelAppliesConfiguredHeightConstraints() throws {
@@ -1234,9 +1235,9 @@ final class PayrailsTests: XCTestCase {
 
     func testComposableContainerSingleFieldRowHasTrailingConstraint() throws {
         let client = Client()
+        let insets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 12)
         let options = ContainerOptions(
-            layout: [1],
-            styles: Styles(base: Style(fieldInsets: UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 12)))
+            layout: [1]
         )
 
         guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
@@ -1246,6 +1247,7 @@ final class PayrailsTests: XCTestCase {
 
         let input = CollectElementInput(
             table: "cards", column: "card_number",
+            inputStyles: Styles(base: Style(fieldInsets: insets)),
             label: "Card number", placeholder: "Card number",
             type: .CARD_NUMBER
         )
@@ -1274,9 +1276,9 @@ final class PayrailsTests: XCTestCase {
 
     func testComposableContainerMultiFieldRowHasEqualWidthAndTrailing() throws {
         let client = Client()
+        let insets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
         let options = ContainerOptions(
-            layout: [2],
-            styles: Styles(base: Style(fieldInsets: UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)))
+            layout: [2]
         )
 
         guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
@@ -1286,11 +1288,13 @@ final class PayrailsTests: XCTestCase {
 
         let cvvInput = CollectElementInput(
             table: "cards", column: "security_code",
+            inputStyles: Styles(base: Style(fieldInsets: insets)),
             label: "CVV", placeholder: "CVV",
             type: .CVV
         )
         let expiryInput = CollectElementInput(
             table: "cards", column: "expiry_month",
+            inputStyles: Styles(base: Style(fieldInsets: insets)),
             label: "Month", placeholder: "MM",
             type: .EXPIRATION_MONTH
         )
@@ -1417,12 +1421,10 @@ final class PayrailsTests: XCTestCase {
 
     func testComposableContainerSkipsTrailingConstraintWhenWidthIsSet() throws {
         let client = Client()
+        let insets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 12)
         let options = ContainerOptions(
             layout: [1],
-            styles: Styles(base: Style(
-                width: 200,
-                fieldInsets: UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 12)
-            ))
+            styles: Styles(base: Style(width: 200))
         )
 
         guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
@@ -1432,6 +1434,7 @@ final class PayrailsTests: XCTestCase {
 
         let input = CollectElementInput(
             table: "cards", column: "card_number",
+            inputStyles: Styles(base: Style(fieldInsets: insets)),
             label: "Card number", placeholder: "Card number",
             type: .CARD_NUMBER
         )
@@ -2232,17 +2235,17 @@ final class PayrailsTests: XCTestCase {
     func testFieldInsetsConvenienceDefaults() throws {
         let insets = UIEdgeInsets.fieldInsets()
         XCTAssertEqual(insets.top, 0, "Default top should be 0")
-        XCTAssertEqual(insets.left, 16, "Default left should be 16")
+        XCTAssertEqual(insets.left, 6, "Default left should be 6")
         XCTAssertEqual(insets.bottom, 0, "Default bottom should be 0")
-        XCTAssertEqual(insets.right, 16, "Default right should be 16")
+        XCTAssertEqual(insets.right, 6, "Default right should be 6")
     }
 
     func testFieldInsetsConveniencePartialOverrideTop() throws {
         let insets = UIEdgeInsets.fieldInsets(top: 8)
         XCTAssertEqual(insets.top, 8, "Top should be overridden to 8")
-        XCTAssertEqual(insets.left, 16, "Left should remain default 16")
+        XCTAssertEqual(insets.left, 6, "Left should remain default 6")
         XCTAssertEqual(insets.bottom, 0, "Bottom should remain default 0")
-        XCTAssertEqual(insets.right, 16, "Right should remain default 16")
+        XCTAssertEqual(insets.right, 6, "Right should remain default 6")
     }
 
     func testFieldInsetsConveniencePartialOverrideHorizontal() throws {
@@ -2262,9 +2265,9 @@ final class PayrailsTests: XCTestCase {
 
     func testComposableContainerUsesFieldInsetsForVerticalConstraints() throws {
         let client = Client()
+        let insets = UIEdgeInsets(top: 5, left: 16, bottom: 7, right: 16)
         let options = ContainerOptions(
-            layout: [1],
-            styles: Styles(base: Style(fieldInsets: UIEdgeInsets(top: 5, left: 16, bottom: 7, right: 16)))
+            layout: [1]
         )
 
         guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
@@ -2274,6 +2277,7 @@ final class PayrailsTests: XCTestCase {
 
         let input = CollectElementInput(
             table: "cards", column: "card_number",
+            inputStyles: Styles(base: Style(fieldInsets: insets)),
             label: "Card number", placeholder: "Card number",
             type: .CARD_NUMBER
         )
@@ -2310,8 +2314,7 @@ final class PayrailsTests: XCTestCase {
     func testComposableContainerFieldInsetsZeroProducesEdgeToEdge() throws {
         let client = Client()
         let options = ContainerOptions(
-            layout: [1],
-            styles: Styles(base: Style(fieldInsets: .zero))
+            layout: [1]
         )
 
         guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
@@ -2321,6 +2324,7 @@ final class PayrailsTests: XCTestCase {
 
         let input = CollectElementInput(
             table: "cards", column: "card_number",
+            inputStyles: Styles(base: Style(fieldInsets: .zero)),
             label: "Card number", placeholder: "Card number",
             type: .CARD_NUMBER
         )
@@ -2356,9 +2360,9 @@ final class PayrailsTests: XCTestCase {
 
     func testComposableContainerFieldInsetsAsymmetric() throws {
         let client = Client()
+        let insets = UIEdgeInsets(top: 0, left: 48, bottom: 0, right: 12)
         let options = ContainerOptions(
-            layout: [1],
-            styles: Styles(base: Style(fieldInsets: UIEdgeInsets(top: 0, left: 48, bottom: 0, right: 12)))
+            layout: [1]
         )
 
         guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
@@ -2368,6 +2372,7 @@ final class PayrailsTests: XCTestCase {
 
         let input = CollectElementInput(
             table: "cards", column: "card_number",
+            inputStyles: Styles(base: Style(fieldInsets: insets)),
             label: "Card number", placeholder: "Card number",
             type: .CARD_NUMBER
         )
@@ -2416,5 +2421,68 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(fieldTrailing ?? .nan, -12, accuracy: 0.001, "Trailing should be -12 (asymmetric)")
         XCTAssertEqual(labelLeading ?? .nan, 48, accuracy: 0.001, "Label leading should match fieldInsets.left")
         XCTAssertEqual(labelTrailing ?? .nan, -12, accuracy: 0.001, "Label trailing should match fieldInsets.right")
+    }
+
+    // MARK: - fieldInsets: Per-field override tests
+
+    func testComposableContainerPerFieldInsetsOverride() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1, 1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+
+        let cardInput = CollectElementInput(
+            table: "cards", column: "card_number",
+            inputStyles: Styles(base: Style(fieldInsets: UIEdgeInsets(top: 0, left: 24, bottom: 0, right: 24))),
+            label: "Card number", placeholder: "Card number",
+            type: .CARD_NUMBER
+        )
+        let cvvInput = CollectElementInput(
+            table: "cards", column: "security_code",
+            inputStyles: Styles(base: Style(fieldInsets: UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8))),
+            label: "CVV", placeholder: "CVV",
+            type: .CVV
+        )
+        _ = container.create(input: cardInput, options: CollectElementOptions(required: true))
+        _ = container.create(input: cvvInput, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        let rowViews = composableView.subviews.filter { $0.subviews.contains(where: { $0 is TextField }) }
+
+        guard rowViews.count == 2 else {
+            XCTFail("Expected 2 row views, got \(rowViews.count)")
+            return
+        }
+
+        guard
+            let cardField = rowViews[0].subviews.first(where: { $0 is TextField }),
+            let cvvField = rowViews[1].subviews.first(where: { $0 is TextField })
+        else {
+            XCTFail("Expected fields in both rows")
+            return
+        }
+
+        let cardLeading = constraintConstant(
+            in: rowViews[0].constraints,
+            firstItem: cardField,
+            firstAttribute: .leading,
+            secondItem: rowViews[0],
+            secondAttribute: .leading
+        )
+        let cvvLeading = constraintConstant(
+            in: rowViews[1].constraints,
+            firstItem: cvvField,
+            firstAttribute: .leading,
+            secondItem: rowViews[1],
+            secondAttribute: .leading
+        )
+
+        XCTAssertEqual(cardLeading ?? .nan, 24, accuracy: 0.001,
+                       "Card number field should use its own fieldInsets.left (24)")
+        XCTAssertEqual(cvvLeading ?? .nan, 8, accuracy: 0.001,
+                       "CVV field should use its own fieldInsets.left (8)")
     }
 }

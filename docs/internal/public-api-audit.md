@@ -157,8 +157,8 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `CardTranslations.ErrorMessages` | PUBLIC | |
 | `CardPaymenButtonTranslations` | PUBLIC | Note: typo in name (`Paymen`). DISCUSS whether to fix (breaking rename). |
 | `CardStyle` (typealias for `Style`) | PUBLIC | |
-| `Style.fieldInsets` | PUBLIC (via `public init`) | Field-to-container spacing. `internal` stored property, but settable via `public init(... fieldInsets:)`. Defaults to `nil` → `(0, 16, 0, 16)`. |
-| `UIEdgeInsets.fieldInsets(top:left:bottom:right:)` | PUBLIC | Convenience factory with default values `(0, 16, 0, 16)`. Defined in `UIEdgeInsets+FieldInsets.swift`. |
+| `Style.fieldInsets` | PUBLIC (via `public init`) | Field-to-container spacing. `internal` stored property, but settable via `public init(... fieldInsets:)`. Defaults to `nil` → `(0, 6, 0, 6)`. |
+| `UIEdgeInsets.fieldInsets(top:left:bottom:right:)` | PUBLIC | Convenience factory with default values `(0, 6, 0, 6)`. Defined in `UIEdgeInsets+FieldInsets.swift`. |
 | `CardFieldType` (typealias for `ElementType`) | PUBLIC | |
 
 ---

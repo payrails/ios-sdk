@@ -521,7 +521,7 @@ The SDK supports advanced card form customization, including:
 
 ### Field Insets
 
-By default, fields stretch to fill their container with 16pt horizontal insets. Use `fieldInsets` on the base style to control the spacing between a field and its container edge, independently of the text padding inside the field:
+By default, fields stretch to fill their container with 6pt horizontal insets. Use `fieldInsets` on the base style to control the spacing between a field and its container edge, independently of the text padding inside the field:
 
 ```swift
 let styles = CardFormStylesConfig(
@@ -534,7 +534,7 @@ let styles = CardFormStylesConfig(
 )
 ```
 
-The convenience method `.fieldInsets(top:left:bottom:right:)` provides defaults of `(0, 16, 0, 16)` — only specify the sides you want to change:
+The convenience method `.fieldInsets(top:left:bottom:right:)` provides defaults of `(0, 6, 0, 6)` — only specify the sides you want to change:
 
 ```swift
 .fieldInsets(top: 8)                  // only change top

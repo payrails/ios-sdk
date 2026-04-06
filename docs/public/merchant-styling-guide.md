@@ -164,7 +164,7 @@ CardStyle(
     minHeight: CGFloat?,           // Minimum height constraint
     maxHeight: CGFloat?,           // Maximum height constraint
     cardIconAlignment: CardIconAlignment?,  // Card brand icon position (.left / .right)
-    fieldInsets: UIEdgeInsets?     // Field-to-container spacing (default: 0,16,0,16)
+    fieldInsets: UIEdgeInsets?     // Field-to-container spacing (default: 0,6,0,6)
 )
 ```
 
@@ -320,7 +320,7 @@ let styles = CardFormStylesConfig(
 └──────────────────────────────────────────────────┘
 ```
 
-Use the convenience method `.fieldInsets(top:left:bottom:right:)` — defaults are `(0, 16, 0, 16)`:
+Use the convenience method `.fieldInsets(top:left:bottom:right:)` — defaults are `(0, 6, 0, 6)`:
 
 ```swift
 let styles = CardFormStylesConfig(
@@ -909,7 +909,7 @@ class CheckoutViewController: UIViewController {
 | `minHeight` | `CGFloat?` | `nil` |
 | `maxHeight` | `CGFloat?` | `nil` |
 | `cardIconAlignment` | `CardIconAlignment?` | `.left` |
-| `fieldInsets` | `UIEdgeInsets?` | `nil` (defaults to `(0, 16, 0, 16)`) |
+| `fieldInsets` | `UIEdgeInsets?` | `nil` (defaults to `(0, 6, 0, 6)`) |
 
 ### CardFieldSpecificStyles
 
