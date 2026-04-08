@@ -205,7 +205,7 @@ Use Payrails sandbox card numbers to test different payment outcomes.
 ## What's next
 
 - [Concepts](concepts.md) — understand the Session, Elements, and Delegates mental model
-- [Styling Guide](styling-guide.md) — customise card form and button appearance
+- [Styling Guide](merchant-styling-guide.md) — customise card form and button appearance
 - [How to Tokenize a Card](how-to-tokenize-card.md) — save a card without immediate payment
 - [How to Query Session Data](how-to-query-session-data.md) — read execution ID, amount, and more
 - [SDK API Reference](sdk-api-reference.md) — complete API documentation

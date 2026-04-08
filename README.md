@@ -504,9 +504,8 @@ Payrails.log("Some message")
 
 The current implementation exposes styling, fonts, colors, and text labels, with these remaining limitations:
 
-- Field dimensions are applied internally; custom Auto Layout constraints are limited.
 - The save-instrument toggle layout is not configurable.
-- Advanced constraint-based composition is not yet available.
+- All fields in a multi-element row share equal width (no column-span or weighted widths).
 
 ### Card Form Customization
 
@@ -515,9 +514,35 @@ The SDK supports advanced card form customization, including:
 - Card icon alignment (`cardIconAlignment`)
 - Show/hide required asterisk (`showRequiredAsterisk`)
 - Configurable field and section spacing (`fieldSpacing`, `sectionSpacing`)
+- Field-to-container insets via `fieldInsets` on the base style (independent of text padding)
 - Card payment button customization via `createCardPaymentButton` (`CardButtonStyle`, including `height`)
 - Configurable field arrangement and ordering via `CardLayoutConfig`
 - Field border variant (`fieldVariant`): `.outlined` for full box borders or `.filled` for bottom-line-only styling
+
+### Field Insets
+
+By default, fields stretch to fill their container with 6pt horizontal insets. Use `fieldInsets` on the base style to control the spacing between a field and its container edge, independently of the text padding inside the field:
+
+```swift
+let styles = CardFormStylesConfig(
+    allInputFieldStyles: CardFieldSpecificStyles(
+        base: CardStyle(
+            padding: UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10),  // text inset inside field
+            fieldInsets: .fieldInsets(left: 24, right: 24)                      // field-to-container spacing
+        )
+    )
+)
+```
+
+The convenience method `.fieldInsets(top:left:bottom:right:)` provides defaults of `(0, 6, 0, 6)` — only specify the sides you want to change:
+
+```swift
+.fieldInsets(top: 8)                  // only change top
+.fieldInsets(left: 24, right: 24)     // only change horizontal
+.zero                                  // edge-to-edge (no insets)
+```
+
+When an explicit `width` is set on a field, `fieldInsets` is ignored and the field uses a fixed-width constraint instead.
 
 Card icon and clear button behavior on iOS:
 - `showCardIcon: true`: shows static empty-state icons for supported fields

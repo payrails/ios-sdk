@@ -28,6 +28,7 @@ public struct Style {
     var height: CGFloat?
     var placeholderColor: UIColor?
     var cardIconAlignment: CardIconAlignment?
+    var fieldInsets: UIEdgeInsets?
 
     public init(borderColor: UIColor? = nil,
                 cornerRadius: CGFloat? = nil,
@@ -46,7 +47,8 @@ public struct Style {
                 width: CGFloat? = nil,
                 height: CGFloat? = nil,
                 placeholderColor: UIColor? = nil,
-                cardIconAlignment: CardIconAlignment? = .left
+                cardIconAlignment: CardIconAlignment? = .left,
+                fieldInsets: UIEdgeInsets? = nil
     ) {
         self.borderColor = borderColor
         self.cornerRadius = cornerRadius
@@ -66,6 +68,7 @@ public struct Style {
         self.height = height
         self.placeholderColor = placeholderColor
         self.cardIconAlignment = cardIconAlignment
+        self.fieldInsets = fieldInsets
     }
 
     func merged(over base: Style?) -> Style {
@@ -88,7 +91,8 @@ public struct Style {
             width: self.width ?? baseStyle.width,
             height: self.height ?? baseStyle.height,
             placeholderColor: self.placeholderColor ?? baseStyle.placeholderColor,
-            cardIconAlignment: self.cardIconAlignment ?? baseStyle.cardIconAlignment
+            cardIconAlignment: self.cardIconAlignment ?? baseStyle.cardIconAlignment,
+            fieldInsets: self.fieldInsets ?? baseStyle.fieldInsets
         )
     }
 }

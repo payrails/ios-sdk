@@ -490,7 +490,7 @@ public enum InstrumentAPIResponse {
 
 ## Card form configuration
 
-See [Styling Guide](styling-guide.md) for full details.
+See [Styling Guide](merchant-styling-guide.md) for full details.
 
 ```swift
 public struct CardFormConfig {

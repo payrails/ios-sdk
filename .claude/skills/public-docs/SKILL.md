@@ -175,7 +175,7 @@ docs/
 │   ├── quick-start.md               ← Tutorial: primary onboarding
 │   ├── concepts.md                  ← Explanation: core concepts
 │   ├── sdk-api-reference.md         ← Reference: full API surface
-│   ├── styling-guide.md             ← How-To: customizing UI
+│   ├── merchant-styling-guide.md    ← How-To: customizing UI
 │   ├── how-to-tokenize-card.md      ← How-To: card tokenization
 │   ├── how-to-query-session-data.md ← How-To: querying session data
 │   ├── how-to-update-checkout-amount.md ← How-To: updating amounts

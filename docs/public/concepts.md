@@ -180,4 +180,4 @@ If the user navigates away during a payment, the in-flight `Task` is cancelled i
 
 - [Quick Start](quick-start.md) — get to a running integration in 15 minutes
 - [SDK API Reference](sdk-api-reference.md) — complete API surface
-- [Styling Guide](styling-guide.md) — customise the UI
+- [Styling Guide](merchant-styling-guide.md) — customise the UI

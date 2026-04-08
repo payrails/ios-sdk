@@ -104,9 +104,7 @@ public extension Container {
         var previousChildView: UIView?
         var previousLabel: UILabel?
         let rowSpacing = composableRowSpacing ?? 10.0
-        let horizontalPadding = containerOptions?.styles?.base?.padding
-        let leadingInset = horizontalPadding?.left ?? 6.0
-        let trailingInset = horizontalPadding?.right ?? 6.0
+        let defaultFieldInsets = UIEdgeInsets.fieldInsets()
         var labelArray: [UILabel] = (0..<layout.count).map { _ in UILabel() }
         let rowWiseError = createRows(from: layout, numberOfRows: layout.count)
         var elementCount = 0
@@ -144,6 +142,8 @@ public extension Container {
 
                 elements[elementCount].translatesAutoresizingMaskIntoConstraints = false
 
+                let elementInsets = elements[elementCount].collectInput.inputStyles.base?.fieldInsets ?? defaultFieldInsets
+
                 if layoutArray[i] > 1 && elementCount >= 1 && j > 0 {
                     elements[elementCount].leadingAnchor.constraint(equalTo: elements[elementCount-1].trailingAnchor, constant: 20.0).isActive = true
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
@@ -151,15 +151,15 @@ public extension Container {
                     elements[elementCount].widthAnchor.constraint(equalTo: elements[elementCount - j].widthAnchor).isActive = true
                 } else if j == 0 {
                     elements[elementCount].centerYAnchor.constraint(equalTo: childView.centerYAnchor).isActive = true
-                    elements[elementCount].leadingAnchor.constraint(equalTo: childView.leadingAnchor, constant: leadingInset).isActive = true
+                    elements[elementCount].leadingAnchor.constraint(equalTo: childView.leadingAnchor, constant: elementInsets.left).isActive = true
                 }
-                elements[elementCount].topAnchor.constraint(equalTo: childView.topAnchor).isActive = true
-                elements[elementCount].bottomAnchor.constraint(equalTo: childView.bottomAnchor).isActive = true
+                elements[elementCount].topAnchor.constraint(equalTo: childView.topAnchor, constant: elementInsets.top).isActive = true
+                elements[elementCount].bottomAnchor.constraint(equalTo: childView.bottomAnchor, constant: -elementInsets.bottom).isActive = true
 
                 // Last element in the row gets a trailing constraint so fields stretch to fill the row width.
                 // Skip when an explicit width is set on the row to avoid over-constraining the layout.
                 if j == layoutArray[i] - 1 && containerOptions?.styles?.base?.width == nil {
-                    elements[elementCount].trailingAnchor.constraint(equalTo: childView.trailingAnchor, constant: -trailingInset).isActive = true
+                    elements[elementCount].trailingAnchor.constraint(equalTo: childView.trailingAnchor, constant: -elementInsets.right).isActive = true
                 }
 
                 for element in elements {
@@ -210,9 +210,12 @@ public extension Container {
             childView.leadingAnchor.constraint(equalTo: parentView.leadingAnchor).isActive = true
             childView.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
 
+            let rowFirstElementIndex = elementCount - layoutArray[i]
+            let rowLabelInsets = elements[rowFirstElementIndex].collectInput.inputStyles.base?.fieldInsets ?? defaultFieldInsets
+
             labelArray[i].translatesAutoresizingMaskIntoConstraints = false
-            labelArray[i].leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: leadingInset).isActive = true
-            labelArray[i].trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -trailingInset).isActive = true
+            labelArray[i].leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: rowLabelInsets.left).isActive = true
+            labelArray[i].trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -rowLabelInsets.right).isActive = true
             labelArray[i].topAnchor.constraint(equalTo: childView.bottomAnchor, constant: 5.0).isActive = true
 
             previousChildView = childView
