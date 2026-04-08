@@ -1,6 +1,6 @@
 # Payrails iOS SDK — Styling Guide for Merchants
 
-> **Version:** 1.0 · **Last Updated:** March 2025  
+> **Version:** 1.0 · **Last Updated:** April 2026
 > This guide covers how to customize the look and feel of every Payrails UI component so it matches your app's brand.
 
 ---
