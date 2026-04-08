@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.0] - 2026-04-08
+
+### Added
+- `fieldInsets` property on `Style` struct for controlling field-to-container spacing (ONB-324)
+- `UIEdgeInsets.fieldInsets(top:left:bottom:right:)` convenience factory with 6pt default (ONB-324)
+- Per-field `fieldInsets` overrides via `inputFieldStyles` (ONB-324)
+- Unit tests for `fieldInsets` property, convenience extension, and constraints (ONB-324)
+
+### Changed
+- `ComposableContainer` now uses `fieldInsets` for field-to-container spacing instead of hardcoded values (ONB-492)
+- Centralised shared Semgrep rules and reusable CI workflow (PS-293)
+- Replaced Trivy with Semgrep for security scanning (PS-281)
+
 ## [1.26.1] - 2026-03-23
 
 ### Changed
