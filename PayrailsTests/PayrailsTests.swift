@@ -295,6 +295,176 @@ final class PayrailsTests: XCTestCase {
         )
     }
 
+    // MARK: - ONB-517: rowSpacing must not apply at form edges
+
+    func testComposableContainerFirstRowPinsFlushToParentTop() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1, 1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+        container.composableRowSpacing = 24
+
+        let cardNumberInput = CollectElementInput(
+            table: "cards", column: "card_number",
+            label: "Card number", placeholder: "Card number", type: .CARD_NUMBER
+        )
+        let cvvInput = CollectElementInput(
+            table: "cards", column: "security_code",
+            label: "CVV", placeholder: "CVV", type: .CVV
+        )
+        _ = container.create(input: cardNumberInput, options: CollectElementOptions(required: true))
+        _ = container.create(input: cvvInput, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        let rowViews = composableView.subviews.filter { view in
+            view.subviews.contains(where: { $0 is TextField })
+        }
+        guard let firstRow = rowViews.first else {
+            XCTFail("Expected at least one row view")
+            return
+        }
+
+        let firstRowTop = constraintConstant(
+            in: composableView.constraints,
+            firstItem: firstRow,
+            firstAttribute: .top,
+            secondItem: composableView,
+            secondAttribute: .top
+        )
+        XCTAssertEqual(
+            firstRowTop ?? .nan, 0, accuracy: 0.001,
+            "First row must pin flush to parent top (no rowSpacing offset). ONB-517."
+        )
+    }
+
+    func testComposableContainerInterRowGapEqualsRowSpacing() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1, 1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+        container.composableRowSpacing = 24
+
+        let cardNumberInput = CollectElementInput(
+            table: "cards", column: "card_number",
+            label: "Card number", placeholder: "Card number", type: .CARD_NUMBER
+        )
+        let cvvInput = CollectElementInput(
+            table: "cards", column: "security_code",
+            label: "CVV", placeholder: "CVV", type: .CVV
+        )
+        _ = container.create(input: cardNumberInput, options: CollectElementOptions(required: true))
+        _ = container.create(input: cvvInput, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        let labelViews = composableView.subviews.compactMap { $0 as? UILabel }
+        let rowViews = composableView.subviews.filter { view in
+            view.subviews.contains(where: { $0 is TextField })
+        }
+
+        // Second row's top should be anchored to the previous row's label bottom with rowSpacing.
+        XCTAssertGreaterThanOrEqual(rowViews.count, 2, "Expected at least two row views")
+        XCTAssertGreaterThanOrEqual(labelViews.count, 1, "Expected at least one error label")
+
+        let interRowConstraint = composableView.constraints.first { c in
+            guard (c.firstItem as? UIView) === rowViews[1] else { return false }
+            guard c.firstAttribute == .top else { return false }
+            return (c.secondItem as? UIView) === labelViews[0] && c.secondAttribute == .bottom
+        }
+        XCTAssertNotNil(interRowConstraint, "Expected row 2 top anchored to row 1 label bottom")
+        XCTAssertEqual(
+            interRowConstraint?.constant ?? .nan, 24, accuracy: 0.001,
+            "Gap between sibling rows should equal configured rowSpacing."
+        )
+    }
+
+    func testComposableContainerLastRowBottomUsesSmallPaddingNotRowSpacing() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1, 1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+        container.composableRowSpacing = 24
+
+        let cardNumberInput = CollectElementInput(
+            table: "cards", column: "card_number",
+            label: "Card number", placeholder: "Card number", type: .CARD_NUMBER
+        )
+        let cvvInput = CollectElementInput(
+            table: "cards", column: "security_code",
+            label: "CVV", placeholder: "CVV", type: .CVV
+        )
+        _ = container.create(input: cardNumberInput, options: CollectElementOptions(required: true))
+        _ = container.create(input: cvvInput, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        let labelViews = composableView.subviews.compactMap { $0 as? UILabel }
+        guard let lastLabel = labelViews.last else {
+            XCTFail("Expected at least one error label")
+            return
+        }
+
+        let parentBottom = composableView.constraints.first { c in
+            guard (c.firstItem as? UIView) === composableView else { return false }
+            guard c.firstAttribute == .bottom else { return false }
+            return (c.secondItem as? UIView) === lastLabel && c.secondAttribute == .bottom
+        }
+        XCTAssertNotNil(parentBottom, "Expected parent bottom anchored to last error label bottom")
+        XCTAssertEqual(
+            parentBottom?.constant ?? .nan, 5.0, accuracy: 0.001,
+            "Parent bottom must use a small padding (5pt), not rowSpacing. ONB-517."
+        )
+    }
+
+    func testComposableContainerSingleRowHasNoEdgeRowSpacing() throws {
+        let client = Client()
+        let options = ContainerOptions(layout: [1])
+
+        guard let container = client.container(type: ContainerType.COMPOSABLE, options: options) else {
+            XCTFail("Expected composable container")
+            return
+        }
+        container.composableRowSpacing = 40
+
+        let cardNumberInput = CollectElementInput(
+            table: "cards", column: "card_number",
+            label: "Card number", placeholder: "Card number", type: .CARD_NUMBER
+        )
+        _ = container.create(input: cardNumberInput, options: CollectElementOptions(required: true))
+
+        let composableView = try container.getComposableView()
+        guard let rowView = composableView.subviews.first(where: { $0.subviews.contains(where: { $0 is TextField }) }) else {
+            XCTFail("Expected row view")
+            return
+        }
+
+        let topGap = constraintConstant(
+            in: composableView.constraints,
+            firstItem: rowView,
+            firstAttribute: .top,
+            secondItem: composableView,
+            secondAttribute: .top
+        )
+        XCTAssertEqual(
+            topGap ?? .nan, 0, accuracy: 0.001,
+            "Single-row layout must pin flush to parent top regardless of rowSpacing. ONB-517."
+        )
+
+        // Parent bottom should use the small padding (5pt), not the configured 40pt rowSpacing.
+        let constants = composableView.constraints.map(\.constant)
+        XCTAssertFalse(
+            constants.contains(where: { abs($0 - 40) < 0.001 }),
+            "Single-row layout must not include rowSpacing as an edge offset. ONB-517."
+        )
+    }
+
     func testComposableContainerUsesConfiguredHorizontalPaddingForFieldsAndLabels() throws {
         let client = Client()
         let insets = UIEdgeInsets(top: 0, left: 18, bottom: 0, right: 14)

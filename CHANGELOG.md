@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `ComposableContainer` no longer applies `fieldSpacing` (row spacing) above the first row or below the last row of the card form. The first row now pins flush to the parent top, and the parent bottom uses a small 5pt padding below the last error label instead of `rowSpacing`. Merchants previously compensating with negative `wrapperStyle.padding` insets can remove that workaround. (ONB-517)
+
 ## [1.27.0] - 2026-04-08
 
 ### Added
