@@ -45,8 +45,15 @@ public extension Payrails {
             return config.paymentOption(for: type) != nil
         }
 
-        var isApplePayAvailable: Bool {
-            return config.paymentOption(for: .applePay) != nil
+        public var isApplePayAvailable: Bool {
+            guard let option = config.paymentOption(for: .applePay),
+                  case let .applePay(applePayConfig) = option.config else {
+                return false
+            }
+            let pkNetworks = applePayConfig.parameters.supportedNetworks
+                .compactMap { PKPaymentNetwork(rawValue: $0) }
+            guard !pkNetworks.isEmpty else { return false }
+            return PKPaymentAuthorizationController.canMakePayments(usingNetworks: pkNetworks)
         }
 
         public func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
