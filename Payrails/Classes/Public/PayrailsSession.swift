@@ -41,7 +41,7 @@ public extension Payrails {
             }
         }
 
-        func isPaymentAvailable(type: PaymentType) -> Bool {
+        public func isPaymentAvailable(type: PaymentType) -> Bool {
             return config.paymentOption(for: type) != nil
         }
 
@@ -49,11 +49,11 @@ public extension Payrails {
             return config.paymentOption(for: .applePay) != nil
         }
 
-        func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
+        public func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
             return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
         }
 
-        func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
+        public func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
             guard let paymentInstruments = config.paymentOption(for: type, extra: {
                 guard let paymentInstruments = $0.paymentInstruments else { return false }
                 switch paymentInstruments {
@@ -161,7 +161,7 @@ public extension Payrails {
             paymentHandler.makePayment(total: total, currency: config.amount.currency, presenter: presenter)
         }
 
-        func cancelPayment() {
+        public func cancelPayment() {
             isPaymentInProgress = false
             currentTask?.cancel()
             currentTask = nil
@@ -484,7 +484,7 @@ extension Payrails.Session {
     }
 }
 
-extension Payrails.Session {
+public extension Payrails.Session {
     func update(_ options: UpdateOptions) {
         if let amount = options.amount {
             config.amount = Amount(value: amount.value, currency: amount.currency)
@@ -533,7 +533,7 @@ extension Payrails.Session {
 
     /// Read-only access to SDK configuration and session state.
     /// Mirrors the web SDK's `payrails.query(key, params)` API.
-    func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult? {
+    public func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult? {
         switch key {
         case .holderReference:
             guard let value = config?.holderReference else { return nil }
