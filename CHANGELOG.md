@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `Payrails.Session` methods are now public: `executePayment(...)` (all variants), `deleteInstrument(instrumentId:)`, `updateInstrument(instrumentId:body:)`, `query(_:)`, `storedInstruments(for:)`, `isApplePayAvailable`, `isPaymentAvailable(type:)`, `isPaymentCodeAvailable(paymentMethodCode:)`, `cancelPayment()`, and `update(_:)`. Headless merchants can now drive the full payment lifecycle and instrument management from their own UI with compile-time safety.
+
+### Changed
+- `Session.isApplePayAvailable` now also verifies device capability via `PKPaymentAuthorizationController.canMakePayments(usingNetworks:)`, combining the backend configuration check with the device check into a single reliable `Bool`. Callers no longer need to layer a PassKit check on top.
+
+### Removed
+- `Payrails.api(_:_:_:)` and the `InstrumentAPIResponse` enum have been removed. Use the typed session methods `session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)` instead. They return `DeleteInstrumentResponse` and `UpdateInstrumentResponse` directly, with compile-time safety against typos and internal renames.
+
+> ⚠️ **Breaking change:** Callers of `Payrails.api("deleteInstrument", ...)` / `Payrails.api("updateInstrument", ...)` must migrate to the session methods. See the README for the new pattern.
+
 ### Fixed
 - `ComposableContainer` no longer applies `fieldSpacing` (row spacing) above the first row or below the last row of the card form. The first row now pins flush to the parent top, and the parent bottom uses a small 5pt padding below the last error label instead of `rowSpacing`. Merchants previously compensating with negative `wrapperStyle.padding` insets can remove that workaround. (ONB-517)
 

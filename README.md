@@ -306,10 +306,9 @@ setDefaultButton.isEnabled = !selectedCard.isDefault
 To mark an instrument as default:
 
 ```swift
-let result = try await Payrails.api(
-    "updateInstrument",
-    instrumentId,
-    UpdateInstrumentBody(default: true)
+let response = try await session.updateInstrument(
+    instrumentId: instrumentId,
+    body: UpdateInstrumentBody(default: true)
 )
 ```
 
@@ -368,15 +367,17 @@ func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument:
 
 ### Managing stored instruments
 
-Use `Payrails.api` to delete or update a stored instrument:
+Call the typed methods on your `Payrails.Session` to delete or update a stored instrument:
 
 ```swift
 // Delete
-let result = try await Payrails.api("deleteInstrument", instrumentId)
+let response = try await session.deleteInstrument(instrumentId: instrumentId)
 
 // Update (set as default)
-let body = UpdateInstrumentBody(default: true)
-let result = try await Payrails.api("updateInstrument", instrumentId, body)
+let response = try await session.updateInstrument(
+    instrumentId: instrumentId,
+    body: UpdateInstrumentBody(default: true)
+)
 ```
 
 ## Payment Amount Update

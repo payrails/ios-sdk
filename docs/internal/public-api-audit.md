@@ -20,8 +20,9 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.update(_:)` | PUBLIC | Runtime session state mutation (amount only) |
 | `Payrails.getStoredInstruments()` | PUBLIC | Convenience accessor; returns all card + PayPal |
 | `Payrails.getStoredInstruments(for:)` | PUBLIC | Type-filtered accessor |
-| `Payrails.api(_:_:_:)` | PUBLIC | String-based operation dispatch (`"deleteInstrument"`, `"updateInstrument"`). Matches Android SDK pattern. |
 | `Payrails.log(_:separator:terminator:file:function:line:)` | DISCUSS | Currently public — merchants could call this, but it's mainly internal. Consider making internal. |
+
+> **Removed in 1.28.0:** `Payrails.api(_:_:_:)` has been removed. Use typed session methods (`session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)`) instead.
 
 ---
 
@@ -287,7 +288,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 ## Open issues
 
 1. **`CardFormStyle` vs `CardFormStylesConfig`** — two overlapping style APIs. `CardFormStylesConfig` is the current standard. `CardFormStyle` is legacy. A deprecation path is needed.
-2. **`Payrails.api(_:_:_:)` string dispatch** — error-prone. Replace with typed methods `Payrails.deleteInstrument(_:)` and `Payrails.updateInstrument(_:body:)`.
+2. **`Payrails.api(_:_:_:)` string dispatch** — removed in 1.28.0 in favour of the typed `session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)` methods.
 3. **`CardPaymenButtonTranslations` typo** — "Paymen" should be "Payment". Fix requires a breaking rename. Schedule for next major version.
 4. **Vault types in public namespace** — `Client`, `Container`, `TextField`, etc. are Skyflow internals that accidentally surfaced as public. Audit and make internal.
 5. **`PaymentPresenter.encryptedCardData`** — this property is an implementation detail of the 3DS flow. Review whether it needs to remain public.
