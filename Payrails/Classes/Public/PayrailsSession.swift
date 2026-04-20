@@ -498,11 +498,11 @@ extension Payrails.Session {
         return PublicSDKConfig(from: config)
     }
 
-    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+    public func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
         return try await payrailsAPI.deleteInstrument(instrumentId: instrumentId)
     }
 
-    func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
+    public func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
         return try await payrailsAPI.updateInstrument(instrumentId: instrumentId, body: body)
     }
 
