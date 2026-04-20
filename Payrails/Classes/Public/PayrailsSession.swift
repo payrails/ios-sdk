@@ -89,7 +89,7 @@ public extension Payrails {
             storedInstruments(for: .payPal)
         }
 
-        func executePayment(
+        public func executePayment(
             withStoredInstrument instrument: StoredInstrument,
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
@@ -130,7 +130,7 @@ public extension Payrails {
             }
         }
 
-        func executePayment(
+        public func executePayment(
             with type: PaymentType,
             paymentMethodCode: String? = nil,
             saveInstrument: Bool = false,
@@ -440,7 +440,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 }
 
-extension Payrails.Session {
+public extension Payrails.Session {
     @MainActor
     func executePayment(
         with type: Payrails.PaymentType,
