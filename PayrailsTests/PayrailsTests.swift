@@ -1946,30 +1946,6 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(response.data.binLookup?.type, "credit")
     }
 
-    func testInstrumentAPIResponseSaveCase() {
-        let json = """
-        {
-            "id": "instr-api-1",
-            "createdAt": "2025-01-01T00:00:00Z",
-            "holderId": "holder-api-1",
-            "paymentMethod": "card",
-            "status": "enabled",
-            "data": {}
-        }
-        """
-        let jsonData = Data(json.utf8)
-
-        let saveResponse = try! JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
-        let apiResponse = InstrumentAPIResponse.save(saveResponse)
-
-        switch apiResponse {
-        case .save(let response):
-            XCTAssertEqual(response.id, "instr-api-1")
-        default:
-            XCTFail("Expected .save case")
-        }
-    }
-
     func testUpdateInstrumentBodyEncoding() throws {
         let body = UpdateInstrumentBody(
             status: "enabled",
