@@ -32,9 +32,9 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 |---|---|---|
 | `Payrails.Session` (class) | PUBLIC | Returned from `createSession`; merchants rarely call methods directly |
 | `Payrails.Session.isPaymentInProgress` | PUBLIC | Useful for disabling UI during payment |
-| `Payrails.Session.isApplePayAvailable` | PUBLIC | Used to conditionally show Apple Pay button |
-| `Payrails.Session.isPaymentAvailable(type:)` | PUBLIC | Conditional payment method display |
-| `Payrails.Session.isPaymentCodeAvailable(paymentMethodCode:)` | PUBLIC | Generic redirect availability check |
+| `Payrails.Session.isApplePayAvailable` | PUBLIC | Used to conditionally show Apple Pay button; combines config + device capability check |
+| `Payrails.Session.isPaymentAvailable(type:)` | INTERNAL | Redundant with `query(.paymentMethodConfig)`; kept internal |
+| `Payrails.Session.isPaymentCodeAvailable(paymentMethodCode:)` | INTERNAL | Redundant with `query(.paymentMethodConfig(.specific(code)))`; kept internal (matches Android SDK) |
 | `Payrails.Session.storedInstruments(for:)` | PUBLIC | Prefer `Payrails.getStoredInstruments(for:)` |
 | `Payrails.Session.executePayment(with:...:onResult:)` | PUBLIC | Direct session payment execution |
 | `Payrails.Session.executePayment(withStoredInstrument:...:onResult:)` | PUBLIC | Stored instrument payment |

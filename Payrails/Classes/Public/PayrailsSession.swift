@@ -41,7 +41,7 @@ public extension Payrails {
             }
         }
 
-        public func isPaymentAvailable(type: PaymentType) -> Bool {
+        func isPaymentAvailable(type: PaymentType) -> Bool {
             return config.paymentOption(for: type) != nil
         }
 
@@ -56,7 +56,7 @@ public extension Payrails {
             return PKPaymentAuthorizationController.canMakePayments(usingNetworks: pkNetworks)
         }
 
-        public func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
+        func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
             return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
         }
 
