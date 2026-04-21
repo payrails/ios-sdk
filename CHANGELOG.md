@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `Payrails.Session` methods are now public: `executePayment(...)` (all variants), `deleteInstrument(instrumentId:)`, `updateInstrument(instrumentId:body:)`, `query(_:)`, `storedInstruments(for:)`, `isApplePayAvailable`, `cancelPayment()`, and `update(_:)`. Headless merchants can now drive the full payment lifecycle and instrument management from their own UI with compile-time safety.
+- `Payrails.Session` methods are now public: `executePayment(...)` (all variants), `deleteInstrument(instrumentId:)`, `updateInstrument(instrumentId:body:)`, `query(_:)`, `isApplePayAvailable`, and `update(_:)`. Headless merchants can now drive the full payment lifecycle and instrument management from their own UI with compile-time safety. Session data reads (stored instruments, payment method config, amount, execution id, etc.) go through `session.query(_:)` as the single read accessor — matches the Android SDK convention.
 
 ### Changed
 - `Session.isApplePayAvailable` now also verifies device capability via `PKPaymentAuthorizationController.canMakePayments(usingNetworks:)`, combining the backend configuration check with the device check into a single reliable `Bool`. Callers no longer need to layer a PassKit check on top.

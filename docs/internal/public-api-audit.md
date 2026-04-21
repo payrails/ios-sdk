@@ -35,11 +35,11 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.Session.isApplePayAvailable` | PUBLIC | Used to conditionally show Apple Pay button; combines config + device capability check |
 | `Payrails.Session.isPaymentAvailable(type:)` | INTERNAL | Redundant with `query(.paymentMethodConfig)`; kept internal |
 | `Payrails.Session.isPaymentCodeAvailable(paymentMethodCode:)` | INTERNAL | Redundant with `query(.paymentMethodConfig(.specific(code)))`; kept internal (matches Android SDK) |
-| `Payrails.Session.storedInstruments(for:)` | PUBLIC | Prefer `Payrails.getStoredInstruments(for:)` |
+| `Payrails.Session.storedInstruments(for:)` | INTERNAL | Redundant with `session.query(.paymentMethodInstruments(type:))`; kept internal (matches Android SDK convention) |
 | `Payrails.Session.executePayment(with:...:onResult:)` | PUBLIC | Direct session payment execution |
 | `Payrails.Session.executePayment(withStoredInstrument:...:onResult:)` | PUBLIC | Stored instrument payment |
 | `Payrails.Session.executePayment(with:...) async` | PUBLIC | Async variant |
-| `Payrails.Session.cancelPayment()` | PUBLIC | Cancel in-flight payment |
+| `Payrails.Session.cancelPayment()` | INTERNAL | Only called by SDK UI components on dispose; merchants using async `executePayment(...)` cancel their own `Task`. Matches Android SDK. |
 | `Payrails.Session.tokenize(encryptedData:options:)` | PUBLIC | Card vaulting without payment |
 | `Payrails.Session.deleteInstrument(instrumentId:)` | PUBLIC | Direct instrument deletion |
 | `Payrails.Session.updateInstrument(instrumentId:body:)` | PUBLIC | Direct instrument update |

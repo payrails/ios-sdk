@@ -88,19 +88,15 @@ public typealias OnInitCallback = (Result<Payrails.Session, PayrailsError>) -> V
 
 ## Session
 
-`Payrails.Session` is returned from `createSession`. You rarely need to call methods on it directly; prefer the static factory methods on `Payrails` instead.
+`Payrails.Session` is returned from `createSession` and is the single typed API surface for headless integrations. All session data reads go through `query(_:)` — there are no dedicated getters.
 
 ```swift
 public class Payrails.Session {
-    var isPaymentInProgress: Bool { get }
+    // Availability
+    public var isApplePayAvailable: Bool { get }
 
-    func isPaymentAvailable(type: PaymentType) -> Bool
-    func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool
-    var isApplePayAvailable: Bool { get }
-
-    func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument]
-
-    func executePayment(
+    // Payment execution — callback variants
+    public func executePayment(
         with type: PaymentType,
         paymentMethodCode: String?,
         saveInstrument: Bool,
@@ -108,32 +104,32 @@ public class Payrails.Session {
         onResult: @escaping OnPayCallback
     )
 
-    func executePayment(
+    public func executePayment(
         withStoredInstrument instrument: StoredInstrument,
         presenter: PaymentPresenter?,
         onResult: @escaping OnPayCallback
     )
 
-    func cancelPayment()
-
-    // Async variants
-    @MainActor func executePayment(
+    // Payment execution — async variants
+    @MainActor public func executePayment(
         with type: Payrails.PaymentType,
         paymentMethodCode: String?,
         saveInstrument: Bool,
         presenter: PaymentPresenter?
     ) async -> OnPayResult
 
-    @MainActor func executePayment(
+    @MainActor public func executePayment(
         withStoredInstrument instrument: StoredInstrument,
         presenter: PaymentPresenter?
     ) async -> OnPayResult
 
-    func update(_ options: UpdateOptions)
-    func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult?
-    func tokenize(encryptedData: String, options: TokenizeOptions) async throws -> SaveInstrumentResponse
-    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse
-    func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse
+    // Instrument management
+    public func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse
+    public func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse
+
+    // Session state
+    public func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult?
+    public func update(_ options: UpdateOptions)
 }
 ```
 

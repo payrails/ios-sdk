@@ -60,7 +60,7 @@ public extension Payrails {
             return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
         }
 
-        public func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
+        func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
             guard let paymentInstruments = config.paymentOption(for: type, extra: {
                 guard let paymentInstruments = $0.paymentInstruments else { return false }
                 switch paymentInstruments {
@@ -168,7 +168,7 @@ public extension Payrails {
             paymentHandler.makePayment(total: total, currency: config.amount.currency, presenter: presenter)
         }
 
-        public func cancelPayment() {
+        func cancelPayment() {
             isPaymentInProgress = false
             currentTask?.cancel()
             currentTask = nil
