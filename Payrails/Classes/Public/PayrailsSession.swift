@@ -41,10 +41,6 @@ public extension Payrails {
             }
         }
 
-        func isPaymentAvailable(type: PaymentType) -> Bool {
-            return config.paymentOption(for: type) != nil
-        }
-
         /// Returns `true` if the device supports Apple Pay at the platform level.
         ///
         /// This is a pure device-capability check (backed by
@@ -61,10 +57,6 @@ public extension Payrails {
         /// ```
         public var isApplePayAvailable: Bool {
             PKPaymentAuthorizationController.canMakePayments()
-        }
-
-        func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
-            return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
         }
 
         func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
