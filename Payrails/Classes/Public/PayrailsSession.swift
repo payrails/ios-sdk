@@ -543,6 +543,36 @@ extension Payrails.Session {
         return try await payrailsAPI.saveInstrument(body: body)
     }
 
+    // MARK: - Payment method configuration
+
+    /// Returns configuration for payment methods matching the given filter.
+    ///
+    /// Mirrors the web SDK's `getPaymentMethodConfig(paymentMethod)` API
+    /// (`web-sdk/packages/web-sdk/src/sdk/headless/query/payment-methods.ts`).
+    ///
+    /// - Parameter filter:
+    ///   - `.all` (default) returns every configured payment method.
+    ///   - `.redirect` returns only methods with a redirect client flow.
+    ///   - `.specific(code)` returns the method matching the given
+    ///     `paymentMethodCode` — a single-element array, or empty if the code
+    ///     is not configured.
+    /// - Returns: an array of `PayrailsPaymentOption`. Empty when nothing matches.
+    public func getPaymentMethodConfig(_ filter: PaymentMethodFilter = .all) -> [PayrailsPaymentOption] {
+        guard let config = config else { return [] }
+        let all = config.allPaymentOptions()
+        switch filter {
+        case .all:
+            return all.map(PayrailsPaymentOption.init)
+        case .redirect:
+            return all
+                .filter { $0.clientConfig?.flow == "redirect" }
+                .map(PayrailsPaymentOption.init)
+        case .specific(let code):
+            guard let match = all.first(where: { $0.paymentMethodCode == code }) else { return [] }
+            return [PayrailsPaymentOption(from: match)]
+        }
+    }
+
     // MARK: - Query
 
     /// Read-only access to SDK configuration and session state.
