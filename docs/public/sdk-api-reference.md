@@ -1,6 +1,6 @@
 # SDK API Reference
 
-**Current version:** 1.27.0
+**Current version:** 1.28.0
 **Minimum deployment target:** iOS 14.0
 **Swift version:** 5.0+
 **Distribution:** CocoaPods (`Payrails/Checkout`) · Swift Package Manager
@@ -242,19 +242,15 @@ public static func getStoredInstruments() -> [StoredInstrument]
 // Returns stored instruments for a specific payment type
 public static func getStoredInstruments(for type: Payrails.PaymentType) -> [StoredInstrument]
 
-// Instrument management
-public static func api(
-    _ operation: String,           // "deleteInstrument" | "updateInstrument"
-    _ instrumentId: String,
-    _ body: UpdateInstrumentBody? = nil
-) async throws -> InstrumentAPIResponse
-
 // Runtime session state update
 public static func update(_ options: UpdateOptions)
 
 // Query session state
 public static func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult?
 ```
+
+> Instrument management (delete/update) moved to typed Session methods in 1.28.0.
+> Use `session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)` directly — see the Session block above.
 
 ---
 
@@ -488,10 +484,23 @@ public struct UpdateInstrumentBody: Codable {
     // Fields depend on the update operation (e.g. isDefault)
 }
 
-public enum InstrumentAPIResponse {
-    case delete(DeleteInstrumentResponse)
-    case update(UpdateInstrumentResponse)
+public struct DeleteInstrumentResponse: Codable {
+    public let success: Bool
 }
+
+public struct UpdateInstrumentResponse: Codable {
+    // Returned data depends on the operation
+}
+```
+
+Call the typed Session methods to manage instruments:
+
+```swift
+let delete = try await session.deleteInstrument(instrumentId: id)
+let update = try await session.updateInstrument(
+    instrumentId: id,
+    body: UpdateInstrumentBody(default: true)
+)
 ```
 
 ---

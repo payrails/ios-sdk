@@ -86,8 +86,13 @@ The SDK writes to `LogStore.shared` and also calls `Swift.print`. To see logs in
 ## Apple Pay issues
 
 **Apple Pay button is not visible**
-- Check `session.isApplePayAvailable` — it returns `false` if the device has no cards or Apple Pay is not configured in the init payload
-- The `PKPaymentButton` hides itself when `PKPaymentAuthorizationViewController.canMakePayments()` returns false
+- `session.isApplePayAvailable` is a **device-capability check only** (returns `false` when `PKPaymentAuthorizationController.canMakePayments()` is false). It does not inspect the merchant config.
+- For a combined "configured and device capable" check, compose:
+  ```swift
+  let canShow = session.isApplePayAvailable
+      && !session.getPaymentMethodConfig(.specific("apple_pay")).isEmpty
+  ```
+- The `PKPaymentButton` hides itself when `PKPaymentAuthorizationViewController.canMakePayments()` returns false.
 
 **Apple Pay sheet dismisses immediately**
 - The merchant identifier in your app's entitlements does not match the one in the Payrails merchant configuration
