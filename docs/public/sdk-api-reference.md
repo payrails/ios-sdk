@@ -1,6 +1,6 @@
 # SDK API Reference
 
-**Current version:** 1.27.0
+**Current version:** 1.28.0
 **Minimum deployment target:** iOS 14.0
 **Swift version:** 5.0+
 **Distribution:** CocoaPods (`Payrails/Checkout`) · Swift Package Manager
@@ -88,19 +88,27 @@ public typealias OnInitCallback = (Result<Payrails.Session, PayrailsError>) -> V
 
 ## Session
 
-`Payrails.Session` is returned from `createSession`. You rarely need to call methods on it directly; prefer the static factory methods on `Payrails` instead.
+`Payrails.Session` is returned from `createSession` and is the single typed API surface for headless integrations.
+
+**When to use `query(_:)` vs session methods directly:**
+
+- **`query(_:)`** — stateless reads of session metadata (holder reference, amount, execution ID, API links, payment method config, stored instruments). Single unified accessor returning a `PayrailsQueryResult` enum.
+- **Session methods** — actions and mutations (`executePayment`, `deleteInstrument`, `updateInstrument`, `update`), device-capability checks (`isApplePayAvailable`), or typed reads where merchants prefer concrete return types over an enum (`getPaymentMethodConfig(_:)`).
+
+Rule of thumb: **`query(_:)` reads data; session methods do things, check the device, or return typed values.**
 
 ```swift
 public class Payrails.Session {
-    var isPaymentInProgress: Bool { get }
+    // Availability — device capability only
+    // Compose with getPaymentMethodConfig(.specific("apple_pay")) for
+    // the combined "configured and device capable" signal.
+    public var isApplePayAvailable: Bool { get }
 
-    func isPaymentAvailable(type: PaymentType) -> Bool
-    func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool
-    var isApplePayAvailable: Bool { get }
+    // Payment method configuration
+    public func getPaymentMethodConfig(_ filter: PaymentMethodFilter = .all) -> [PayrailsPaymentOption]
 
-    func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument]
-
-    func executePayment(
+    // Payment execution — callback variants
+    public func executePayment(
         with type: PaymentType,
         paymentMethodCode: String?,
         saveInstrument: Bool,
@@ -108,32 +116,32 @@ public class Payrails.Session {
         onResult: @escaping OnPayCallback
     )
 
-    func executePayment(
+    public func executePayment(
         withStoredInstrument instrument: StoredInstrument,
         presenter: PaymentPresenter?,
         onResult: @escaping OnPayCallback
     )
 
-    func cancelPayment()
-
-    // Async variants
-    @MainActor func executePayment(
+    // Payment execution — async variants
+    @MainActor public func executePayment(
         with type: Payrails.PaymentType,
         paymentMethodCode: String?,
         saveInstrument: Bool,
         presenter: PaymentPresenter?
     ) async -> OnPayResult
 
-    @MainActor func executePayment(
+    @MainActor public func executePayment(
         withStoredInstrument instrument: StoredInstrument,
         presenter: PaymentPresenter?
     ) async -> OnPayResult
 
-    func update(_ options: UpdateOptions)
-    func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult?
-    func tokenize(encryptedData: String, options: TokenizeOptions) async throws -> SaveInstrumentResponse
-    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse
-    func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse
+    // Instrument management
+    public func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse
+    public func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse
+
+    // Session state
+    public func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult?
+    public func update(_ options: UpdateOptions)
 }
 ```
 
@@ -234,19 +242,15 @@ public static func getStoredInstruments() -> [StoredInstrument]
 // Returns stored instruments for a specific payment type
 public static func getStoredInstruments(for type: Payrails.PaymentType) -> [StoredInstrument]
 
-// Instrument management
-public static func api(
-    _ operation: String,           // "deleteInstrument" | "updateInstrument"
-    _ instrumentId: String,
-    _ body: UpdateInstrumentBody? = nil
-) async throws -> InstrumentAPIResponse
-
 // Runtime session state update
 public static func update(_ options: UpdateOptions)
 
 // Query session state
 public static func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult?
 ```
+
+> Instrument management (delete/update) moved to typed Session methods in 1.28.0.
+> Use `session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)` directly — see the Session block above.
 
 ---
 
@@ -480,10 +484,23 @@ public struct UpdateInstrumentBody: Codable {
     // Fields depend on the update operation (e.g. isDefault)
 }
 
-public enum InstrumentAPIResponse {
-    case delete(DeleteInstrumentResponse)
-    case update(UpdateInstrumentResponse)
+public struct DeleteInstrumentResponse: Codable {
+    public let success: Bool
 }
+
+public struct UpdateInstrumentResponse: Codable {
+    // Returned data depends on the operation
+}
+```
+
+Call the typed Session methods to manage instruments:
+
+```swift
+let delete = try await session.deleteInstrument(instrumentId: id)
+let update = try await session.updateInstrument(
+    instrumentId: id,
+    body: UpdateInstrumentBody(default: true)
+)
 ```
 
 ---

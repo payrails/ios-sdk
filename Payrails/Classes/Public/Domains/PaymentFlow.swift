@@ -87,12 +87,6 @@ public struct UpdateInstrumentResponse: Decodable {
     }
 }
 
-public enum InstrumentAPIResponse {
-    case delete(DeleteInstrumentResponse)
-    case update(UpdateInstrumentResponse)
-    case save(SaveInstrumentResponse)
-}
-
 // MARK: - Tokenize / Save Instrument
 
 public enum FutureUsage: String, Encodable {

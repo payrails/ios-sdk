@@ -7,6 +7,13 @@ title: How to Query Session Data
 
 `Payrails.query(_:)` provides read-only access to the current session's configuration and state. Use it to retrieve the execution ID, payment amount, stored instruments, API links, and more — without reaching into internal session state.
 
+## When to use `query(_:)` vs Session methods
+
+- **Use `query(_:)`** for stateless reads of session metadata: `.holderReference`, `.amount`, `.executionId`, `.binLookup`, `.paymentMethodConfig(...)`, `.paymentMethodInstruments(...)`.
+- **Use Session methods directly** for actions (`executePayment`, `deleteInstrument`, `updateInstrument`, `update`), device-capability checks (`isApplePayAvailable`), or typed reads where merchants prefer concrete return types over an enum (`getPaymentMethodConfig(_:)`).
+
+Rule of thumb: **`query(_:)` reads data. Session methods do things, check the device, or return typed values where an enum would add friction.**
+
 ## Prerequisites
 
 An active session must exist (created via `Payrails.createSession(with:)`). All queries return `nil` when no session is active.

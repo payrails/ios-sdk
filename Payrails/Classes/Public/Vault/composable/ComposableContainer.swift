@@ -206,7 +206,11 @@ public extension Container {
             }
 
             childView.translatesAutoresizingMaskIntoConstraints = false
-            childView.topAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.topAnchor, constant: rowSpacing).isActive = true
+            // rowSpacing applies only between sibling rows, not above the first row.
+            // The first row pins flush to parentView.topAnchor (ONB-517).
+            let isFirstRow = (previousLabel == nil && previousChildView == nil)
+            let topAnchorTarget = previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.topAnchor
+            childView.topAnchor.constraint(equalTo: topAnchorTarget, constant: isFirstRow ? 0 : rowSpacing).isActive = true
             childView.leadingAnchor.constraint(equalTo: parentView.leadingAnchor).isActive = true
             childView.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
 
@@ -222,7 +226,8 @@ public extension Container {
             previousLabel = labelArray[i]
         }
         previousChildView?.trailingAnchor.constraint(equalTo: parentView.trailingAnchor).isActive = true
-        parentView.bottomAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.bottomAnchor, constant: rowSpacing).isActive = true
+        // Keep a small padding below the last error label for breathing room; do not use rowSpacing here (ONB-517).
+        parentView.bottomAnchor.constraint(equalTo: previousLabel?.bottomAnchor ?? previousChildView?.bottomAnchor ?? parentView.bottomAnchor, constant: 5.0).isActive = true
 
         return parentView
     }
