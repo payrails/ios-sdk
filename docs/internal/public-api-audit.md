@@ -222,11 +222,12 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 
 | Symbol | Status | Notes |
 |---|---|---|
-| `DeleteInstrumentResponse` | PUBLIC | |
-| `UpdateInstrumentResponse` | PUBLIC | |
-| `SaveInstrumentResponse` | PUBLIC | |
-| `UpdateInstrumentBody` | PUBLIC | |
-| `InstrumentAPIResponse` | PUBLIC | `.delete`, `.update` |
+| `DeleteInstrumentResponse` | PUBLIC | Returned from `session.deleteInstrument(instrumentId:)` |
+| `UpdateInstrumentResponse` | PUBLIC | Returned from `session.updateInstrument(instrumentId:body:)` |
+| `SaveInstrumentResponse` | PUBLIC | Returned from `CardForm.tokenize(options:)` |
+| `UpdateInstrumentBody` | PUBLIC | Body payload for `updateInstrument` |
+
+> **Removed in 1.28.0:** `InstrumentAPIResponse` enum was removed alongside `Payrails.api(_:_:_:)`. Session methods now return their concrete response types directly.
 
 ---
 
