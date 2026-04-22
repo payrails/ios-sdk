@@ -45,15 +45,22 @@ public extension Payrails {
             return config.paymentOption(for: type) != nil
         }
 
+        /// Returns `true` if the device supports Apple Pay at the platform level.
+        ///
+        /// This is a pure device-capability check (backed by
+        /// `PKPaymentAuthorizationController.canMakePayments()`). It does NOT check
+        /// whether Apple Pay is configured for this session — that's a separate
+        /// concern answered by `getPaymentMethodConfig(_:)`.
+        ///
+        /// Mirrors the web SDK's `isApplePayAvailable()`.
+        ///
+        /// For the combined "configured and device capable" signal, compose:
+        /// ```
+        /// let canShow = session.isApplePayAvailable
+        ///     && !session.getPaymentMethodConfig(.specific("apple_pay")).isEmpty
+        /// ```
         public var isApplePayAvailable: Bool {
-            guard let option = config.paymentOption(for: .applePay),
-                  case let .applePay(applePayConfig) = option.config else {
-                return false
-            }
-            let pkNetworks = applePayConfig.parameters.supportedNetworks
-                .compactMap { PKPaymentNetwork(rawValue: $0) }
-            guard !pkNetworks.isEmpty else { return false }
-            return PKPaymentAuthorizationController.canMakePayments(usingNetworks: pkNetworks)
+            PKPaymentAuthorizationController.canMakePayments()
         }
 
         func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
