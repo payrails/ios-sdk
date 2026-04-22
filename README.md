@@ -400,6 +400,15 @@ let result = Payrails.query(.holderReference)
 
 Returns `nil` if the SDK has not been initialized or the requested value is not present.
 
+### `query(_:)` vs Session methods — when to use which
+
+| Use | For | Examples |
+|---|---|---|
+| **`query(_:)`** | Stateless reads of session metadata | `.holderReference`, `.amount`, `.executionId`, `.binLookup`, `.paymentMethodConfig(...)`, `.paymentMethodInstruments(...)` |
+| **Session methods** | Actions / mutations, device-capability checks, typed reads | `session.executePayment(...)`, `session.deleteInstrument(...)`, `session.updateInstrument(...)`, `session.update(...)`, `session.isApplePayAvailable`, `session.getPaymentMethodConfig(...)` |
+
+Rule of thumb: **`query(_:)` reads data. Session methods do things, check the device, or return typed values where an enum would add friction.**
+
 ### Available query keys
 
 | Key | Return case | Description |
