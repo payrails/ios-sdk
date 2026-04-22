@@ -1946,30 +1946,6 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(response.data.binLookup?.type, "credit")
     }
 
-    func testInstrumentAPIResponseSaveCase() {
-        let json = """
-        {
-            "id": "instr-api-1",
-            "createdAt": "2025-01-01T00:00:00Z",
-            "holderId": "holder-api-1",
-            "paymentMethod": "card",
-            "status": "enabled",
-            "data": {}
-        }
-        """
-        let jsonData = Data(json.utf8)
-
-        let saveResponse = try! JSONDecoder().decode(SaveInstrumentResponse.self, from: jsonData)
-        let apiResponse = InstrumentAPIResponse.save(saveResponse)
-
-        switch apiResponse {
-        case .save(let response):
-            XCTAssertEqual(response.id, "instr-api-1")
-        default:
-            XCTFail("Expected .save case")
-        }
-    }
-
     func testUpdateInstrumentBodyEncoding() throws {
         let body = UpdateInstrumentBody(
             status: "enabled",
@@ -2350,6 +2326,45 @@ final class PayrailsTests: XCTestCase {
         } else {
             XCTFail("Expected .storedInstruments result")
         }
+    }
+
+    // MARK: - getPaymentMethodConfig(_:) tests
+
+    func testGetPaymentMethodConfigAllReturnsEveryConfiguredMethod() throws {
+        let session = try makeQueryTestSession()
+        let options = session.getPaymentMethodConfig(.all)
+        XCTAssertEqual(options.count, 2)
+        XCTAssertTrue(options.contains { $0.paymentMethodCode == "card" })
+        XCTAssertTrue(options.contains { $0.paymentMethodCode == "payPal" })
+    }
+
+    func testGetPaymentMethodConfigDefaultsToAll() throws {
+        let session = try makeQueryTestSession()
+        let options = session.getPaymentMethodConfig()
+        XCTAssertEqual(options.count, 2)
+    }
+
+    func testGetPaymentMethodConfigRedirectFiltersByFlow() throws {
+        let session = try makeQueryTestSession()
+        let options = session.getPaymentMethodConfig(.redirect)
+        XCTAssertEqual(options.count, 1)
+        XCTAssertEqual(options.first?.paymentMethodCode, "payPal")
+        XCTAssertEqual(options.first?.clientConfig?.flow, "redirect")
+    }
+
+    func testGetPaymentMethodConfigSpecificReturnsSingleMatch() throws {
+        let session = try makeQueryTestSession()
+        let options = session.getPaymentMethodConfig(.specific("card"))
+        XCTAssertEqual(options.count, 1)
+        XCTAssertEqual(options.first?.paymentMethodCode, "card")
+        XCTAssertEqual(options.first?.clientConfig?.displayName, "Credit Card")
+        XCTAssertEqual(options.first?.clientConfig?.flow, "inline")
+    }
+
+    func testGetPaymentMethodConfigSpecificUnknownReturnsEmptyArray() throws {
+        let session = try makeQueryTestSession()
+        let options = session.getPaymentMethodConfig(.specific("klarna"))
+        XCTAssertTrue(options.isEmpty)
     }
 
     // MARK: - fieldInsets: Style property tests

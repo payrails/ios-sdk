@@ -20,8 +20,9 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.update(_:)` | PUBLIC | Runtime session state mutation (amount only) |
 | `Payrails.getStoredInstruments()` | PUBLIC | Convenience accessor; returns all card + PayPal |
 | `Payrails.getStoredInstruments(for:)` | PUBLIC | Type-filtered accessor |
-| `Payrails.api(_:_:_:)` | PUBLIC | String-based operation dispatch (`"deleteInstrument"`, `"updateInstrument"`). Matches Android SDK pattern. |
 | `Payrails.log(_:separator:terminator:file:function:line:)` | DISCUSS | Currently public — merchants could call this, but it's mainly internal. Consider making internal. |
+
+> **Removed in 1.28.0:** `Payrails.api(_:_:_:)` has been removed. Use typed session methods (`session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)`) instead.
 
 ---
 
@@ -31,14 +32,13 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 |---|---|---|
 | `Payrails.Session` (class) | PUBLIC | Returned from `createSession`; merchants rarely call methods directly |
 | `Payrails.Session.isPaymentInProgress` | PUBLIC | Useful for disabling UI during payment |
-| `Payrails.Session.isApplePayAvailable` | PUBLIC | Used to conditionally show Apple Pay button |
-| `Payrails.Session.isPaymentAvailable(type:)` | PUBLIC | Conditional payment method display |
-| `Payrails.Session.isPaymentCodeAvailable(paymentMethodCode:)` | PUBLIC | Generic redirect availability check |
-| `Payrails.Session.storedInstruments(for:)` | PUBLIC | Prefer `Payrails.getStoredInstruments(for:)` |
+| `Payrails.Session.isApplePayAvailable` | PUBLIC | Pure device-capability check (`PKPaymentAuthorizationController.canMakePayments()`). Config check is separate — use `getPaymentMethodConfig(.specific("apple_pay"))`. Matches web SDK. |
+| `Payrails.Session.getPaymentMethodConfig(_:)` | PUBLIC | Typed getter returning `[PayrailsPaymentOption]`. Mirrors web SDK's `getPaymentMethodConfig(paymentMethod)`. Accepts `.all`, `.redirect`, `.specific(code)`. |
+| `Payrails.Session.storedInstruments(for:)` | INTERNAL | Redundant with `session.query(.paymentMethodInstruments(type:))`; kept internal (matches Android SDK convention) |
 | `Payrails.Session.executePayment(with:...:onResult:)` | PUBLIC | Direct session payment execution |
 | `Payrails.Session.executePayment(withStoredInstrument:...:onResult:)` | PUBLIC | Stored instrument payment |
 | `Payrails.Session.executePayment(with:...) async` | PUBLIC | Async variant |
-| `Payrails.Session.cancelPayment()` | PUBLIC | Cancel in-flight payment |
+| `Payrails.Session.cancelPayment()` | INTERNAL | Only called by SDK UI components on dispose; merchants using async `executePayment(...)` cancel their own `Task`. Matches Android SDK. |
 | `Payrails.Session.tokenize(encryptedData:options:)` | PUBLIC | Card vaulting without payment |
 | `Payrails.Session.deleteInstrument(instrumentId:)` | PUBLIC | Direct instrument deletion |
 | `Payrails.Session.updateInstrument(instrumentId:body:)` | PUBLIC | Direct instrument update |
@@ -287,7 +287,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 ## Open issues
 
 1. **`CardFormStyle` vs `CardFormStylesConfig`** — two overlapping style APIs. `CardFormStylesConfig` is the current standard. `CardFormStyle` is legacy. A deprecation path is needed.
-2. **`Payrails.api(_:_:_:)` string dispatch** — error-prone. Replace with typed methods `Payrails.deleteInstrument(_:)` and `Payrails.updateInstrument(_:body:)`.
+2. **`Payrails.api(_:_:_:)` string dispatch** — removed in 1.28.0 in favour of the typed `session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)` methods.
 3. **`CardPaymenButtonTranslations` typo** — "Paymen" should be "Payment". Fix requires a breaking rename. Schedule for next major version.
 4. **Vault types in public namespace** — `Client`, `Container`, `TextField`, etc. are Skyflow internals that accidentally surfaced as public. Audit and make internal.
 5. **`PaymentPresenter.encryptedCardData`** — this property is an implementation detail of the 3DS flow. Review whether it needs to remain public.

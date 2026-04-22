@@ -306,10 +306,9 @@ setDefaultButton.isEnabled = !selectedCard.isDefault
 To mark an instrument as default:
 
 ```swift
-let result = try await Payrails.api(
-    "updateInstrument",
-    instrumentId,
-    UpdateInstrumentBody(default: true)
+let response = try await session.updateInstrument(
+    instrumentId: instrumentId,
+    body: UpdateInstrumentBody(default: true)
 )
 ```
 
@@ -368,15 +367,17 @@ func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument:
 
 ### Managing stored instruments
 
-Use `Payrails.api` to delete or update a stored instrument:
+Call the typed methods on your `Payrails.Session` to delete or update a stored instrument:
 
 ```swift
 // Delete
-let result = try await Payrails.api("deleteInstrument", instrumentId)
+let response = try await session.deleteInstrument(instrumentId: instrumentId)
 
 // Update (set as default)
-let body = UpdateInstrumentBody(default: true)
-let result = try await Payrails.api("updateInstrument", instrumentId, body)
+let response = try await session.updateInstrument(
+    instrumentId: instrumentId,
+    body: UpdateInstrumentBody(default: true)
+)
 ```
 
 ## Payment Amount Update
@@ -398,6 +399,15 @@ let result = Payrails.query(.holderReference)
 ```
 
 Returns `nil` if the SDK has not been initialized or the requested value is not present.
+
+### `query(_:)` vs Session methods — when to use which
+
+| Use | For | Examples |
+|---|---|---|
+| **`query(_:)`** | Stateless reads of session metadata | `.holderReference`, `.amount`, `.executionId`, `.binLookup`, `.paymentMethodConfig(...)`, `.paymentMethodInstruments(...)` |
+| **Session methods** | Actions / mutations, device-capability checks, typed reads | `session.executePayment(...)`, `session.deleteInstrument(...)`, `session.updateInstrument(...)`, `session.update(...)`, `session.isApplePayAvailable`, `session.getPaymentMethodConfig(...)` |
+
+Rule of thumb: **`query(_:)` reads data. Session methods do things, check the device, or return typed values where an enum would add friction.**
 
 ### Available query keys
 

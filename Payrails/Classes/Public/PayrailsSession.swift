@@ -41,16 +41,22 @@ public extension Payrails {
             }
         }
 
-        func isPaymentAvailable(type: PaymentType) -> Bool {
-            return config.paymentOption(for: type) != nil
-        }
-
-        var isApplePayAvailable: Bool {
-            return config.paymentOption(for: .applePay) != nil
-        }
-
-        func isPaymentCodeAvailable(paymentMethodCode: String) -> Bool {
-            return config.paymentOption(forPaymentMethodCode: paymentMethodCode) != nil
+        /// Returns `true` if the device supports Apple Pay at the platform level.
+        ///
+        /// This is a pure device-capability check (backed by
+        /// `PKPaymentAuthorizationController.canMakePayments()`). It does NOT check
+        /// whether Apple Pay is configured for this session — that's a separate
+        /// concern answered by `getPaymentMethodConfig(_:)`.
+        ///
+        /// Mirrors the web SDK's `isApplePayAvailable()`.
+        ///
+        /// For the combined "configured and device capable" signal, compose:
+        /// ```
+        /// let canShow = session.isApplePayAvailable
+        ///     && !session.getPaymentMethodConfig(.specific("apple_pay")).isEmpty
+        /// ```
+        public var isApplePayAvailable: Bool {
+            PKPaymentAuthorizationController.canMakePayments()
         }
 
         func storedInstruments(for type: Payrails.PaymentType) -> [StoredInstrument] {
@@ -89,7 +95,7 @@ public extension Payrails {
             storedInstruments(for: .payPal)
         }
 
-        func executePayment(
+        public func executePayment(
             withStoredInstrument instrument: StoredInstrument,
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
@@ -130,7 +136,7 @@ public extension Payrails {
             }
         }
 
-        func executePayment(
+        public func executePayment(
             with type: PaymentType,
             paymentMethodCode: String? = nil,
             saveInstrument: Bool = false,
@@ -440,7 +446,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 }
 
-extension Payrails.Session {
+public extension Payrails.Session {
     @MainActor
     func executePayment(
         with type: Payrails.PaymentType,
@@ -484,7 +490,7 @@ extension Payrails.Session {
     }
 }
 
-extension Payrails.Session {
+public extension Payrails.Session {
     func update(_ options: UpdateOptions) {
         if let amount = options.amount {
             config.amount = Amount(value: amount.value, currency: amount.currency)
@@ -498,11 +504,11 @@ extension Payrails.Session {
         return PublicSDKConfig(from: config)
     }
 
-    func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
+    public func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
         return try await payrailsAPI.deleteInstrument(instrumentId: instrumentId)
     }
 
-    func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
+    public func updateInstrument(instrumentId: String, body: UpdateInstrumentBody) async throws -> UpdateInstrumentResponse {
         return try await payrailsAPI.updateInstrument(instrumentId: instrumentId, body: body)
     }
 
@@ -529,11 +535,41 @@ extension Payrails.Session {
         return try await payrailsAPI.saveInstrument(body: body)
     }
 
+    // MARK: - Payment method configuration
+
+    /// Returns configuration for payment methods matching the given filter.
+    ///
+    /// Mirrors the web SDK's `getPaymentMethodConfig(paymentMethod)` API
+    /// (`web-sdk/packages/web-sdk/src/sdk/headless/query/payment-methods.ts`).
+    ///
+    /// - Parameter filter:
+    ///   - `.all` (default) returns every configured payment method.
+    ///   - `.redirect` returns only methods with a redirect client flow.
+    ///   - `.specific(code)` returns the method matching the given
+    ///     `paymentMethodCode` — a single-element array, or empty if the code
+    ///     is not configured.
+    /// - Returns: an array of `PayrailsPaymentOption`. Empty when nothing matches.
+    public func getPaymentMethodConfig(_ filter: PaymentMethodFilter = .all) -> [PayrailsPaymentOption] {
+        guard let config = config else { return [] }
+        let all = config.allPaymentOptions()
+        switch filter {
+        case .all:
+            return all.map(PayrailsPaymentOption.init)
+        case .redirect:
+            return all
+                .filter { $0.clientConfig?.flow == "redirect" }
+                .map(PayrailsPaymentOption.init)
+        case .specific(let code):
+            guard let match = all.first(where: { $0.paymentMethodCode == code }) else { return [] }
+            return [PayrailsPaymentOption(from: match)]
+        }
+    }
+
     // MARK: - Query
 
     /// Read-only access to SDK configuration and session state.
     /// Mirrors the web SDK's `payrails.query(key, params)` API.
-    func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult? {
+    public func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult? {
         switch key {
         case .holderReference:
             guard let value = config?.holderReference else { return nil }

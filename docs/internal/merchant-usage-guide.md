@@ -255,7 +255,7 @@ extension CheckoutViewController: PayrailsStoredInstrumentsDelegate {
                            didRequestDeleteInstrument instrument: StoredInstrument) {
         // Show confirmation alert, then:
         Task {
-            let response = try await Payrails.api("deleteInstrument", instrument.id)
+            let response = try await session.deleteInstrument(instrumentId: instrument.id)
             // Refresh the instruments view
             view.refreshInstruments()
         }
@@ -265,7 +265,7 @@ extension CheckoutViewController: PayrailsStoredInstrumentsDelegate {
                            didRequestUpdateInstrument instrument: StoredInstrument) {
         let body = UpdateInstrumentBody(/* isDefault: true */)
         Task {
-            let response = try await Payrails.api("updateInstrument", instrument.id, body)
+            let response = try await session.updateInstrument(instrumentId: instrument.id, body: body)
         }
     }
 }
