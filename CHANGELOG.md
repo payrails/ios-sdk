@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `Payrails.Session` methods are now public: `executePayment(...)` (all variants), `deleteInstrument(instrumentId:)`, `updateInstrument(instrumentId:body:)`, `query(_:)`, `isApplePayAvailable`, and `update(_:)`. Headless merchants can now drive the full payment lifecycle and instrument management from their own UI with compile-time safety. Session data reads (stored instruments, payment method config, amount, execution id, etc.) go through `session.query(_:)` as the single read accessor — matches the Android SDK convention.
+- `session.getPaymentMethodConfig(_:)` — typed getter returning `[PayrailsPaymentOption]` filtered by `.all`, `.redirect`, or `.specific(code)`. Mirrors the web SDK's `getPaymentMethodConfig(paymentMethod)` API.
 
 ### Changed
-- `Session.isApplePayAvailable` now also verifies device capability via `PKPaymentAuthorizationController.canMakePayments(usingNetworks:)`, combining the backend configuration check with the device check into a single reliable `Bool`. Callers no longer need to layer a PassKit check on top.
+- `Session.isApplePayAvailable` is now a pure device-capability check (`PKPaymentAuthorizationController.canMakePayments()`), matching the web SDK. It no longer inspects the session configuration. For the combined "configured and device capable" signal, compose: `session.isApplePayAvailable && !session.getPaymentMethodConfig(.specific("apple_pay")).isEmpty`.
+
+> ⚠️ **Behaviour change:** `isApplePayAvailable` now returns `true` on any Apple-Pay-capable device regardless of whether Apple Pay is configured for the session. Merchants previously relying on the property as a combined check must explicitly verify configuration via `getPaymentMethodConfig(.specific("apple_pay"))`.
 
 ### Removed
 - `Payrails.api(_:_:_:)` and the `InstrumentAPIResponse` enum have been removed. Use the typed session methods `session.deleteInstrument(instrumentId:)` and `session.updateInstrument(instrumentId:body:)` instead. They return `DeleteInstrumentResponse` and `UpdateInstrumentResponse` directly, with compile-time safety against typos and internal renames.
+- Internal-only `Session.isPaymentAvailable(type:)` and `Session.isPaymentCodeAvailable(paymentMethodCode:)` have been deleted. Both were unreachable from merchant code (internal access, no external callers) and had zero internal callers. Use `session.getPaymentMethodConfig(.specific(code))` or `session.query(.paymentMethodConfig(...))` instead.
 
 > ⚠️ **Breaking change:** Callers of `Payrails.api("deleteInstrument", ...)` / `Payrails.api("updateInstrument", ...)` must migrate to the session methods. See the README for the new pattern.
 

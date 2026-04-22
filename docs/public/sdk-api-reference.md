@@ -88,12 +88,17 @@ public typealias OnInitCallback = (Result<Payrails.Session, PayrailsError>) -> V
 
 ## Session
 
-`Payrails.Session` is returned from `createSession` and is the single typed API surface for headless integrations. All session data reads go through `query(_:)` — there are no dedicated getters.
+`Payrails.Session` is returned from `createSession` and is the single typed API surface for headless integrations. Session data reads go through the unified `query(_:)` accessor. A typed `getPaymentMethodConfig(_:)` mirrors the web SDK pattern for merchants who prefer direct getters over the query enum.
 
 ```swift
 public class Payrails.Session {
-    // Availability
+    // Availability — device capability only
+    // Compose with getPaymentMethodConfig(.specific("apple_pay")) for
+    // the combined "configured and device capable" signal.
     public var isApplePayAvailable: Bool { get }
+
+    // Payment method configuration
+    public func getPaymentMethodConfig(_ filter: PaymentMethodFilter = .all) -> [PayrailsPaymentOption]
 
     // Payment execution — callback variants
     public func executePayment(

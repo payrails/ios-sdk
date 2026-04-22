@@ -131,8 +131,8 @@ func executePayment(
     presenter: PaymentPresenter?
 ) async -> OnPayResult
 
-func isPaymentAvailable(type: PaymentType) -> Bool
-func storedInstruments(for type: PaymentType) -> [StoredInstrument]
+func getPaymentMethodConfig(_ filter: PaymentMethodFilter = .all) -> [PayrailsPaymentOption]
+func query(_ key: PayrailsQueryKey) -> PayrailsQueryResult?
 ```
 
 **Key Properties**:
