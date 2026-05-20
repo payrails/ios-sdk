@@ -5,6 +5,14 @@ public protocol PayrailsStoredInstrumentPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton)
     func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton)
+
+    /// Fires when the user intentionally abandoned the payment (e.g. swiped the 3DS
+    /// challenge sheet away). Default implementation is a no-op for source compatibility.
+    func onPaymentCancelled(_ button: Payrails.StoredInstrumentPaymentButton)
+}
+
+public extension PayrailsStoredInstrumentPaymentButtonDelegate {
+    func onPaymentCancelled(_ button: Payrails.StoredInstrumentPaymentButton) {}
 }
 
 public struct StoredInstrumentButtonTranslations {
@@ -171,6 +179,7 @@ public extension Payrails {
                 delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
+                delegate?.onPaymentCancelled(self)
             default:
                 Payrails.log("Payment result: unknown state")
             }

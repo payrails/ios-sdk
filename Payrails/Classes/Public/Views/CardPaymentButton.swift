@@ -7,10 +7,18 @@ public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton)
     func onAuthorizeFailed(_ button: Payrails.CardPaymentButton)
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
+
+    /// Fires when the user intentionally abandoned the payment — e.g. swiped the 3DS
+    /// challenge sheet away before completing it. Distinct from `onAuthorizeFailed`,
+    /// which is for issuer-declined / network / SDK errors. Default implementation is
+    /// a no-op so existing merchants stay source-compatible; override to give cancelled
+    /// payments a different UX (e.g. neutral toast instead of red error banner).
+    func onPaymentCancelled(_ button: Payrails.CardPaymentButton)
 }
 
 public extension PayrailsCardPaymentButtonDelegate {
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {}
+    func onPaymentCancelled(_ button: Payrails.CardPaymentButton) {}
 }
 
 public extension Payrails {
@@ -263,6 +271,7 @@ public extension Payrails {
                 delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
+                delegate?.onPaymentCancelled(self)
             default:
                 Payrails.log("Payment result: unknown state")
             }

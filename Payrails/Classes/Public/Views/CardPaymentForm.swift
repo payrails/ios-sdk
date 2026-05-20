@@ -7,6 +7,15 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm)
     func onThreeDSecureChallenge()
     func onAuthorizeFailed(_ form: Payrails.CardPaymentForm)
+
+    /// Fires when the user intentionally abandoned the payment (e.g. swiped the 3DS
+    /// challenge sheet away). Distinct from `onAuthorizeFailed`. Default implementation
+    /// is a no-op so existing merchants stay source-compatible.
+    func onPaymentCancelled(_ form: Payrails.CardPaymentForm)
+}
+
+public extension PayrailsCardPaymentFormDelegate {
+    func onPaymentCancelled(_ form: Payrails.CardPaymentForm) {}
 }
 
 public extension Payrails {
@@ -164,6 +173,7 @@ public extension Payrails {
                 delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 logMessage("Payment was cancelled by user")
+                delegate?.onPaymentCancelled(self)
             default:
                 logMessage("Payment result: unknown state")
             }

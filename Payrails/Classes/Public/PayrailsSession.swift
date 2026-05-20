@@ -388,6 +388,25 @@ extension Payrails.Session: PaymentHandlerDelegate {
         paymentHandler = nil
     }
 
+    /// Called when the user interactively dismissed the 3DS challenge (e.g. swipe-down on
+    /// the modal). The background poll started during the pending phase may still resolve
+    /// the payment with a real backend terminal — give it a brief grace window to win;
+    /// if it doesn't, claim a cancellation so the merchant app doesn't hang.
+    func paymentHandlerUserDidDismissChallenge(handler: PaymentHandler) {
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                guard self.claimTerminal() else { return }
+                self.cancelBackgroundPolling()
+                self.isPaymentInProgress = false
+                self.onResult?(.cancelledByUser)
+                self.onResult = nil
+                self.paymentHandler = nil
+            }
+        }
+    }
+
     func paymentHandlerDidHandlePending(
         handler: PaymentHandler,
         type: Payrails.PaymentType,

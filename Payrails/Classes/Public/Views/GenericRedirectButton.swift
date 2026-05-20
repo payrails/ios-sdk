@@ -12,6 +12,15 @@ public protocol GenericRedirectPaymentButtonDelegate: AnyObject {
     func onAuthorizeSuccess(_ button: Payrails.GenericRedirectButton)
     func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton)
     func onPaymentSessionExpired(_ button: Payrails.GenericRedirectButton)
+
+    /// Fires when the user intentionally abandoned the payment (e.g. closed the
+    /// redirect tab / dismissed the WebView). Default implementation is a no-op
+    /// for source compatibility.
+    func onPaymentCancelled(_ button: Payrails.GenericRedirectButton)
+}
+
+public extension GenericRedirectPaymentButtonDelegate {
+    func onPaymentCancelled(_ button: Payrails.GenericRedirectButton) {}
 }
 
 public extension Payrails {
@@ -121,6 +130,7 @@ public extension Payrails {
                 delegate?.onAuthorizeFailed(self)
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
+                delegate?.onPaymentCancelled(self)
             default:
                 Payrails.log("Payment result: unknown state")
             }

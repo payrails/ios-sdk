@@ -95,6 +95,10 @@ extension CardPaymentHandler: PaymentHandler {
                 url: url,
                 delegate: self
             )
+            webViewController.onUserDismiss = { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.paymentHandlerUserDidDismissChallenge(handler: self)
+            }
             self.presenter?.presentPayment(webViewController)
             self.webViewController = webViewController
         }
