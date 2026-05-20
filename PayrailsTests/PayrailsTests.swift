@@ -7,6 +7,7 @@
 
 import XCTest
 import UIKit
+import WebKit
 @testable import Payrails
 
 final class PayrailsTests: XCTestCase {
@@ -2060,14 +2061,24 @@ final class PayrailsTests: XCTestCase {
     private class MockCardPaymentButtonDelegate: PayrailsCardPaymentButtonDelegate {
         var onStoredInstrumentChangedCalled = false
         var onPaymentButtonClickedCalled = false
+        var onAuthorizeSuccessCalled = false
+        var onAuthorizeFailedCalled = false
+        var onPaymentCancelledCalled = false
         var lastInstrumentId: String?
 
         func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {
             onPaymentButtonClickedCalled = true
         }
-        func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
+        func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {
+            onAuthorizeSuccessCalled = true
+        }
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
-        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
+        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
+            onAuthorizeFailedCalled = true
+        }
+        func onPaymentCancelled(_ button: Payrails.CardPaymentButton) {
+            onPaymentCancelledCalled = true
+        }
 
         func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {
             onStoredInstrumentChangedCalled = true
@@ -2080,7 +2091,8 @@ final class PayrailsTests: XCTestCase {
         func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
         func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
-        // Intentionally NOT implementing onStoredInstrumentChanged — uses default extension
+        // Intentionally NOT implementing onStoredInstrumentChanged or onPaymentCancelled —
+        // both use default extensions and the delegate must still satisfy the protocol.
     }
 
     // MARK: - UpdateOptions Tests
@@ -2670,4 +2682,176 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(cvvLeading ?? .nan, 8, accuracy: 0.001,
                        "CVV field should use its own fieldInsets.left (8)")
     }
+
+    // MARK: - ONB-739: onPaymentCancelled delegate contract tests
+    //
+    // These tests verify the public protocol surface added in ONB-739: each card / form /
+    // stored-instrument / generic-redirect delegate now exposes an `onPaymentCancelled`
+    // method with a default empty extension. Source compatibility is the key guarantee:
+    // existing merchants who don't override the method must still compile and behave the
+    // same as before (silent no-op for the cancel case).
+    //
+    // End-to-end orchestration tests (concurrent polling resolution, race-condition
+    // arbitration via `claimTerminal()`, the 3s grace window after user-dismiss) require
+    // URLProtocol-based mocking of `URLSession.shared` which the current test target does
+    // not have. Those should be added in a follow-up that introduces a `MockURLProtocol`
+    // helper. See PR ONB-739 for the orchestration design under test.
+
+    func testCardPaymentButtonDelegate_onPaymentCancelled_overrideReceivesCall() {
+        // Drives the new delegate method via direct protocol invocation. End-to-end button
+        // wiring requires a live Session/network and is covered by the simulator repro;
+        // here we verify the delegate contract itself.
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        delegate.onPaymentCancelled(button)
+        XCTAssertTrue(delegate.onPaymentCancelledCalled,
+                      "Custom onPaymentCancelled implementation must receive the call")
+        XCTAssertFalse(delegate.onAuthorizeFailedCalled,
+                       "onAuthorizeFailed must not fire when onPaymentCancelled fires")
+    }
+
+    func testCardPaymentButtonDelegate_onPaymentCancelled_defaultNoOpForMinimalDelegate() {
+        // The minimal delegate intentionally does NOT override onPaymentCancelled.
+        // Source compatibility requires this still compile and run without crashing.
+        let delegate = MockMinimalCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        // Invocation through the protocol's default extension. If this crashes or fails
+        // to dispatch, source compatibility is broken.
+        delegate.onPaymentCancelled(button)
+    }
+
+    func testCardPaymentFormDelegate_onPaymentCancelled_defaultExtensionExists() {
+        // Verifies that a CardPaymentForm delegate that does NOT implement
+        // onPaymentCancelled still satisfies the protocol (source compatibility).
+        // Compile success is the test — the protocol's required method has a default
+        // extension that conforms an empty implementation.
+        final class MinimalFormDelegate: PayrailsCardPaymentFormDelegate {
+            func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm) {}
+            func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm) {}
+            func onThreeDSecureChallenge() {}
+            func onAuthorizeFailed(_ form: Payrails.CardPaymentForm) {}
+            // Intentionally no onPaymentCancelled override.
+        }
+        _ = MinimalFormDelegate()
+    }
+
+    func testStoredInstrumentPaymentButtonDelegate_onPaymentCancelled_defaultExtensionExists() {
+        // Even though the StoredInstrumentPaymentButton delegate is deprecated, the new
+        // method must be reachable through a default extension to remain source-compatible
+        // for any merchant still on the old API.
+        final class MinimalStoredDelegate: PayrailsStoredInstrumentPaymentButtonDelegate {
+            func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton) {}
+            func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton) {}
+            func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton) {}
+            // Intentionally no onPaymentCancelled override.
+        }
+        // The mere fact this compiles is the test — the protocol's required method has
+        // a default that satisfies conformance without an explicit implementation.
+        _ = MinimalStoredDelegate()
+    }
+
+    func testGenericRedirectPaymentButtonDelegate_onPaymentCancelled_defaultExtensionExists() {
+        final class MinimalRedirectDelegate: GenericRedirectPaymentButtonDelegate {
+            func onPaymentButtonClicked(_ button: Payrails.GenericRedirectButton) {}
+            func onAuthorizeSuccess(_ button: Payrails.GenericRedirectButton) {}
+            func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton) {}
+            func onPaymentSessionExpired(_ button: Payrails.GenericRedirectButton) {}
+            // Intentionally no onPaymentCancelled override.
+        }
+        _ = MinimalRedirectDelegate()
+    }
+
+    // MARK: - ONB-739: PayWebViewController user-dismiss detection
+
+    func testPayWebViewController_presentationControllerDidDismiss_invokesOnUserDismiss() {
+        // When UIKit notifies the controller that the user interactively dismissed the
+        // sheet, the view controller must invoke the onUserDismiss callback so the
+        // session can surface OnPayResult.cancelledByUser.
+        let url = URL(string: "https://example.com")!
+        let dummyDelegate = DummyNavigationDelegate()
+        let vc = PayWebViewController(url: url, delegate: dummyDelegate)
+        var dismissed = false
+        vc.onUserDismiss = { dismissed = true }
+
+        // Stand-in presentation controller for the delegate-method argument; the SDK
+        // implementation does not inspect it.
+        let standInPresentation = UIPresentationController(presentedViewController: vc, presenting: nil)
+        vc.presentationControllerDidDismiss(standInPresentation)
+
+        XCTAssertTrue(dismissed,
+                      "presentationControllerDidDismiss(_:) must trigger the onUserDismiss callback")
+    }
+
+    func testPayWebViewController_presentationControllerDidDismiss_safeWhenCallbackUnset() {
+        // If a caller never sets onUserDismiss (e.g. some internal code path), the
+        // dismissal notification must not crash. This guards against future regressions
+        // that try to force-unwrap the optional.
+        let url = URL(string: "https://example.com")!
+        let dummyDelegate = DummyNavigationDelegate()
+        let vc = PayWebViewController(url: url, delegate: dummyDelegate)
+
+        let standInPresentation = UIPresentationController(presentedViewController: vc, presenting: nil)
+        vc.presentationControllerDidDismiss(standInPresentation)
+        // No assertion needed — reaching this line without crash is the proof.
+    }
+
+    // MARK: - ONB-739: PaymentHandler protocol default extensions
+
+    func testPaymentHandlerProtocol_dismissPresentedView_defaultIsNoOp() {
+        // A handler that does not override dismissPresentedView() must still satisfy the
+        // protocol and the default empty implementation must execute without crashing.
+        final class MinimalHandler: PaymentHandler {
+            func makePayment(total: Double, currency: String, presenter: PaymentPresenter?) {}
+            func handlePendingState(with: GetExecutionResult) {}
+            func processSuccessPayload(
+                payload: [String: Any]?,
+                amount: Amount,
+                completion: @escaping (Result<[String: Any], Error>) -> Void
+            ) {}
+            // Intentionally no dismissPresentedView override.
+        }
+        let handler: PaymentHandler = MinimalHandler()
+        handler.dismissPresentedView()
+    }
+
+    func testPaymentHandlerDelegate_paymentHandlerUserDidDismissChallenge_defaultIsNoOp() {
+        // A delegate that does not override the new user-dismiss method must still
+        // satisfy the protocol via the default extension and execute as a no-op.
+        final class MinimalDelegate: PaymentHandlerDelegate {
+            func paymentHandlerDidFinish(
+                handler: PaymentHandler,
+                type: Payrails.PaymentType,
+                status: PaymentHandlerStatus,
+                payload: [String: Any]?
+            ) {}
+            func paymentHandlerDidFail(
+                handler: PaymentHandler,
+                error: PayrailsError,
+                type: Payrails.PaymentType
+            ) {}
+            func paymentHandlerDidHandlePending(
+                handler: PaymentHandler,
+                type: Payrails.PaymentType,
+                link: Link?,
+                payload: [String: Any]?
+            ) {}
+            func paymentHandlerWillRequestChallengePresentation(_ handler: PaymentHandler) {}
+            // Intentionally no paymentHandlerUserDidDismissChallenge override.
+        }
+        final class StubHandler: PaymentHandler {
+            func makePayment(total: Double, currency: String, presenter: PaymentPresenter?) {}
+            func handlePendingState(with: GetExecutionResult) {}
+            func processSuccessPayload(
+                payload: [String: Any]?,
+                amount: Amount,
+                completion: @escaping (Result<[String: Any], Error>) -> Void
+            ) {}
+        }
+        let delegate: PaymentHandlerDelegate = MinimalDelegate()
+        delegate.paymentHandlerUserDidDismissChallenge(handler: StubHandler())
+    }
 }
+
+// Lightweight WKNavigationDelegate stub used only to satisfy PayWebViewController's
+// initializer in tests; it intentionally performs no navigation handling.
+private final class DummyNavigationDelegate: NSObject, WKNavigationDelegate {}
