@@ -14,6 +14,15 @@ public extension Payrails {
         private var currentTask: Task<Void, Error>?
         private var payrailsCSE: PayrailsCSE?
 
+        /// Runs in parallel with the 3DS WebView; whichever signal (WebView terminal URL or
+        /// backend terminal status) arrives first wins, guarded by `terminalReported`.
+        private var backgroundPollTask: Task<Void, Never>?
+
+        /// Single-shot guard ensuring the payment outcome is reported exactly once,
+        /// regardless of whether it arrives via the WebView delegate or background polling.
+        private var terminalReported = false
+        private let terminalLock = NSLock()
+
         var debugConfig: SDKConfig {
             return self.config
         }
@@ -102,6 +111,7 @@ public extension Payrails {
         ) {
             isPaymentInProgress = true
             self.onResult = onResult
+            resetTerminalGuard()
 
             guard prepareHandler(
                 for: instrument.type,
@@ -147,6 +157,7 @@ public extension Payrails {
 
             isPaymentInProgress = true
             self.onResult = onResult
+            resetTerminalGuard()
 
             guard prepareHandler(
                 for: type,
@@ -315,10 +326,16 @@ extension Payrails.Session: PaymentHandlerDelegate {
     ) {
         switch status {
         case .canceled:
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
             isPaymentInProgress = false
             onResult?(.cancelledByUser)
 
         case .success:
+            // Not yet terminal — the confirmation phase still has to run. But the background
+            // poll started during the pending phase would now race against the confirmation
+            // poll, so cancel it here.
+            cancelBackgroundPolling()
             handler.processSuccessPayload(
                 payload: payload,
                 amount: self.config.amount
@@ -349,6 +366,8 @@ extension Payrails.Session: PaymentHandlerDelegate {
             }
 
         case let .error(error):
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
             isPaymentInProgress = false
             let finalError = error ?? PayrailsError.unknown(error: nil)
             onResult?(.error(finalError as! PayrailsError))
@@ -362,6 +381,8 @@ extension Payrails.Session: PaymentHandlerDelegate {
         error: PayrailsError,
         type: Payrails.PaymentType
     ) {
+        guard claimTerminal() else { return }
+        cancelBackgroundPolling()
         isPaymentInProgress = false
         onResult?(.error(error))
         paymentHandler = nil
@@ -413,11 +434,16 @@ extension Payrails.Session: PaymentHandlerDelegate {
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
         switch paymentStatus {
         case .failed:
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
             onResult?(.failure)
         case .success:
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
             onResult?(.success)
         case let .pending(executionResult):
             paymentHandler?.handlePendingState(with: executionResult)
+            startBackgroundPollingDuringChallenge(executionResult: executionResult)
             return
         }
 
@@ -428,8 +454,82 @@ extension Payrails.Session: PaymentHandlerDelegate {
         paymentHandler = nil
     }
 
+    /// Single-shot guard: returns `true` only on the first call after each reset. Any subsequent
+    /// caller (e.g. WebView delegate firing after background polling already resolved the
+    /// payment) bails out without reporting a duplicate outcome.
+    private func claimTerminal() -> Bool {
+        terminalLock.lock()
+        defer { terminalLock.unlock() }
+        if terminalReported { return false }
+        terminalReported = true
+        return true
+    }
+
+    private func resetTerminalGuard() {
+        terminalLock.lock()
+        terminalReported = false
+        terminalLock.unlock()
+    }
+
+    private func cancelBackgroundPolling() {
+        backgroundPollTask?.cancel()
+        backgroundPollTask = nil
+    }
+
+    /// Starts polling the workflow execution URL in parallel with the 3DS WebView. If the
+    /// backend reaches `authorizeSuccessful` / `authorizeFailed` before the WebView lands on a
+    /// recognized terminal URL (e.g. backend redirect chain stalls, network blip, unknown
+    /// return URL), polling will resolve the payment and dismiss the WebView. Otherwise the
+    /// WebView path wins and cancels this task.
+    private func startBackgroundPollingDuringChallenge(executionResult: GetExecutionResult) {
+        guard let url = URL(string: executionResult.links.`self`) else { return }
+        cancelBackgroundPolling()
+        backgroundPollTask = Task { [weak self] in
+            guard let self = self else { return }
+            do {
+                let status = try await self.payrailsAPI.pollForTerminalDuringChallenge(executionUrl: url)
+                if Task.isCancelled { return }
+                await MainActor.run { [weak self] in
+                    self?.handleBackgroundPollTerminal(status: status)
+                }
+            } catch {
+                // Background poll could not resolve the payment (timed out, network error, etc.).
+                // Stay silent so the WebView path remains the primary resolution channel.
+                #if DEBUG
+                Payrails.log("Background polling ended without terminal: \(error)")
+                #endif
+            }
+        }
+    }
+
+    private func handleBackgroundPollTerminal(status: PayrailsAPI.PaymentStatus) {
+        // Only proceed if no terminal has been reported yet. If the WebView already resolved
+        // the payment, this call is a no-op.
+        guard claimTerminal() else { return }
+        paymentHandler?.dismissPresentedView()
+        // Route through the same handler that processes WebView-driven terminals so cleanup
+        // and `onResult` propagation are identical.
+        switch status {
+        case .failed:
+            onResult?(.failure)
+        case .success:
+            onResult?(.success)
+        case .pending:
+            // The polling target excludes `authorizePending`, so this branch should not occur.
+            // If it does, treat as no-op and let the WebView path drive.
+            return
+        }
+        currentTask?.cancel()
+        currentTask = nil
+        isPaymentInProgress = false
+        onResult = nil
+        paymentHandler = nil
+    }
+
     private func handle(error: Error) {
         Payrails.log("Call handle payment withn error")
+        guard claimTerminal() else { return }
+        cancelBackgroundPolling()
         if let payrailsError = error as? PayrailsError {
             switch payrailsError {
             case .authenticationError:

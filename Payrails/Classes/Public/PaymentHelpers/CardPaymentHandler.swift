@@ -100,6 +100,16 @@ extension CardPaymentHandler: PaymentHandler {
         }
     }
 
+    func dismissPresentedView() {
+        // Strong-capture self: when called as part of session teardown, the Session may
+        // release its reference to this handler before the main-queue block runs. The
+        // closure is short-lived so keeping a strong ref for its duration is safe.
+        DispatchQueue.main.async {
+            self.webViewController?.dismiss(animated: true)
+            self.webViewController = nil
+        }
+    }
+
     func processSuccessPayload(
         payload: [String: Any]?,
         amount: Amount,
