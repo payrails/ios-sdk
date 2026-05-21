@@ -185,15 +185,18 @@ struct CardFormConfig {
 func pay(with type: PaymentType?, storedInstrument: StoredInstrument?)
 ```
 
-**Delegate Protocol**:
+**Delegate Protocol** (as of ONB-739):
 ```swift
 protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: CardPaymentButton)
     func onAuthorizeSuccess(_ button: CardPaymentButton)
     func onThreeDSecureChallenge(_ button: CardPaymentButton)
-    func onAuthorizeFailed(_ button: CardPaymentButton)
+    func onAuthorizeFailed(_ button: CardPaymentButton, reason: AuthorizeFailureReason)
+    func onSessionExpired(_ button: CardPaymentButton)   // default no-op
 }
 ```
+
+`AuthorizeFailureReason` cases: `.userCancelled`, `.authorizationError(PayrailsError?)`, `.authenticationError(PayrailsError?)`, `.validationFailed`, `.unknownError(PayrailsError?)`. See [public/sdk-api-reference.md](public/sdk-api-reference.md).
 
 ### 4. CardPaymentHandler
 
@@ -404,17 +407,33 @@ extension ViewController: PayrailsCardPaymentButtonDelegate {
     func onPaymentButtonClicked(_ button: CardPaymentButton) {
         // Handle payment initiation
     }
-    
+
     func onAuthorizeSuccess(_ button: CardPaymentButton) {
         // Handle successful payment
     }
-    
+
     func onThreeDSecureChallenge(_ button: CardPaymentButton) {
         // Handle 3DS challenge presentation
     }
-    
-    func onAuthorizeFailed(_ button: CardPaymentButton) {
-        // Handle payment failure
+
+    func onAuthorizeFailed(_ button: CardPaymentButton, reason: AuthorizeFailureReason) {
+        switch reason {
+        case .userCancelled:        // user dismissed the 3DS sheet
+            break
+        case .authorizationError:   // issuer declined
+            break
+        case .authenticationError:  // 3DS auth failed
+            break
+        case .validationFailed:     // input validation rejected
+            break
+        case let .unknownError(error):  // network / SDK / unexpected
+            _ = error
+        }
+    }
+
+    func onSessionExpired(_ button: CardPaymentButton) {
+        // Payrails executions are single-use; refresh before retrying.
+        refreshSession()
     }
 }
 

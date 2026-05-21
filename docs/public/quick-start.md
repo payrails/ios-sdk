@@ -175,8 +175,30 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate {
         // Payment succeeded — navigate to confirmation screen
     }
 
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
-        // Payment failed or was declined — show error to user
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, reason: AuthorizeFailureReason) {
+        switch reason {
+        case .userCancelled:
+            // User dismissed the 3DS sheet or otherwise abandoned the flow
+            statusLabel.text = "Payment cancelled."
+        case .authorizationError:
+            // Issuer declined / 3DS rejected the authorization
+            statusLabel.text = "Your card was declined."
+        case .authenticationError:
+            // 3D Secure authentication itself failed
+            statusLabel.text = "3DS authentication failed."
+        case .validationFailed:
+            // Input validation rejected the request before it hit the backend
+            statusLabel.text = "Please check your card details."
+        case let .unknownError(error):
+            // Network, SDK, or other unexpected error
+            statusLabel.text = "Payment failed: \(error?.localizedDescription ?? "unknown error")."
+        }
+    }
+
+    func onSessionExpired(_ button: Payrails.CardPaymentButton) {
+        // The Payrails execution is no longer reusable — re-initialize the
+        // session via your backend before any subsequent payment attempt.
+        refreshPayrailsSession()
     }
 
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {

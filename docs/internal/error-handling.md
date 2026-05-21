@@ -75,14 +75,21 @@ public enum PayrailsError: Error, LocalizedError {
 │                              ▼                                  │
 │                 CardPaymentButton.handlePaymentResult           │
 │                              │                                  │
-│              ┌───────────────┼───────────────┐                  │
-│              ▼               ▼               ▼                  │
-│         .success    .authorizationFailed  .failure/.error       │
-│              │          .cancelledByUser      │                 │
-│              ▼               ▼               ▼                  │
-│       onAuthorizeSuccess  onAuthorizeFailed  onAuthorizeFailed  │
-│                          (logged only for                       │
-│                           cancelledByUser)                      │
+│   ┌───────────┬──────────────┼──────────────┬───────────────┐   │
+│   ▼           ▼              ▼              ▼               ▼   │
+│ .success  .authorization  .failure       .error      .cancelled │
+│           Failed                                       ByUser   │
+│   │           │              │              │               │   │
+│   ▼           ▼              ▼              ▼               ▼   │
+│ onAuth-   onAuth-FAILED  onAuth-FAILED  onAuth-FAILED  onAuth-  │
+│ SUCCESS   reason:        reason:        reason:        FAILED   │
+│           .authentic-    .authorization- .unknown-     reason:  │
+│           ationError(.)  Error(.)        Error(.)      .user-   │
+│                                                        Cancelled│
+│                              │              │              │   │
+│                              ▼              ▼              ▼   │
+│                       (every non-success terminal also fires:) │
+│                               onSessionExpired(_:)              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -131,15 +138,21 @@ This means `.authenticationError` is silently converted to `.authorizationFailed
 
 ### CardPaymentButton translation
 
-`CardPaymentButton.handlePaymentResult(_:)` maps `OnPayResult` to delegate calls:
+As of ONB-739, `CardPaymentButton.handlePaymentResult(_:)` maps `OnPayResult` cases to delegate calls with a discriminating `AuthorizeFailureReason`:
 
 ```swift
-case .success         → delegate.onAuthorizeSuccess
-case .authorizationFailed, .failure, .error → delegate.onAuthorizeFailed
-case .cancelledByUser → logged only (no delegate call)
+case .success              → delegate.onAuthorizeSuccess(self)
+case .authorizationFailed  → delegate.onAuthorizeFailed(self, reason: .authenticationError(nil))
+case .failure              → delegate.onAuthorizeFailed(self, reason: .authorizationError(nil))
+case .error(let e)         → delegate.onAuthorizeFailed(self, reason: .unknownError(e))
+case .cancelledByUser      → delegate.onAuthorizeFailed(self, reason: .userCancelled)
 ```
 
-Note: `.failure` and `.error` both call `onAuthorizeFailed`. Merchants cannot distinguish these two at the delegate level. If you need to surface more granularity, you must change the delegate protocol and update the audit doc.
+Every non-`.success` outcome also fires `delegate.onSessionExpired(self)` immediately afterward, signaling that the Payrails execution is single-use and the merchant must refresh before retrying.
+
+Merchants now have full granularity at the delegate level via `reason`. The previous TODO about needing protocol changes was resolved in this commit; `AuthorizeFailureReason` mirrors the Web SDK's `AuthorizationFailureReasons` enum 1:1.
+
+The same mapping is mirrored in `CardPaymentForm`, `StoredInstrumentPaymentButton`, and `GenericRedirectButton`.
 
 ---
 

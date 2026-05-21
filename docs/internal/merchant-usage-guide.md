@@ -185,9 +185,25 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate, PaymentPres
         }
     }
 
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, reason: AuthorizeFailureReason) {
         activityIndicator.stopAnimating()
-        showError("Payment was not completed. Please try again.")
+        switch reason {
+        case .userCancelled:
+            showInfo("Payment cancelled.")
+        case .authorizationError:
+            showError("Your card was declined.")
+        case .authenticationError:
+            showError("3DS authentication failed.")
+        case .validationFailed:
+            showError("Please check your card details.")
+        case let .unknownError(error):
+            showError("Payment failed: \(error?.localizedDescription ?? "unknown error").")
+        }
+    }
+
+    func onSessionExpired(_ button: Payrails.CardPaymentButton) {
+        // Payrails executions are single-use; refresh before the next attempt.
+        refreshPayrailsSession()
     }
 
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {
@@ -215,7 +231,7 @@ User taps "Pay"
 SDK authorizes with stored instrument
         │
         ├──── Success ──► onAuthorizeSuccess
-        └──── Failure ──► onAuthorizeFailed
+        └──── Failure ──► onAuthorizeFailed(_:reason:)  +  onSessionExpired(_:)
 ```
 
 If the user deselects the instrument, the button returns to card form mode.

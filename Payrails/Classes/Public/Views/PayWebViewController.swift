@@ -12,6 +12,10 @@ internal class PayWebViewController: UIViewController {
     private let url: URL
     private let dismissalCallback: (() -> Void)?
 
+    /// Fired when the user interactively dismisses this view (e.g. swipe-down on iOS 13+
+    /// sheet presentation). NOT fired when the SDK dismisses the controller programmatically.
+    var onUserDismiss: (() -> Void)?
+
     init(url: URL, delegate: WKNavigationDelegate, dismissalCallback: (() -> Void)? = nil) {
         self.url = url
         self.dismissalCallback = dismissalCallback
@@ -39,5 +43,20 @@ internal class PayWebViewController: UIViewController {
         ])
 
         webView.load(.init(url: url, cachePolicy: .reloadIgnoringLocalCacheData))
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Receive the system's user-initiated dismissal callback (swipe-down on sheet
+        // presentations). Set here so we have a valid presentationController.
+        presentationController?.delegate = self
+    }
+}
+
+extension PayWebViewController: UIAdaptivePresentationControllerDelegate {
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        // UIKit only invokes this when the user dismissed the sheet (not when we did it
+        // programmatically), so it is the right signal to surface as "user cancelled 3DS".
+        onUserDismiss?()
     }
 }

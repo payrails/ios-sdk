@@ -107,6 +107,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `OnInitCallback` | PUBLIC | typealias |
 | `OnPayCallback` | PUBLIC | typealias |
 | `OnPayResult` | PUBLIC | `.success`, `.authorizationFailed`, `.failure`, `.error`, `.cancelledByUser` |
+| `AuthorizeFailureReason` | PUBLIC | Discriminator for `onAuthorizeFailed(_:reason:)` on every delegate protocol. Cases: `.validationFailed`, `.authorizationError(PayrailsError?)`, `.authenticationError(PayrailsError?)`, `.userCancelled`, `.unknownError(PayrailsError?)`. Mirrors Web SDK's `AuthorizationFailureReasons` 1:1 (added in ONB-739). |
 
 ---
 
@@ -122,8 +123,9 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.CardPaymentButton.setStoredInstrument(_:)` | PUBLIC | Switch to stored instrument mode |
 | `Payrails.CardPaymentButton.clearStoredInstrument()` | PUBLIC | Revert to card form mode |
 | `Payrails.CardPaymentButton.getStoredInstrument()` | PUBLIC | Read current stored instrument |
-| `PayrailsCardPaymentButtonDelegate` | PUBLIC | |
+| `PayrailsCardPaymentButtonDelegate` | PUBLIC | ONB-739: `onAuthorizeFailed` signature changed to `(_:reason:)` (breaking); new `onSessionExpired(_:)` callback (default no-op). |
 | `PayrailsCardFormDelegate` | PUBLIC | |
+| `PayrailsCardPaymentFormDelegate` | PUBLIC | ONB-739: same `(_:reason:)` + `onSessionExpired(_:)` change. |
 
 ---
 
@@ -191,7 +193,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | Symbol | Status | Notes |
 |---|---|---|
 | `Payrails.GenericRedirectButton` | PUBLIC | |
-| `GenericRedirectPaymentButtonDelegate` | PUBLIC | |
+| `GenericRedirectPaymentButtonDelegate` | PUBLIC | ONB-739: `onAuthorizeFailed` signature changed to `(_:reason:)` (breaking); new `onSessionExpired(_:)` callback (default no-op). Legacy `onPaymentSessionExpired(_:)` retained. |
 
 ---
 
@@ -208,7 +210,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.StoredInstrumentView` | PUBLIC | |
 | `PayrailsStoredInstrumentsDelegate` | PUBLIC | |
 | `PayrailsStoredInstrumentViewDelegate` | PUBLIC | |
-| `PayrailsStoredInstrumentPaymentButtonDelegate` | PUBLIC | |
+| `PayrailsStoredInstrumentPaymentButtonDelegate` | PUBLIC | Deprecated. ONB-739: `onAuthorizeFailed` signature changed to `(_:reason:)` (breaking); new `onSessionExpired(_:)` callback (default no-op). |
 | `StoredInstrumentsStyle` | PUBLIC | |
 | `StoredInstrumentButtonStyle` | PUBLIC | |
 | `StoredInstrumentsTranslations` | PUBLIC | |

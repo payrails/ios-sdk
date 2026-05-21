@@ -352,6 +352,21 @@ public enum OnPayResult {
     case error(PayrailsError)
     case cancelledByUser
 }
+
+/// Discriminator passed to `onAuthorizeFailed(_:reason:)` on every delegate
+/// protocol. Mirrors the Web SDK's `AuthorizationFailureReasons` enum 1:1.
+public enum AuthorizeFailureReason {
+    /// Input validation failed before the request reached the backend.
+    case validationFailed
+    /// Authorization was rejected by the issuer / PSP.
+    case authorizationError(PayrailsError?)
+    /// 3D Secure authentication itself failed (separate from issuer decline).
+    case authenticationError(PayrailsError?)
+    /// The user intentionally abandoned the flow (e.g. swiped the 3DS sheet away).
+    case userCancelled
+    /// Network failure, SDK bug, or any other unexpected error.
+    case unknownError(PayrailsError?)
+}
 ```
 
 ---
@@ -388,11 +403,30 @@ public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton)
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton)
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton)
-    // Optional — default implementation provided
+
+    /// Fires for every terminal failure of an authorization attempt. The `reason`
+    /// discriminates between issuer decline, 3DS auth failure, user cancellation,
+    /// and other errors — see `AuthorizeFailureReason`.
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, reason: AuthorizeFailureReason)
+
+    /// Fires immediately after every terminal `onAuthorizeFailed`. The Payrails
+    /// execution is single-use — the merchant must produce a fresh `Session`
+    /// (via a new backend execution) before any subsequent payment attempt.
+    /// Default implementation is a no-op for source compatibility; override it
+    /// to invalidate any cached `Session` reference and re-fetch a new one.
+    func onSessionExpired(_ button: Payrails.CardPaymentButton)
+
+    /// Optional — default no-op.
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
 }
 ```
+
+> **Breaking change in ONB-739.** The pre-ONB-739 signature was
+> `onAuthorizeFailed(_ button: Payrails.CardPaymentButton)` with no `reason`,
+> and `onSessionExpired` did not exist. Merchants migrating from earlier
+> versions must update their delegate conformance — see the
+> [card-payment-flow documentation](../card-payment-flow-documentation.md)
+> for a migration example.
 
 ### `PayrailsCardFormDelegate`
 

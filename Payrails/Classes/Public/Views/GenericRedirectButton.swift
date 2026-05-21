@@ -10,8 +10,24 @@ import UIKit
 public protocol GenericRedirectPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.GenericRedirectButton)
     func onAuthorizeSuccess(_ button: Payrails.GenericRedirectButton)
-    func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton)
+
+    /// Fires for every terminal authorization failure. The `reason` discriminates between
+    /// issuer decline, user cancellation, and other errors.
+    /// **Breaking change vs earlier versions.**
+    func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton, reason: AuthorizeFailureReason)
+
+    /// Legacy: payment-session-expired signal predating this redesign. Kept to avoid
+    /// breaking existing GenericRedirect merchants beyond the necessary `onAuthorizeFailed`
+    /// change. Prefer `onSessionExpired` going forward.
     func onPaymentSessionExpired(_ button: Payrails.GenericRedirectButton)
+
+    /// Fires after a terminal `onAuthorizeFailed` to signal the Payrails execution is no
+    /// longer reusable. Default no-op for source compatibility.
+    func onSessionExpired(_ button: Payrails.GenericRedirectButton)
+}
+
+public extension GenericRedirectPaymentButtonDelegate {
+    func onSessionExpired(_ button: Payrails.GenericRedirectButton) {}
 }
 
 public extension Payrails {
@@ -113,17 +129,21 @@ public extension Payrails {
             switch result {
             case .success:
                 delegate?.onAuthorizeSuccess(self)
+                return
             case .authorizationFailed:
-                delegate?.onAuthorizeFailed(self)
+                delegate?.onAuthorizeFailed(self, reason: .authenticationError(nil))
             case .failure:
-                delegate?.onAuthorizeFailed(self)
-            case .error:
-                delegate?.onAuthorizeFailed(self)
+                delegate?.onAuthorizeFailed(self, reason: .authorizationError(nil))
+            case let .error(error):
+                delegate?.onAuthorizeFailed(self, reason: .unknownError(error))
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
+                delegate?.onAuthorizeFailed(self, reason: .userCancelled)
             default:
                 Payrails.log("Payment result: unknown state")
+                return
             }
+            delegate?.onSessionExpired(self)
         }
     }
 }

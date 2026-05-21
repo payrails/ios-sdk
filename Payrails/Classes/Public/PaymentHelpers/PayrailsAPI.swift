@@ -136,6 +136,17 @@ class PayrailsAPI {
         return paymentStatus
     }
 
+    /// Polls the execution URL until the workflow reaches an actual terminal authorization status
+    /// (`authorizeSuccessful` or `authorizeFailed`). Intended to run concurrently with the 3DS
+    /// WebView so that, if the WebView gets stuck or the backend redirect chain stalls, the SDK
+    /// can still discover the real outcome from the backend and resolve the payment.
+    func pollForTerminalDuringChallenge(executionUrl: URL) async throws -> PaymentStatus {
+        return try await checkExecutionStatus(
+            url: executionUrl,
+            targetStatuses: statusesAfterPending
+        )
+    }
+
     func confirmPaymentWithRetry(
         link: Link,
         payload: [String: Any]?,
