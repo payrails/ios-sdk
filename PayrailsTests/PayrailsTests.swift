@@ -2063,7 +2063,8 @@ final class PayrailsTests: XCTestCase {
         var onPaymentButtonClickedCalled = false
         var onAuthorizeSuccessCalled = false
         var onAuthorizeFailedCalled = false
-        var onPaymentCancelledCalled = false
+        var onSessionExpiredCalled = false
+        var lastAuthorizeFailureReason: AuthorizeFailureReason?
         var lastInstrumentId: String?
 
         func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {
@@ -2073,11 +2074,12 @@ final class PayrailsTests: XCTestCase {
             onAuthorizeSuccessCalled = true
         }
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
-        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
+        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, reason: AuthorizeFailureReason) {
             onAuthorizeFailedCalled = true
+            lastAuthorizeFailureReason = reason
         }
-        func onPaymentCancelled(_ button: Payrails.CardPaymentButton) {
-            onPaymentCancelledCalled = true
+        func onSessionExpired(_ button: Payrails.CardPaymentButton) {
+            onSessionExpiredCalled = true
         }
 
         func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {
@@ -2090,8 +2092,8 @@ final class PayrailsTests: XCTestCase {
         func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {}
         func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
-        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
-        // Intentionally NOT implementing onStoredInstrumentChanged or onPaymentCancelled —
+        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, reason: AuthorizeFailureReason) {}
+        // Intentionally NOT implementing onStoredInstrumentChanged or onSessionExpired —
         // both use default extensions and the delegate must still satisfy the protocol.
     }
 
@@ -2683,80 +2685,100 @@ final class PayrailsTests: XCTestCase {
                        "CVV field should use its own fieldInsets.left (8)")
     }
 
-    // MARK: - ONB-739: onPaymentCancelled delegate contract tests
+    // MARK: - ONB-739: failure callback redesign — reason: param + onSessionExpired
     //
-    // These tests verify the public protocol surface added in ONB-739: each card / form /
-    // stored-instrument / generic-redirect delegate now exposes an `onPaymentCancelled`
-    // method with a default empty extension. Source compatibility is the key guarantee:
-    // existing merchants who don't override the method must still compile and behave the
-    // same as before (silent no-op for the cancel case).
+    // These tests verify the public protocol surface after the Option-C redesign:
+    //   * `onAuthorizeFailed` now takes a `reason: AuthorizeFailureReason` (Web-parity)
+    //   * `onPaymentCancelled` is gone — cancellation surfaces as `reason: .userCancelled`
+    //   * New `onSessionExpired` callback fires after every terminal failure to signal
+    //     the merchant must produce a fresh Session before retrying
     //
     // End-to-end orchestration tests (concurrent polling resolution, race-condition
     // arbitration via `claimTerminal()`, the 3s grace window after user-dismiss) require
     // URLProtocol-based mocking of `URLSession.shared` which the current test target does
     // not have. Those should be added in a follow-up that introduces a `MockURLProtocol`
-    // helper. See PR ONB-739 for the orchestration design under test.
+    // helper.
 
-    func testCardPaymentButtonDelegate_onPaymentCancelled_overrideReceivesCall() {
-        // Drives the new delegate method via direct protocol invocation. End-to-end button
-        // wiring requires a live Session/network and is covered by the simulator repro;
-        // here we verify the delegate contract itself.
+    func testCardPaymentButtonDelegate_onAuthorizeFailed_carriesUserCancelledReason() {
         let delegate = MockCardPaymentButtonDelegate()
         let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
-        delegate.onPaymentCancelled(button)
-        XCTAssertTrue(delegate.onPaymentCancelledCalled,
-                      "Custom onPaymentCancelled implementation must receive the call")
-        XCTAssertFalse(delegate.onAuthorizeFailedCalled,
-                       "onAuthorizeFailed must not fire when onPaymentCancelled fires")
+        delegate.onAuthorizeFailed(button, reason: .userCancelled)
+        XCTAssertTrue(delegate.onAuthorizeFailedCalled)
+        guard case .userCancelled = delegate.lastAuthorizeFailureReason else {
+            XCTFail("Expected .userCancelled reason, got \(String(describing: delegate.lastAuthorizeFailureReason))")
+            return
+        }
     }
 
-    func testCardPaymentButtonDelegate_onPaymentCancelled_defaultNoOpForMinimalDelegate() {
-        // The minimal delegate intentionally does NOT override onPaymentCancelled.
-        // Source compatibility requires this still compile and run without crashing.
+    func testCardPaymentButtonDelegate_onAuthorizeFailed_carriesAuthorizationErrorReason() {
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        delegate.onAuthorizeFailed(button, reason: .authorizationError(nil))
+        guard case .authorizationError = delegate.lastAuthorizeFailureReason else {
+            XCTFail("Expected .authorizationError reason")
+            return
+        }
+    }
+
+    func testCardPaymentButtonDelegate_onAuthorizeFailed_carriesUnknownErrorWithPayload() {
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let underlying = PayrailsError.missingData("network blip")
+        delegate.onAuthorizeFailed(button, reason: .unknownError(underlying))
+        guard case let .unknownError(payload) = delegate.lastAuthorizeFailureReason else {
+            XCTFail("Expected .unknownError reason")
+            return
+        }
+        XCTAssertNotNil(payload, "PayrailsError payload should survive through the delegate")
+    }
+
+    func testCardPaymentButtonDelegate_onSessionExpired_overrideReceivesCall() {
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        delegate.onSessionExpired(button)
+        XCTAssertTrue(delegate.onSessionExpiredCalled,
+                      "Custom onSessionExpired override must receive the call")
+    }
+
+    func testCardPaymentButtonDelegate_onSessionExpired_defaultNoOpForMinimalDelegate() {
+        // Source compatibility: a minimal delegate that doesn't override onSessionExpired
+        // must still satisfy the protocol via the default extension and run without crash.
         let delegate = MockMinimalCardPaymentButtonDelegate()
         let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
-        // Invocation through the protocol's default extension. If this crashes or fails
-        // to dispatch, source compatibility is broken.
-        delegate.onPaymentCancelled(button)
+        delegate.onSessionExpired(button)
     }
 
-    func testCardPaymentFormDelegate_onPaymentCancelled_defaultExtensionExists() {
-        // Verifies that a CardPaymentForm delegate that does NOT implement
-        // onPaymentCancelled still satisfies the protocol (source compatibility).
-        // Compile success is the test — the protocol's required method has a default
-        // extension that conforms an empty implementation.
+    func testCardPaymentFormDelegate_redesignedSurfaceCompiles() {
+        // Verifies that a CardPaymentForm delegate matching the redesigned protocol
+        // surface compiles: `onAuthorizeFailed(_:reason:)` is required, `onSessionExpired`
+        // defaults to no-op.
         final class MinimalFormDelegate: PayrailsCardPaymentFormDelegate {
             func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm) {}
             func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm) {}
             func onThreeDSecureChallenge() {}
-            func onAuthorizeFailed(_ form: Payrails.CardPaymentForm) {}
-            // Intentionally no onPaymentCancelled override.
+            func onAuthorizeFailed(_ form: Payrails.CardPaymentForm, reason: AuthorizeFailureReason) {}
+            // Intentionally no onSessionExpired override.
         }
         _ = MinimalFormDelegate()
     }
 
-    func testStoredInstrumentPaymentButtonDelegate_onPaymentCancelled_defaultExtensionExists() {
-        // Even though the StoredInstrumentPaymentButton delegate is deprecated, the new
-        // method must be reachable through a default extension to remain source-compatible
-        // for any merchant still on the old API.
+    func testStoredInstrumentPaymentButtonDelegate_redesignedSurfaceCompiles() {
         final class MinimalStoredDelegate: PayrailsStoredInstrumentPaymentButtonDelegate {
             func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton) {}
             func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton) {}
-            func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton) {}
-            // Intentionally no onPaymentCancelled override.
+            func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton, reason: AuthorizeFailureReason) {}
+            // Intentionally no onSessionExpired override.
         }
-        // The mere fact this compiles is the test — the protocol's required method has
-        // a default that satisfies conformance without an explicit implementation.
         _ = MinimalStoredDelegate()
     }
 
-    func testGenericRedirectPaymentButtonDelegate_onPaymentCancelled_defaultExtensionExists() {
+    func testGenericRedirectPaymentButtonDelegate_redesignedSurfaceCompiles() {
         final class MinimalRedirectDelegate: GenericRedirectPaymentButtonDelegate {
             func onPaymentButtonClicked(_ button: Payrails.GenericRedirectButton) {}
             func onAuthorizeSuccess(_ button: Payrails.GenericRedirectButton) {}
-            func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton) {}
+            func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton, reason: AuthorizeFailureReason) {}
             func onPaymentSessionExpired(_ button: Payrails.GenericRedirectButton) {}
-            // Intentionally no onPaymentCancelled override.
+            // Intentionally no onSessionExpired override.
         }
         _ = MinimalRedirectDelegate()
     }
