@@ -6,16 +6,23 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm)
     func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm)
     func onThreeDSecureChallenge()
-    func onAuthorizeFailed(_ form: Payrails.CardPaymentForm)
 
-    /// Fires when the user intentionally abandoned the payment (e.g. swiped the 3DS
-    /// challenge sheet away). Distinct from `onAuthorizeFailed`. Default implementation
-    /// is a no-op so existing merchants stay source-compatible.
-    func onPaymentCancelled(_ form: Payrails.CardPaymentForm)
+    /// Fires for every terminal failure of an authorization attempt. The `reason` discriminates
+    /// between issuer decline, 3DS auth failure, user cancellation, and other errors. See
+    /// `AuthorizeFailureReason` documentation for the full taxonomy.
+    ///
+    /// **Breaking change vs earlier iOS SDK versions** — the method now requires a `reason`
+    /// argument.
+    func onAuthorizeFailed(_ form: Payrails.CardPaymentForm, reason: AuthorizeFailureReason)
+
+    /// Fires after a terminal `onAuthorizeFailed` to signal that the Payrails execution
+    /// is no longer reusable — the merchant must produce a fresh `Session` before retrying.
+    /// Default no-op for source compatibility.
+    func onSessionExpired(_ form: Payrails.CardPaymentForm)
 }
 
 public extension PayrailsCardPaymentFormDelegate {
-    func onPaymentCancelled(_ form: Payrails.CardPaymentForm) {}
+    func onSessionExpired(_ form: Payrails.CardPaymentForm) {}
 }
 
 public extension Payrails {
@@ -165,18 +172,21 @@ public extension Payrails {
             switch result {
             case .success:
                 delegate?.onAuthorizeSuccess(self)
+                return
             case .authorizationFailed:
-                delegate?.onAuthorizeFailed(self)
+                delegate?.onAuthorizeFailed(self, reason: .authenticationError(nil))
             case .failure:
-                delegate?.onAuthorizeFailed(self)
+                delegate?.onAuthorizeFailed(self, reason: .authorizationError(nil))
             case let .error(error):
-                delegate?.onAuthorizeFailed(self)
+                delegate?.onAuthorizeFailed(self, reason: .unknownError(error))
             case .cancelledByUser:
                 logMessage("Payment was cancelled by user")
-                delegate?.onPaymentCancelled(self)
+                delegate?.onAuthorizeFailed(self, reason: .userCancelled)
             default:
                 logMessage("Payment result: unknown state")
+                return
             }
+            delegate?.onSessionExpired(self)
         }
 
         // MARK: - Helper Methods

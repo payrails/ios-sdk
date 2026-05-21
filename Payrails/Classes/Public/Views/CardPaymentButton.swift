@@ -5,20 +5,30 @@ public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton)
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton)
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton)
-    func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
 
-    /// Fires when the user intentionally abandoned the payment — e.g. swiped the 3DS
-    /// challenge sheet away before completing it. Distinct from `onAuthorizeFailed`,
-    /// which is for issuer-declined / network / SDK errors. Default implementation is
-    /// a no-op so existing merchants stay source-compatible; override to give cancelled
-    /// payments a different UX (e.g. neutral toast instead of red error banner).
-    func onPaymentCancelled(_ button: Payrails.CardPaymentButton)
+    /// Fires for every terminal failure of an authorization attempt. The `reason` discriminates
+    /// between issuer decline, 3DS auth failure, user cancellation, and other errors so the
+    /// merchant can show the right UX. Mirrors Web SDK's `onFailed(action, { code, … })`.
+    ///
+    /// **Breaking change vs earlier iOS SDK versions** — the method now requires a `reason`
+    /// argument. See PR ONB-739 for migration notes.
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, reason: AuthorizeFailureReason)
+
+    /// Fires after a terminal `onAuthorizeFailed` to signal that the underlying Payrails
+    /// execution can no longer be reused. The merchant must create a brand-new `Session`
+    /// (via a fresh backend execution) before any subsequent payment attempt. iOS-idiomatic
+    /// notification; the equivalent on Web is `onSessionExpired` returning a refresh promise.
+    ///
+    /// Default implementation is a no-op so existing merchants stay source-compatible —
+    /// override it to invalidate any cached Session reference and re-fetch a new one.
+    func onSessionExpired(_ button: Payrails.CardPaymentButton)
+
+    func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
 }
 
 public extension PayrailsCardPaymentButtonDelegate {
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {}
-    func onPaymentCancelled(_ button: Payrails.CardPaymentButton) {}
+    func onSessionExpired(_ button: Payrails.CardPaymentButton) {}
 }
 
 public extension Payrails {
@@ -263,18 +273,24 @@ public extension Payrails {
             switch result {
             case .success:
                 delegate?.onAuthorizeSuccess(self)
+                return
             case .authorizationFailed:
-                delegate?.onAuthorizeFailed(self)
+                delegate?.onAuthorizeFailed(self, reason: .authenticationError(nil))
             case .failure:
-                delegate?.onAuthorizeFailed(self)
-            case .error:
-                delegate?.onAuthorizeFailed(self)
+                delegate?.onAuthorizeFailed(self, reason: .authorizationError(nil))
+            case let .error(error):
+                delegate?.onAuthorizeFailed(self, reason: .unknownError(error))
             case .cancelledByUser:
                 Payrails.log("Payment was cancelled by user")
-                delegate?.onPaymentCancelled(self)
+                delegate?.onAuthorizeFailed(self, reason: .userCancelled)
             default:
                 Payrails.log("Payment result: unknown state")
+                return
             }
+            // All non-success terminal outcomes invalidate the underlying Payrails execution.
+            // Signal to the merchant that any cached Session reference must be refreshed
+            // before another payment attempt.
+            delegate?.onSessionExpired(self)
         }
 
         // Public method to get the stored instrument (for stored instrument mode)
