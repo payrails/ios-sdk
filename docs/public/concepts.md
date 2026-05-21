@@ -71,7 +71,10 @@ Assign the delegate before adding the element to the window.
 │                   ──► user completes challenge in SFSafariViewController
 │                   ──► SDK polls for final status
 └─ no 3DS  ──► result delivered immediately
-7. delegate.onAuthorizeSuccess / onAuthorizeFailed called
+7. delegate callback fires:
+   - success  → delegate.onAuthorizeSuccess(_:)
+   - failure  → delegate.onAuthorizeFailed(_:reason:) followed by delegate.onSessionExpired(_:)
+                (the `reason` discriminates: .userCancelled / .authorizationError / .authenticationError / .validationFailed / .unknownError)
 ```
 
 ### Stored instrument payment

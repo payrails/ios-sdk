@@ -198,13 +198,14 @@ func pay(with type: PaymentType? = nil, storedInstrument: StoredInstrument? = ni
 func getStoredInstrument() -> StoredInstrument? // Returns stored instrument if in stored mode
 ```
 
-**Unified Delegate Protocol**:
+**Unified Delegate Protocol** (as of ONB-739):
 ```swift
 protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: CardPaymentButton)
     func onAuthorizeSuccess(_ button: CardPaymentButton)
     func onThreeDSecureChallenge(_ button: CardPaymentButton) // Only for card form mode
-    func onAuthorizeFailed(_ button: CardPaymentButton)
+    func onAuthorizeFailed(_ button: CardPaymentButton, reason: AuthorizeFailureReason)
+    func onSessionExpired(_ button: CardPaymentButton)   // default no-op
 }
 ```
 
@@ -637,21 +638,28 @@ let newButton = Payrails.createCardPaymentButton(
 
 #### 2. Update Delegate Conformance
 ```swift
-// Old delegate (deprecated)
+// Old delegate (deprecated; signatures updated to match ONB-739)
 extension ViewController: PayrailsStoredInstrumentPaymentButtonDelegate {
     func onPaymentButtonClicked(_ button: StoredInstrumentPaymentButton) { }
     func onAuthorizeSuccess(_ button: StoredInstrumentPaymentButton) { }
-    func onAuthorizeFailed(_ button: StoredInstrumentPaymentButton) { }
+    func onAuthorizeFailed(_ button: StoredInstrumentPaymentButton, reason: AuthorizeFailureReason) { }
+    // onSessionExpired has a default no-op; override if you want to refresh the session.
 }
 
-// New unified delegate
+// New unified delegate (ONB-739 shape)
 extension ViewController: PayrailsCardPaymentButtonDelegate {
     func onPaymentButtonClicked(_ button: CardPaymentButton) { }
     func onAuthorizeSuccess(_ button: CardPaymentButton) { }
-    func onThreeDSecureChallenge(_ button: CardPaymentButton) { 
+    func onThreeDSecureChallenge(_ button: CardPaymentButton) {
         // Not applicable for stored instruments, but required by protocol
     }
-    func onAuthorizeFailed(_ button: CardPaymentButton) { }
+    func onAuthorizeFailed(_ button: CardPaymentButton, reason: AuthorizeFailureReason) {
+        // `reason` discriminates: .userCancelled / .authorizationError / .authenticationError
+        //                       / .validationFailed / .unknownError(PayrailsError?)
+    }
+    func onSessionExpired(_ button: CardPaymentButton) {
+        // Payrails executions are single-use; refresh before retrying.
+    }
 }
 ```
 

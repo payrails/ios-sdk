@@ -215,10 +215,14 @@ SDK calls authorize API
         │                              SDK polls for result
         │                                    │
         │                              ├──── Success ──► onAuthorizeSuccess
-        │                              └──── Failure ──► onAuthorizeFailed
+        │                              └──── Failure ──► onAuthorizeFailed(_:reason:)
+        │                                                + onSessionExpired(_:)
         │
-        └──── Failure ──────────────► onAuthorizeFailed
+        └──── Failure ──────────────► onAuthorizeFailed(_:reason:)
+                                       + onSessionExpired(_:)
 ```
+
+The `reason` argument carries an `AuthorizeFailureReason` discriminator: `.userCancelled` (user dismissed the 3DS sheet), `.authorizationError` (issuer declined), `.authenticationError` (3DS auth failed), `.validationFailed`, or `.unknownError(PayrailsError?)`. `onSessionExpired` fires immediately after every terminal failure to signal that the Payrails execution is single-use and the merchant must refresh before any subsequent attempt. See [`error-handling.md`](error-handling.md) for the full mapping.
 
 ## 3DS flow (detailed)
 

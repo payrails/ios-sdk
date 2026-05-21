@@ -111,19 +111,26 @@ The SDK writes to `LogStore.shared` and also calls `Swift.print`. To see logs in
 - The PayPal SDK requires a client ID in the init payload config; verify the payload includes it
 
 **PayPal checkout WebView dismissed with no result**
-- The user cancelled — `OnPayResult.cancelledByUser` is delivered via the delegate callback
+- The user cancelled — `OnPayResult.cancelledByUser` is delivered via the delegate callback. On `PayrailsCardPaymentButtonDelegate` this surfaces as `onAuthorizeFailed(_:reason:)` with `reason == .userCancelled`, followed by `onSessionExpired(_:)`.
 
 ---
 
 ## Payment issues
 
-**Payment results in `.authorizationFailed`**
-- This maps to `PayrailsError.authenticationError` — the session token has expired
-- Re-initialize the session with a fresh init payload from your backend
+**Payment failed — how do I know why?**
+- `onAuthorizeFailed(_ button:, reason:)` carries an `AuthorizeFailureReason` discriminator. Switch on it to give each case the right UX:
+  - `.userCancelled` — user dismissed the 3DS sheet. Show neutral copy, no error banner.
+  - `.authorizationError(_:)` — issuer rejected the transaction. "Your card was declined."
+  - `.authenticationError(_:)` — 3D Secure authentication failed.
+  - `.validationFailed` — input validation rejected the request before backend.
+  - `.unknownError(_:)` — network, SDK, or other unexpected failure. Inspect the associated `PayrailsError` for detail.
 
-**Payment results in `.failure` after 3DS**
-- The card issuer declined the transaction post-3DS; this is not an SDK error
-- Show the user an appropriate message and optionally offer another payment method
+**My retry on the same card doesn't work after a failure**
+- Payrails executions are single-use. Once a payment terminates (success or failure), the same execution cannot be retried. Implement `onSessionExpired(_:)` to re-fetch a fresh init payload from your backend and re-create the `Session` before the next attempt.
+
+**3DS challenge never appears / `presentPayment(_:)` not called**
+- Confirm that `payButton.presenter = self` is set on the `CardPaymentButton`
+- Confirm your view controller conforms to both `PaymentPresenter` and `PayrailsCardPaymentFormDelegate` if needed
 
 **3DS challenge never appears / `presentPayment(_:)` not called**
 - Confirm that `payButton.presenter = self` is set on the `CardPaymentButton`
