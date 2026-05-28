@@ -70,6 +70,24 @@ jobs:
             brew install xcbeautify
           fi
 
+      - name: Ensure iPhone 16 Pro simulator exists
+        # GitHub's macos-15 runner image occasionally ships without any iPhone
+        # simulators pre-created — only the `Any iOS Simulator Device`
+        # placeholder shows up. xcodebuild then fails the build/test step with
+        # "Unable to find a device matching the provided destination specifier".
+        # Create the simulator on demand from the latest installed iOS runtime.
+        run: |
+          if ! xcrun simctl list devices available | grep -q "iPhone 16 Pro ("; then
+            RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes | map(select(.platform=="iOS" and .isAvailable)) | last | .identifier')
+            if [ -z "$RUNTIME" ] || [ "$RUNTIME" = "null" ]; then
+              echo "::error::No available iOS runtime found on this runner."
+              xcrun simctl list runtimes
+              exit 1
+            fi
+            xcrun simctl create "iPhone 16 Pro" "com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro" "$RUNTIME"
+          fi
+          xcrun simctl list devices "iPhone 16 Pro"
+
       - name: Cache SPM dependencies
         uses: actions/cache@v4
         with:
