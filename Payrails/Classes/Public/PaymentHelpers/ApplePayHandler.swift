@@ -120,7 +120,21 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
     ) {
         didAuthorize = true
         guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
+            // Pre-fix, the spurious `.canceled` emitted on dismissal acted as an accidental
+            // fallback that at least woke the continuation up. With the ONB-766 fix that
+            // path is correctly silent, so this branch must report its own terminal — match
+            // the sibling guard below that already does this for `payloadData` failures.
+            delegate?.paymentHandlerDidFinish(
+                handler: self,
+                type: .applePay,
+                status: .error(nil),
+                payload: nil
+            )
             paymentCompletion(.init(status: .failure, errors: nil))
+            // Belt-and-braces: rely on `…DidFinish` to dismiss only on iOS versions that
+            // honour the auto-dismiss-after-failure contract. iOS 26 simulator does not,
+            // leaving the failure UI stuck. Match the success branch and dismiss here.
+            controller.dismiss(animated: true)
             return
         }
 
@@ -145,6 +159,8 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
                 payload: nil
             )
             paymentCompletion(.init(status: .failure, errors: nil))
+            // See the sibling guard above — explicit dismiss to survive sim auto-dismiss quirks.
+            controller.dismiss(animated: true)
             return
         }
 
