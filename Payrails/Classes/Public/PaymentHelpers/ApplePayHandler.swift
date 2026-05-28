@@ -14,7 +14,11 @@ class ApplePayHandler: NSObject {
     /// Without it, a successful Apple Pay payment was being followed by a spurious
     /// `.canceled` callback that flipped `isPaymentInProgress = false` and tripped the
     /// `guard isRunning` check in `PayrailsAPI` mid-`makePayment` (ONB-766).
-    private var didAuthorize = false
+    ///
+    /// `internal` (not `private`) so tests can simulate the latched state without having
+    /// to construct a real `PKPayment` — PassKit doesn't expose a public initializer for
+    /// `PKPayment`, which would otherwise make this branch unreachable from unit tests.
+    internal var didAuthorize = false
 
     init(
         config: PaymentOptions.ApplePayConfig,
