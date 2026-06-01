@@ -185,15 +185,18 @@ struct CardFormConfig {
 func pay(with type: PaymentType?, storedInstrument: StoredInstrument?)
 ```
 
-**Delegate Protocol**:
+**Delegate Protocol** (as of ONB-739):
 ```swift
 protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: CardPaymentButton)
     func onAuthorizeSuccess(_ button: CardPaymentButton)
+    func onAuthorizePending(_ button: CardPaymentButton)
     func onThreeDSecureChallenge(_ button: CardPaymentButton)
-    func onAuthorizeFailed(_ button: CardPaymentButton)
+    func onAuthorizeFailed(_ button: CardPaymentButton, failure: AuthorizationFailure)
 }
 ```
+
+`AuthorizationFailure` carries `code: AuthorizationFailureReason`, `message: String` (backend-extracted, with generic fallback, never nil), and `rawError: Error?`. The four `code` values: `.userCancelled`, `.authorizationError`, `.authenticationError`, `.unknownError`. Session refresh after a poisoned execution is driven by the `onSessionExpired` closure supplied at `Payrails.createSession(with:onSessionExpired:)` time — NOT a per-button delegate method. See [public/sdk-api-reference.md](public/sdk-api-reference.md).
 
 ### 4. CardPaymentHandler
 
@@ -404,19 +407,33 @@ extension ViewController: PayrailsCardPaymentButtonDelegate {
     func onPaymentButtonClicked(_ button: CardPaymentButton) {
         // Handle payment initiation
     }
-    
+
     func onAuthorizeSuccess(_ button: CardPaymentButton) {
         // Handle successful payment
     }
-    
+
     func onThreeDSecureChallenge(_ button: CardPaymentButton) {
         // Handle 3DS challenge presentation
     }
-    
-    func onAuthorizeFailed(_ button: CardPaymentButton) {
-        // Handle payment failure
+
+    func onAuthorizeFailed(_ button: CardPaymentButton, failure: AuthorizationFailure) {
+        switch failure.code {
+        case .userCancelled:        // user dismissed the 3DS sheet
+            break
+        case .authorizationError:   // issuer declined / 3DS rejected
+            _ = failure.message     // backend-extracted reason (never nil)
+        case .authenticationError:  // session token rejected (401 / 403)
+            break
+        case .unknownError:         // network / SDK / unexpected
+            _ = failure.rawError
+        }
     }
 }
+
+// Session refresh after a poisoned execution is configured at session creation:
+//   Payrails.createSession(with: configuration, onSessionExpired: { completion in
+//       myBackend.fetchPayrailsInit { result in completion(result) }
+//   })
 
 extension ViewController: PaymentPresenter {
     func presentPayment(_ viewController: UIViewController) {

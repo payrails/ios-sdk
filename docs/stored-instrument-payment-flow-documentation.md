@@ -198,15 +198,18 @@ func pay(with type: PaymentType? = nil, storedInstrument: StoredInstrument? = ni
 func getStoredInstrument() -> StoredInstrument? // Returns stored instrument if in stored mode
 ```
 
-**Unified Delegate Protocol**:
+**Unified Delegate Protocol** (as of ONB-739):
 ```swift
 protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: CardPaymentButton)
     func onAuthorizeSuccess(_ button: CardPaymentButton)
+    func onAuthorizePending(_ button: CardPaymentButton)
     func onThreeDSecureChallenge(_ button: CardPaymentButton) // Only for card form mode
-    func onAuthorizeFailed(_ button: CardPaymentButton)
+    func onAuthorizeFailed(_ button: CardPaymentButton, failure: AuthorizationFailure)
 }
 ```
+
+> Session refresh after a poisoned execution is driven by the `onSessionExpired` closure passed to `Payrails.createSession(with:onSessionExpired:)` — NOT a per-button delegate method.
 
 **Factory Methods**:
 ```swift
@@ -400,12 +403,14 @@ let result = await payrails.executePayment(
 switch result {
 case .success:
     print("Payment successful")
-case .failure, .authorizationFailed:
-    print("Payment failed")
-case .error(let error):
-    print("Payment error: \(error)")
-case .cancelledByUser:
-    print("Payment cancelled")
+case .authorizationFailed(.userCancelled):
+    print("Payment cancelled by user")
+case .authorizationFailed(.authorizationError(let message)):
+    print("Payment declined: \(message)")
+case .authorizationFailed(.unknownError(let error)):
+    print("Payment error: \(String(describing: error))")
+case .pending:
+    print("Execution pending — refresh the session before retrying")
 }
 ```
 
@@ -637,22 +642,31 @@ let newButton = Payrails.createCardPaymentButton(
 
 #### 2. Update Delegate Conformance
 ```swift
-// Old delegate (deprecated)
+// Old delegate (deprecated; signatures updated to match ONB-739)
 extension ViewController: PayrailsStoredInstrumentPaymentButtonDelegate {
     func onPaymentButtonClicked(_ button: StoredInstrumentPaymentButton) { }
     func onAuthorizeSuccess(_ button: StoredInstrumentPaymentButton) { }
-    func onAuthorizeFailed(_ button: StoredInstrumentPaymentButton) { }
+    func onAuthorizeFailed(_ button: StoredInstrumentPaymentButton, failure: AuthorizationFailure) { }
 }
 
-// New unified delegate
+// New unified delegate (ONB-739 shape)
 extension ViewController: PayrailsCardPaymentButtonDelegate {
     func onPaymentButtonClicked(_ button: CardPaymentButton) { }
     func onAuthorizeSuccess(_ button: CardPaymentButton) { }
-    func onThreeDSecureChallenge(_ button: CardPaymentButton) { 
+    func onAuthorizePending(_ button: CardPaymentButton) { }
+    func onThreeDSecureChallenge(_ button: CardPaymentButton) {
         // Not applicable for stored instruments, but required by protocol
     }
-    func onAuthorizeFailed(_ button: CardPaymentButton) { }
+    func onAuthorizeFailed(_ button: CardPaymentButton, failure: AuthorizationFailure) {
+        // `failure.code` discriminates: .userCancelled / .authorizationError /
+        //                               .authenticationError / .unknownError
+        // `failure.message` carries backend detail; `failure.rawError` carries the
+        // underlying error when one exists.
+    }
 }
+
+// Session refresh after a poisoned execution is configured at session creation:
+//   Payrails.createSession(with: configuration, onSessionExpired: { completion in ... })
 ```
 
 #### 3. Update StoredInstrumentView Integration

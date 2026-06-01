@@ -14,6 +14,31 @@ public extension Payrails {
         private var currentTask: Task<Void, Error>?
         private var payrailsCSE: PayrailsCSE?
 
+        /// Runs in parallel with the 3DS WebView; whichever signal (WebView terminal URL or
+        /// backend terminal status) arrives first wins, guarded by `terminalReported`.
+        private var backgroundPollTask: Task<Void, Never>?
+
+        /// Single-shot guard ensuring the payment outcome is reported exactly once,
+        /// regardless of whether it arrives via the WebView delegate or background polling.
+        private var terminalReported = false
+        private let terminalLock = NSLock()
+
+        /// Captured at the start of the pending phase so the user-dismissed-3DS
+        /// confirmation poll knows which execution to query.
+        private var challengeExecutionUrl: URL?
+
+        /// Optional refresh handler supplied by the merchant at `createSession` time.
+        /// Invoked by `refreshIfPossible()` after the SDK detects the Payrails execution
+        /// is poisoned (e.g. user abandoned 3DS, no terminal confirmed) so the SDK can
+        /// rebuild its internal config in place without forcing the merchant to recreate
+        /// the `Session` and reassign it on every cached button / form.
+        private let onSessionExpired: SessionExpiredHandler?
+
+        /// Single-shot guard preventing overlapping refreshes. Cleared once the closure's
+        /// completion fires (whether success or failure).
+        private var isRefreshing = false
+        private let refreshLock = NSLock()
+
         var debugConfig: SDKConfig {
             return self.config
         }
@@ -25,9 +50,11 @@ public extension Payrails {
         }
 
         init(
-            _ configuration: Payrails.Configuration
+            _ configuration: Payrails.Configuration,
+            onSessionExpired: SessionExpiredHandler? = nil
         ) throws {
             self.option = configuration.option
+            self.onSessionExpired = onSessionExpired
             self.config = try parse(config: configuration)
 
             self.payrailsAPI = PayrailsAPI(config: config)
@@ -38,6 +65,10 @@ public extension Payrails {
                 self.payrailsCSE = try PayrailsCSE(data: configuration.initData.data, version: configuration.initData.version)
             } catch {
                 print("Failed to initialize PayrailsCSE:", error)
+            }
+
+            if onSessionExpired == nil {
+                Payrails.log("⚠️ No onSessionExpired handler provided to createSession. The SDK cannot self-heal if the user abandons a 3DS challenge — the next payment attempt against this Session will fail. See SessionExpiredHandler docs.")
             }
         }
 
@@ -102,6 +133,7 @@ public extension Payrails {
         ) {
             isPaymentInProgress = true
             self.onResult = onResult
+            resetTerminalGuard()
 
             guard prepareHandler(
                 for: instrument.type,
@@ -124,7 +156,6 @@ public extension Payrails {
                     "storeInstrument": false
                 ]
                 do {
-                    print("calling make payment")
                     let paymentStatus = try await strongSelf.payrailsAPI.makePayment(
                         type: instrument.type,
                         payload: body
@@ -147,6 +178,7 @@ public extension Payrails {
 
             isPaymentInProgress = true
             self.onResult = onResult
+            resetTerminalGuard()
 
             guard prepareHandler(
                 for: type,
@@ -159,7 +191,7 @@ public extension Payrails {
             }
 
             guard let total = Double(config.amount.value) else {
-                onResult(.error(.invalidDataFormat))
+                onResult(.authorizationFailed(.unknownError(.invalidDataFormat)))
                 isPaymentInProgress = false
                 return
             }
@@ -188,7 +220,7 @@ public extension Payrails {
 
             guard let paymentComposition = paymentComposition else {
                 isPaymentInProgress = false
-                onResult?(.error(.unsupportedPayment(type: type)))
+                onResult?(.authorizationFailed(.unknownError(.unsupportedPayment(type: type))))
                 return false
             }
 
@@ -204,7 +236,7 @@ public extension Payrails {
                     )
                     self.paymentHandler = payPalHandler
                 default:
-                    onResult?(.error(.incorrectPaymentSetup(type: type)))
+                    onResult?(.authorizationFailed(.unknownError(.incorrectPaymentSetup(type: type))))
                     return false
                 }
             case .applePay:
@@ -218,14 +250,14 @@ public extension Payrails {
                     self.paymentHandler = applePayHandler
                 default:
                     isPaymentInProgress = false
-                    onResult?(.error(.incorrectPaymentSetup(type: type)))
+                    onResult?(.authorizationFailed(.unknownError(.incorrectPaymentSetup(type: type))))
                     return false
                 }
             case .card:
                 guard let providerConfigId = config.vaultConfiguration?.providerConfigId,
                       !providerConfigId.isEmpty else {
                     isPaymentInProgress = false
-                    onResult?(.error(.missingData("Vault configuration with providerConfigId is required for card payments.")))
+                    onResult?(.authorizationFailed(.unknownError(.missingData("Vault configuration with providerConfigId is required for card payments."))))
                     return false
                 }
 
@@ -315,10 +347,20 @@ extension Payrails.Session: PaymentHandlerDelegate {
     ) {
         switch status {
         case .canceled:
+            // Backend-confirmed cancel: the issuer redirected to the cancel URL, so the
+            // execution reached a clean terminal. No session refresh needed — only the
+            // abandonment path (no backend terminal) leaves the execution reusable-but-pending.
+            // this will never happen based on backend polling.
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
             isPaymentInProgress = false
-            onResult?(.cancelledByUser)
+            onResult?(.authorizationFailed(.userCancelled))
 
         case .success:
+            // Not yet terminal — the confirmation phase still has to run. But the background
+            // poll started during the pending phase would now race against the confirmation
+            // poll, so cancel it here.
+            cancelBackgroundPolling()
             handler.processSuccessPayload(
                 payload: payload,
                 amount: self.config.amount
@@ -349,9 +391,13 @@ extension Payrails.Session: PaymentHandlerDelegate {
             }
 
         case let .error(error):
+            // Clean terminal reached via the WebView error URL — the execution is closed,
+            // not left pending, so no refresh.
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
             isPaymentInProgress = false
             let finalError = error ?? PayrailsError.unknown(error: nil)
-            onResult?(.error(finalError as! PayrailsError))
+            onResult?(.authorizationFailed(.unknownError(finalError as? PayrailsError)))
             onResult = nil
             paymentHandler = nil
         }
@@ -362,9 +408,81 @@ extension Payrails.Session: PaymentHandlerDelegate {
         error: PayrailsError,
         type: Payrails.PaymentType
     ) {
+        guard claimTerminal() else { return }
+        cancelBackgroundPolling()
         isPaymentInProgress = false
-        onResult?(.error(error))
+        onResult?(.authorizationFailed(.unknownError(error)))
         paymentHandler = nil
+    }
+
+    /// Called when the user interactively dismissed the 3DS challenge (e.g. swipe-down on
+    /// the modal). Two things to figure out before reporting an outcome:
+    ///
+    ///   1. Did the backend actually reach a terminal status that we just haven't
+    ///      observed yet? If yes, report that terminal — NOT a cancellation.
+    ///   2. If we genuinely can't confirm a terminal within a brief window, the user
+    ///      abandoned the flow and the execution is left in pending state on the backend.
+    ///      Emit `.authorizationFailed(.userCancelled)` and kick off the Session's in-place
+    ///      refresh via the merchant's `onSessionExpired` closure (the execution is
+    ///      reusable-but-pending, so the next attempt would otherwise be blocked).
+    ///
+    /// Uses a 6-attempt × 1s confirmation poll (per @kumaraksi's review on PR #78: a fixed
+    /// wait can give false negatives if backend reconciliation takes longer). Matches the
+    /// Web SDK's redirect-cancel pattern in `web-sdk/.../generic-redirect/index.ts:491-518`.
+    func paymentHandlerUserDidDismissChallenge(handler: PaymentHandler) {
+        let confirmationPollAttempts = 3
+        let confirmationPollInterval: UInt64 = 1_000_000_000   // 1 second
+
+        Task { [weak self] in
+            guard let self = self, let url = self.challengeExecutionUrl else {
+                // No execution URL captured — we can only fall through to declaring
+                // cancellation. Should not happen in practice (the URL is captured at
+                // startBackgroundPollingDuringChallenge time).
+                await MainActor.run { [weak self] in self?.emitUserCancelledAfterDismiss() }
+                return
+            }
+
+            for attempt in 1...confirmationPollAttempts {
+                if Task.isCancelled { return }
+                // Use the bounded one-shot read here — NOT pollForTerminalDuringChallenge,
+                // which can block for up to ~310s on its internal long poll and would leave
+                // the button spinning until it returns. The grace window must resolve in a
+                // few seconds so .userCancelled can be surfaced and the loading state cleared.
+                if let status = try? await self.payrailsAPI.fetchTerminalStatusOnce(executionUrl: url) {
+                    // The backend has reached a real terminal during the grace window.
+                    // Route it through the normal handler so the merchant sees the
+                    // ACTUAL outcome (success/failure with backend data), NOT a cancellation.
+                    await MainActor.run { [weak self] in
+                        self?.handleBackgroundPollTerminal(status: status)
+                    }
+                    return
+                }
+                if attempt < confirmationPollAttempts {
+                    try? await Task.sleep(nanoseconds: confirmationPollInterval)
+                }
+            }
+
+            // All attempts exhausted with no backend terminal — the user abandoned the flow
+            // and the execution remains pending. Surface .userCancelled and refresh.
+            await MainActor.run { [weak self] in self?.emitUserCancelledAfterDismiss() }
+        }
+    }
+
+    /// Single-shot terminal claim for the user-dismissed-with-no-resolution path.
+    /// Bails silently if the background poll already reported a real terminal.
+    ///
+    /// Surfaces `.authorizationFailed(.userCancelled)` to the caller, then fires
+    /// `refreshIfPossible()` because the execution is left non-terminal (pending) on the
+    /// backend — the merchant's next payment attempt would otherwise hit the dead execution.
+    private func emitUserCancelledAfterDismiss() {
+        guard claimTerminal() else { return }
+        cancelBackgroundPolling()
+        isPaymentInProgress = false
+        onResult?(.authorizationFailed(.userCancelled))
+        onResult = nil
+        paymentHandler = nil
+        // Non-terminal-left: refresh so the next attempt works against a fresh execution.
+        refreshIfPossible()
     }
 
     func paymentHandlerDidHandlePending(
@@ -380,7 +498,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
 
         guard let link else {
             isPaymentInProgress = false
-            onResult?(.error(.missingData("Link response is missing")))
+            onResult?(.authorizationFailed(.unknownError(.missingData("Link response is missing"))))
             paymentHandler = nil
             return
         }
@@ -412,15 +530,201 @@ extension Payrails.Session: PaymentHandlerDelegate {
 
     private func handle(paymentStatus: PayrailsAPI.PaymentStatus) {
         switch paymentStatus {
-        case .failed:
-            onResult?(.failure)
+        case let .failed(message):
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
+            onResult?(.authorizationFailed(.authorizationError(message: message)))
         case .success:
+            guard claimTerminal() else { return }
+            cancelBackgroundPolling()
             onResult?(.success)
         case let .pending(executionResult):
+            // Bail if a terminal has already been reported. Protects against late
+            // `.pending` arrivals (e.g. an in-flight `confirmPayment` task completing
+            // after the WebView / background poll already resolved the payment) firing
+            // stale `paymentHandlerWillRequestChallengePresentation` callbacks on the
+            // delegate — which would surface as a phantom `onThreeDSecureChallenge`
+            // after `onAuthorizeFailed` / `onAuthorizeSuccess`.
+            if isTerminalReported() { return }
+
+            // Branch on `actionRequired`:
+            //   - nil  → no action for the SDK to perform; surface `.pending` to the
+            //            caller so the merchant can poll / refresh / decide.
+            //   - else → perform the action (3DS challenge) and start the background
+            //            poll so we can resolve the payment even if the WebView stalls.
+            guard executionResult.actionRequired != nil else {
+                guard claimTerminal() else { return }
+                cancelBackgroundPolling()
+                // Backend pending with no action for the SDK. The execution is still live
+                // and may settle later, so surface `.pending` and do NOT refresh — refresh
+                // is reserved for non-terminal-left abandonment / timeout paths.
+                onResult?(.pending)
+                break
+            }
             paymentHandler?.handlePendingState(with: executionResult)
+            startBackgroundPollingDuringChallenge(executionResult: executionResult)
             return
         }
 
+        // `.failed` and `.success` are clean terminals — the execution is closed, not left
+        // pending, so no refresh here.
+        currentTask?.cancel()
+        currentTask = nil
+        isPaymentInProgress = false
+        onResult = nil
+        paymentHandler = nil
+    }
+
+    /// Single-shot guard: returns `true` only on the first call after each reset. Any subsequent
+    /// caller (e.g. WebView delegate firing after background polling already resolved the
+    /// payment) bails out without reporting a duplicate outcome.
+    private func claimTerminal() -> Bool {
+        terminalLock.lock()
+        defer { terminalLock.unlock() }
+        if terminalReported { return false }
+        terminalReported = true
+        return true
+    }
+
+    /// Lock-respecting read of the terminal-reported flag. Used by code paths that need
+    /// to bail when a terminal has already fired but do NOT want to claim it themselves
+    /// (e.g. a late `.pending` status that should not retrigger challenge presentation).
+    private func isTerminalReported() -> Bool {
+        terminalLock.lock()
+        defer { terminalLock.unlock() }
+        return terminalReported
+    }
+
+    private func resetTerminalGuard() {
+        terminalLock.lock()
+        terminalReported = false
+        terminalLock.unlock()
+    }
+
+    /// Self-heals the Session in place when the merchant supplied a refresh handler.
+    ///
+    /// Called only from paths that leave the Payrails execution non-terminal (pending),
+    /// where the next payment attempt against the cached `Session` would fail:
+    ///   - `emitUserCancelledAfterDismiss()` — user abandoned 3DS, confirmation poll found
+    ///     no terminal.
+    ///   - `handle(error:)` for a polling timeout or an expired token (HTTP 401 / 403).
+    /// Clean terminals (success, backend decline, cancel-URL) do NOT call this — the
+    /// execution is already closed there.
+    ///
+    /// Behaviour:
+    ///   - If no `onSessionExpired` handler was provided, this is a no-op (the
+    ///     warning was already logged at `Session.init` time).
+    ///   - If a refresh is already in flight, the second call is a no-op (guarded
+    ///     by `isRefreshing`).
+    ///   - On success: re-parse the fresh `InitData`, rebuild `config`,
+    ///     `payrailsAPI`, `payrailsCSE`, and `executionId` in place. The
+    ///     merchant's `Session` reference and every cached button/form keep
+    ///     working — only the underlying execution changes.
+    ///   - On failure: log and leave the Session as-is. The next payment tap will
+    ///     fail naturally with whatever the dead execution emits.
+    private func refreshIfPossible() {
+        guard let handler = onSessionExpired else { return }
+
+        refreshLock.lock()
+        if isRefreshing {
+            refreshLock.unlock()
+            return
+        }
+        isRefreshing = true
+        refreshLock.unlock()
+
+        handler { [weak self] result in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                defer {
+                    self.refreshLock.lock()
+                    self.isRefreshing = false
+                    self.refreshLock.unlock()
+                }
+
+                switch result {
+                case let .success(newInitData):
+                    do {
+                        let newConfiguration = Payrails.Configuration(
+                            initData: newInitData,
+                            option: self.option
+                        )
+                        let newConfig = try self.parse(config: newConfiguration)
+                        self.config = newConfig
+                        self.payrailsAPI = PayrailsAPI(config: newConfig)
+                        self.executionId = newConfig.execution?.id
+                        do {
+                            self.payrailsCSE = try PayrailsCSE(
+                                data: newInitData.data,
+                                version: newInitData.version
+                            )
+                        } catch {
+                            Payrails.log("Session refresh: PayrailsCSE rebuild failed: \(error)")
+                        }
+                        Payrails.log("Session refreshed in place; new executionId=\(self.executionId ?? "<none>")")
+                    } catch {
+                        Payrails.log("Session refresh: parse failed: \(error)")
+                    }
+                case let .failure(error):
+                    Payrails.log("Session refresh handler reported failure: \(error)")
+                }
+            }
+        }
+    }
+
+    private func cancelBackgroundPolling() {
+        backgroundPollTask?.cancel()
+        backgroundPollTask = nil
+    }
+
+    /// Starts polling the workflow execution URL in parallel with the 3DS WebView. If the
+    /// backend reaches `authorizeSuccessful` / `authorizeFailed` before the WebView lands on a
+    /// recognized terminal URL (e.g. backend redirect chain stalls, network blip, unknown
+    /// return URL), polling will resolve the payment and dismiss the WebView. Otherwise the
+    /// WebView path wins and cancels this task.
+    private func startBackgroundPollingDuringChallenge(executionResult: GetExecutionResult) {
+        guard let url = URL(string: executionResult.links.`self`) else { return }
+        // Capture the URL for the user-dismissed-3DS confirmation poll path.
+        challengeExecutionUrl = url
+        cancelBackgroundPolling()
+        backgroundPollTask = Task { [weak self] in
+            guard let self = self else { return }
+            do {
+                let status = try await self.payrailsAPI.pollForTerminalDuringChallenge(executionUrl: url)
+                if Task.isCancelled { return }
+                await MainActor.run { [weak self] in
+                    self?.handleBackgroundPollTerminal(status: status)
+                }
+            } catch {
+                // Background poll could not resolve the payment (timed out, network error, etc.).
+                // Stay silent so the WebView path remains the primary resolution channel.
+                #if DEBUG
+                Payrails.log("Background polling ended without terminal: \(error)")
+                #endif
+            }
+        }
+    }
+
+    private func handleBackgroundPollTerminal(status: PayrailsAPI.PaymentStatus) {
+        // Only proceed if no terminal has been reported yet. If the WebView already resolved
+        // the payment, this call is a no-op.
+        guard claimTerminal() else { return }
+        paymentHandler?.dismissPresentedView()
+        // Route through the same handler that processes WebView-driven terminals so cleanup
+        // and `onResult` propagation are identical.
+        switch status {
+        case let .failed(message):
+            onResult?(.authorizationFailed(.authorizationError(message: message)))
+        case .success:
+            onResult?(.success)
+        case .pending:
+            // The polling target excludes `authorizePending`, so this branch should not occur.
+            // If it does, treat as no-op and let the WebView path drive.
+            return
+        }
+        // Background poll reached a clean terminal (`.success` / `.failed`) — the execution
+        // is closed, not left pending, so no refresh.
         currentTask?.cancel()
         currentTask = nil
         isPaymentInProgress = false
@@ -429,20 +733,49 @@ extension Payrails.Session: PaymentHandlerDelegate {
     }
 
     private func handle(error: Error) {
-        Payrails.log("Call handle payment withn error")
+        Payrails.log("Call handle payment with error")
+        guard claimTerminal() else { return }
+        cancelBackgroundPolling()
+
+        // `shouldRefresh` is true only when the execution is left non-terminal — i.e. the
+        // SDK gave up without the backend committing a terminal status. That covers an
+        // expired session token (401/403) and a polling timeout: in both cases the next
+        // attempt would target a dead/pending execution unless we refresh. Decode failures,
+        // missing data, and other hard errors are NOT refreshed.
+        let failure: AuthorizationFailure
+        var shouldRefresh = false
+
         if let payrailsError = error as? PayrailsError {
             switch payrailsError {
             case .authenticationError:
-                onResult?(.authorizationFailed)
+                // HTTP 401 / 403 — session token expired or invalid. Refreshing the session
+                // is precisely the remedy, so this joins the non-terminal-left refresh set.
+                failure = .authenticationError
+                shouldRefresh = true
+            case .pollingFailed, .finalStatusNotFoundAfterLongPoll, .longPollingFailed:
+                // The poll exhausted without a terminal — the backend never committed an
+                // outcome, leaving the execution pending. Honest code is `.unknownError`
+                // (the SDK genuinely doesn't know the result); refresh so a retry works.
+                failure = AuthorizationFailure(
+                    code: .unknownError,
+                    message: "The payment status could not be confirmed in time. Please try again.",
+                    rawError: payrailsError
+                )
+                shouldRefresh = true
             default:
-                onResult?(.error(payrailsError))
+                failure = .unknownError(payrailsError)
             }
         } else {
-            onResult?(.error(PayrailsError.unknown(error: error)))
+            failure = .unknownError(PayrailsError.unknown(error: error))
         }
+
+        onResult?(.authorizationFailed(failure))
         isPaymentInProgress = false
         onResult = nil
         paymentHandler = nil
+        if shouldRefresh {
+            refreshIfPossible()
+        }
     }
 }
 

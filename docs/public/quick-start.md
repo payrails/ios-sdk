@@ -85,12 +85,24 @@ let configuration = Payrails.Configuration(
 )
 
 do {
-    let session = try await Payrails.createSession(with: configuration)
+    let session = try await Payrails.createSession(
+        with: configuration,
+        onSessionExpired: { completion in
+            // Re-run your backend's init flow (authentication + initSdk) and hand
+            // the fresh InitData back. The SDK swaps its internal config in place —
+            // your `session` reference and any cached buttons / forms keep working.
+            fetchFreshPayrailsInitData { result in
+                completion(result)
+            }
+        }
+    )
     // session is ready; store it or proceed to build your UI
 } catch {
     print("SDK initialization failed:", error.localizedDescription)
 }
 ```
+
+> **Recommended:** always supply `onSessionExpired` at `createSession` time. The SDK invokes it when it detects the current execution is no longer reusable (most commonly: the user abandoned a 3DS challenge). Without it, the next payment attempt against the poisoned `Session` fails naturally and the SDK logs a warning at init.
 
 ### Callback
 
@@ -175,8 +187,28 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate {
         // Payment succeeded — navigate to confirmation screen
     }
 
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
-        // Payment failed or was declined — show error to user
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, failure: AuthorizationFailure) {
+        switch failure.code {
+        case .userCancelled:
+            // User dismissed the 3DS sheet or otherwise abandoned the flow.
+            // The SDK has already triggered the `onSessionExpired` refresh closure
+            // (supplied at `createSession`) so retries continue to work against
+            // the same `Session` reference.
+            statusLabel.text = "Payment cancelled."
+        case .authorizationError:
+            // Issuer declined / 3DS rejected. `failure.message` is the backend's
+            // extracted failure reason (e.g. "Insufficient funds") with a generic
+            // fallback — never nil.
+            statusLabel.text = "Declined: \(failure.message)"
+        case .authenticationError:
+            // Session token rejected (401 / 403). The SDK fires `onSessionExpired`
+            // in the background; ask the user to retry.
+            statusLabel.text = "Session expired. Please retry."
+        case .unknownError:
+            // Network, SDK, or other unexpected error. `failure.rawError` carries
+            // the underlying error when one exists.
+            statusLabel.text = "Payment failed: \(failure.rawError?.localizedDescription ?? failure.message)."
+        }
     }
 
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {

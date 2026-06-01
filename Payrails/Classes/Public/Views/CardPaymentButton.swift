@@ -5,11 +5,26 @@ public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton)
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton)
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton)
+
+    /// Fires for every terminal failure of an authorization attempt. The `failure` carries a
+    /// `code` discriminating issuer decline, authentication error, user cancellation, and
+    /// other errors, plus a human-readable `message` and the underlying `rawError`. Mirrors
+    /// the Web SDK's `onFailed(action, { code, message, rawError })`.
+    ///
+    /// **Breaking change vs earlier iOS SDK versions** — the method now takes a `failure`
+    /// argument. See PR ONB-739 for migration notes.
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, failure: AuthorizationFailure)
+
+    /// Fires when the backend left the execution in a pending state with no action for the
+    /// SDK to perform. The payment is neither succeeded nor failed — it may settle later.
+    /// Default implementation is a no-op.
+    func onAuthorizePending(_ button: Payrails.CardPaymentButton)
+
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
 }
 
 public extension PayrailsCardPaymentButtonDelegate {
+    func onAuthorizePending(_ button: Payrails.CardPaymentButton) {}
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {}
 }
 
@@ -184,6 +199,7 @@ public extension Payrails {
         }
 
         @objc private func payButtonTapped() {
+            Payrails.log("CardPaymentButton.payButtonTapped fired (isProcessing=\(isProcessing), isUserInteractionEnabled=\(isUserInteractionEnabled), session=\(session != nil ? "present" : "nil"), cardForm=\(cardForm != nil ? "present" : "nil"))")
             delegate?.onPaymentButtonClicked(self)
 
             if let storedInstrument = storedInstrument {
@@ -208,15 +224,6 @@ public extension Payrails {
             }
 
             let paymentType = type ?? .card
-
-            if isStoredInstrumentMode {
-                print("🧩🧩🧩🧩🧩🧩🧩🧩🧩🧩")
-                print("pay with stored instrument")
-            } else {
-                print("-----------------------")
-                print("Save instrument:", self.cardForm?.saveInstrument ?? false)
-                print("-----------------------")
-            }
 
             paymentTask = Task { [weak self, weak session] in
                 await MainActor.run {
@@ -251,20 +258,21 @@ public extension Payrails {
             }
         }
 
-        private func handlePaymentResult(_ result: OnPayResult?) {
+        // internal (not private) so @testable tests can drive the result-routing
+        // logic directly. Not part of the public API surface.
+        internal func handlePaymentResult(_ result: OnPayResult?) {
             switch result {
             case .success:
                 delegate?.onAuthorizeSuccess(self)
-            case .authorizationFailed:
-                delegate?.onAuthorizeFailed(self)
-            case .failure:
-                delegate?.onAuthorizeFailed(self)
-            case .error:
-                delegate?.onAuthorizeFailed(self)
-            case .cancelledByUser:
-                Payrails.log("Payment was cancelled by user")
-            default:
-                Payrails.log("Payment result: unknown state")
+            case let .authorizationFailed(failure):
+                delegate?.onAuthorizeFailed(self, failure: failure)
+            case .pending:
+                // Backend left the execution pending with no action for the SDK to perform.
+                // The payment is not terminal — surface it as pending so the merchant can
+                // decide how to follow up.
+                delegate?.onAuthorizePending(self)
+            case .none:
+                Payrails.log("Payment result: nil")
             }
         }
 
@@ -293,6 +301,7 @@ public extension Payrails {
 // MARK: - PayrailsCardFormDelegate
 extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
     public func cardForm(_ view: Payrails.CardForm, didCollectCardData data: String) {
+        Payrails.log("CardPaymentButton.cardForm didCollectCardData (data length=\(data.count))")
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
@@ -305,6 +314,11 @@ extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
 
     public func cardForm(_ view: Payrails.CardForm, didFailWithError error: Error) {
         Payrails.log("Card collection failed: \(error.localizedDescription)")
-        // Could notify delegate here if needed
+        // Card collection / validation failure is not an authorization outcome — the form
+        // renders its own inline field errors. Just re-enable the button so the user can
+        // correct the input and retry; do not emit onAuthorizeFailed.
+        DispatchQueue.main.async { [weak self] in
+            self?.isProcessing = false
+        }
     }
 }

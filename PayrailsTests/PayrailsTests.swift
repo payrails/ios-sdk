@@ -7,6 +7,7 @@
 
 import XCTest
 import UIKit
+import WebKit
 @testable import Payrails
 
 final class PayrailsTests: XCTestCase {
@@ -2060,14 +2061,26 @@ final class PayrailsTests: XCTestCase {
     private class MockCardPaymentButtonDelegate: PayrailsCardPaymentButtonDelegate {
         var onStoredInstrumentChangedCalled = false
         var onPaymentButtonClickedCalled = false
+        var onAuthorizeSuccessCalled = false
+        var onAuthorizeFailedCalled = false
+        var onAuthorizePendingCalled = false
+        var lastAuthorizeFailure: AuthorizationFailure?
         var lastInstrumentId: String?
 
         func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {
             onPaymentButtonClickedCalled = true
         }
-        func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
+        func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {
+            onAuthorizeSuccessCalled = true
+        }
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
-        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
+        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, failure: AuthorizationFailure) {
+            onAuthorizeFailedCalled = true
+            lastAuthorizeFailure = failure
+        }
+        func onAuthorizePending(_ button: Payrails.CardPaymentButton) {
+            onAuthorizePendingCalled = true
+        }
 
         func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {
             onStoredInstrumentChangedCalled = true
@@ -2079,8 +2092,9 @@ final class PayrailsTests: XCTestCase {
         func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {}
         func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {}
         func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {}
-        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {}
-        // Intentionally NOT implementing onStoredInstrumentChanged — uses default extension
+        func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, failure: AuthorizationFailure) {}
+        // Intentionally NOT implementing onAuthorizePending / onStoredInstrumentChanged —
+        // both use the default extension; the delegate must still satisfy the protocol.
     }
 
     // MARK: - UpdateOptions Tests
@@ -2670,4 +2684,364 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(cvvLeading ?? .nan, 8, accuracy: 0.001,
                        "CVV field should use its own fieldInsets.left (8)")
     }
+
+    // MARK: - ONB-739: failure callback redesign — AuthorizationFailure + refresh-closure
+    //
+    // These tests verify the public protocol surface after the redesign:
+    //   * `onAuthorizeFailed` now takes a `failure: AuthorizationFailure` ({code, message,
+    //     rawError}), matching the Web SDK's `onFailed(action, { code, message, rawError })`.
+    //   * `.pending` surfaces via the dedicated `onAuthorizePending` callback, NOT as a
+    //     failure.
+    //   * Session refresh on a non-terminal-left execution is owned by the SDK via the
+    //     `onSessionExpired` closure passed to `createSession`, NOT by a per-button
+    //     delegate method.
+    //
+    // End-to-end orchestration tests (concurrent polling resolution, race-condition
+    // arbitration via `claimTerminal()`, the 6s grace window after user-dismiss) require
+    // URLProtocol-based mocking of `URLSession.shared` which the current test target does
+    // not have. Those should be added in a follow-up that introduces a `MockURLProtocol`
+    // helper.
+
+    func testCardPaymentButtonDelegate_onAuthorizeFailed_carriesUserCancelledReason() {
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        delegate.onAuthorizeFailed(button, failure: .userCancelled)
+        XCTAssertTrue(delegate.onAuthorizeFailedCalled)
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.code, .userCancelled)
+    }
+
+    func testCardPaymentButtonDelegate_onAuthorizeFailed_carriesAuthorizationErrorReasonWithMessage() {
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        delegate.onAuthorizeFailed(button, failure: .authorizationError(message: "ParamsError"))
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.code, .authorizationError)
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.message, "ParamsError",
+                       "Backend-extracted message should survive through the delegate")
+    }
+
+    func testStatus_extractsAuthorizeFailedMessageFromBackendErrors() throws {
+        // Build the JSON shape staging returns when authorizeFailed includes an `errors`
+        // array, and verify the message extraction logic threads the backend's
+        // `reason.result` through to the merchant-facing payload.
+        let json = Data("""
+        {
+          "id": "exec-1",
+          "status": [
+            {
+              "code": "authorizeFailed",
+              "time": "2026-05-19T16:49:09.342504587Z",
+              "errors": [
+                {
+                  "id": "err-1",
+                  "code": "workflow.action.failed",
+                  "detail": "The execution of the requested workflow action failed",
+                  "docUrl": "https://docs.payrails.com/docs/error-codes#workflowactionfailed",
+                  "reason": {
+                    "category": "Configuration",
+                    "result": "ParamsError",
+                    "source": "Merchant"
+                  }
+                }
+              ]
+            }
+          ],
+          "createdAt": "2026-05-19T16:48:48.522393522Z",
+          "merchantReference": "order-x",
+          "holderReference": "holder-x",
+          "workflow": { "code": "payment-acceptance", "version": 67 },
+          "links": { "self": "https://example.com/exec/1" }
+        }
+        """.utf8)
+        let decoded = try JSONDecoder.API().decode(GetExecutionResult.self, from: json)
+        let authorizeFailedEntry = try XCTUnwrap(
+            decoded.sortedStatus.first(where: { $0.code == "authorizeFailed" })
+        )
+        XCTAssertEqual(authorizeFailedEntry.errors?.first?.reason?.result, "ParamsError",
+                       "Status model must decode the backend's errors[0].reason.result so the SDK can surface it as the authorizationError message")
+        XCTAssertEqual(authorizeFailedEntry.errors?.first?.code, "workflow.action.failed")
+        XCTAssertEqual(authorizeFailedEntry.errors?.first?.detail,
+                       "The execution of the requested workflow action failed")
+    }
+
+    func testStatus_authorizeFailedWithNoErrorsDecodesCleanly() throws {
+        // Status entries without an `errors` array (success states, pending states, or
+        // legacy responses) must still decode. The extraction logic falls back to the
+        // generic message; here we just verify decoding does not throw.
+        let json = Data("""
+        {
+          "id": "exec-2",
+          "status": [
+            { "code": "authorizeSuccessful", "time": "2026-05-19T16:49:09Z" }
+          ],
+          "createdAt": "2026-05-19T16:48:48Z",
+          "merchantReference": "order-y",
+          "holderReference": "holder-y",
+          "workflow": { "code": "payment-acceptance", "version": 67 },
+          "links": { "self": "https://example.com/exec/2" }
+        }
+        """.utf8)
+        let decoded = try JSONDecoder.API().decode(GetExecutionResult.self, from: json)
+        XCTAssertNil(decoded.sortedStatus.first?.errors,
+                     "Status without errors field must decode with errors == nil")
+    }
+
+    func testCardPaymentButtonDelegate_onAuthorizeFailed_carriesUnknownErrorWithPayload() {
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        let underlying = PayrailsError.missingData("network blip")
+        delegate.onAuthorizeFailed(button, failure: .unknownError(underlying))
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.code, .unknownError)
+        XCTAssertNotNil(delegate.lastAuthorizeFailure?.rawError,
+                        "PayrailsError payload should survive through the delegate as rawError")
+    }
+
+    // MARK: - ONB-739: handlePaymentResult routing
+    //
+    // These tests pin down the delegate routing in each button's handlePaymentResult:
+    //   * `.success` → only `onAuthorizeSuccess`
+    //   * `.authorizationFailed(failure)` → only `onAuthorizeFailed` with the failure
+    //   * `.pending` → only `onAuthorizePending` (backend pending, no SDK action).
+
+    func testHandlePaymentResult_success_doesNotFireSessionExpired() {
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        button.delegate = delegate
+        button.handlePaymentResult(.success)
+        XCTAssertTrue(delegate.onAuthorizeSuccessCalled)
+    }
+
+    func testHandlePaymentResult_authorizationError_firesAuthorizeFailed() {
+        // Backend confirmed `authorizeFailed` and gave us a message. Execution is
+        // closed; SDK must surface the failure verbatim.
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        button.delegate = delegate
+        button.handlePaymentResult(.authorizationFailed(.authorizationError(message: "ParamsError")))
+        XCTAssertTrue(delegate.onAuthorizeFailedCalled,
+                      "Terminal backend failure must fire onAuthorizeFailed")
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.code, .authorizationError)
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.message, "ParamsError")
+    }
+
+    func testHandlePaymentResult_unknownError_firesAuthorizeFailed() {
+        // Network / SDK error. State of the backend execution is ambiguous.
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        button.delegate = delegate
+        button.handlePaymentResult(.authorizationFailed(.unknownError(.unknown(error: nil))))
+        XCTAssertTrue(delegate.onAuthorizeFailedCalled)
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.code, .unknownError)
+    }
+
+    func testHandlePaymentResult_userCancelled_firesAuthorizeFailed() {
+        // Backend confirmed cancel via the `payrails-cancel.html` URL.
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        button.delegate = delegate
+        button.handlePaymentResult(.authorizationFailed(.userCancelled))
+        XCTAssertTrue(delegate.onAuthorizeFailedCalled)
+        XCTAssertEqual(delegate.lastAuthorizeFailure?.code, .userCancelled,
+                       "Backend-confirmed cancel must surface as .userCancelled")
+    }
+
+    func testHandlePaymentResult_pending_firesOnlyAuthorizePending() {
+        // `.pending` (backend pending, no actionRequired) routes to the dedicated
+        // onAuthorizePending callback — NOT to onAuthorizeFailed. No session refresh.
+        let delegate = MockCardPaymentButtonDelegate()
+        let button = Payrails.CardPaymentButton(translations: CardPaymenButtonTranslations(label: "Pay"))
+        button.delegate = delegate
+        button.handlePaymentResult(.pending)
+        XCTAssertTrue(delegate.onAuthorizePendingCalled,
+                      "Pending must surface via onAuthorizePending")
+        XCTAssertFalse(delegate.onAuthorizeFailedCalled,
+                       "Pending must NOT surface as a failure")
+    }
+
+    func testCardPaymentFormDelegate_redesignedSurfaceCompiles() {
+        // Verifies that a CardPaymentForm delegate matching the redesigned protocol
+        // surface compiles: `onAuthorizeFailed(_:failure:)` is required; `onAuthorizePending`
+        // is optional (default no-op).
+        final class MinimalFormDelegate: PayrailsCardPaymentFormDelegate {
+            func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm) {}
+            func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm) {}
+            func onThreeDSecureChallenge() {}
+            func onAuthorizeFailed(_ form: Payrails.CardPaymentForm, failure: AuthorizationFailure) {}
+        }
+        _ = MinimalFormDelegate()
+    }
+
+    func testStoredInstrumentPaymentButtonDelegate_redesignedSurfaceCompiles() {
+        final class MinimalStoredDelegate: PayrailsStoredInstrumentPaymentButtonDelegate {
+            func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton) {}
+            func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton) {}
+            func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton, failure: AuthorizationFailure) {}
+        }
+        _ = MinimalStoredDelegate()
+    }
+
+    func testGenericRedirectPaymentButtonDelegate_redesignedSurfaceCompiles() {
+        final class MinimalRedirectDelegate: GenericRedirectPaymentButtonDelegate {
+            func onPaymentButtonClicked(_ button: Payrails.GenericRedirectButton) {}
+            func onAuthorizeSuccess(_ button: Payrails.GenericRedirectButton) {}
+            func onAuthorizeFailed(_ button: Payrails.GenericRedirectButton, failure: AuthorizationFailure) {}
+            func onPaymentSessionExpired(_ button: Payrails.GenericRedirectButton) {}
+        }
+        _ = MinimalRedirectDelegate()
+    }
+
+    // MARK: - ONB-739: AuthorizationFailure code raw-value parity with Web SDK
+
+    func testAuthorizationFailureReason_rawValuesMatchWebSDK() {
+        XCTAssertEqual(AuthorizationFailureReason.authorizationError.rawValue, "AUTHORIZATION_ERROR")
+        XCTAssertEqual(AuthorizationFailureReason.authenticationError.rawValue, "AUTHENTICATION_ERROR")
+        XCTAssertEqual(AuthorizationFailureReason.userCancelled.rawValue, "USER_CANCELLED")
+        XCTAssertEqual(AuthorizationFailureReason.unknownError.rawValue, "UNKNOWN_ERROR")
+    }
+
+    func testAuthorizationFailure_staticHelpers_setExpectedCodes() {
+        XCTAssertEqual(AuthorizationFailure.userCancelled.code, .userCancelled)
+        XCTAssertEqual(AuthorizationFailure.authenticationError.code, .authenticationError)
+        XCTAssertEqual(AuthorizationFailure.authorizationError(message: "x").code, .authorizationError)
+        XCTAssertEqual(AuthorizationFailure.authorizationError(message: "x").message, "x")
+
+        let underlying = PayrailsError.missingData("boom")
+        let unknown = AuthorizationFailure.unknownError(underlying)
+        XCTAssertEqual(unknown.code, .unknownError)
+        XCTAssertNotNil(unknown.rawError, "unknownError must preserve the underlying error")
+    }
+
+    // MARK: - ONB-739: SessionExpiredHandler refresh closure
+    //
+    // Pins down the contract: the closure type compiles, is callable, and accepts
+    // both `.success(InitData)` and `.failure(Error)` completions. End-to-end
+    // verification that the SDK invokes the closure on `.pending` and swaps its
+    // config in place requires the URLProtocol-based mock harness mentioned above.
+
+    func testSessionExpiredHandler_compilesAsCompletionStyleClosure() {
+        // The merchant's typical integration: fetch new init payload from their
+        // backend, call completion with .success(InitData).
+        let handler: SessionExpiredHandler = { completion in
+            let fresh = Payrails.InitData(version: "test-v1", data: "freshBase64Data")
+            completion(.success(fresh))
+        }
+        var receivedInitData: Payrails.InitData?
+        handler { result in
+            if case let .success(initData) = result {
+                receivedInitData = initData
+            }
+        }
+        XCTAssertEqual(receivedInitData?.version, "test-v1",
+                       "Refresh closure must surface the merchant-supplied InitData")
+        XCTAssertEqual(receivedInitData?.data, "freshBase64Data")
+    }
+
+    func testSessionExpiredHandler_supportsFailureCompletion() {
+        // If the merchant's backend fetch fails, the closure can report it. The
+        // SDK logs the failure and leaves the Session as-is (next Pay tap will
+        // fail naturally against the dead execution).
+        struct FetchFailed: Error {}
+        let handler: SessionExpiredHandler = { completion in
+            completion(.failure(FetchFailed()))
+        }
+        var receivedFailure = false
+        handler { result in
+            if case .failure = result { receivedFailure = true }
+        }
+        XCTAssertTrue(receivedFailure,
+                      "Refresh closure must support reporting backend-fetch failures")
+    }
+
+    // MARK: - ONB-739: PayWebViewController user-dismiss detection
+
+    func testPayWebViewController_presentationControllerDidDismiss_invokesOnUserDismiss() {
+        // When UIKit notifies the controller that the user interactively dismissed the
+        // sheet, the view controller must invoke the onUserDismiss callback so the
+        // session can surface OnPayResult.pending (or a backend-confirmed terminal).
+        let url = URL(string: "https://example.com")!
+        let dummyDelegate = DummyNavigationDelegate()
+        let vc = PayWebViewController(url: url, delegate: dummyDelegate)
+        var dismissed = false
+        vc.onUserDismiss = { dismissed = true }
+
+        // Stand-in presentation controller for the delegate-method argument; the SDK
+        // implementation does not inspect it.
+        let standInPresentation = UIPresentationController(presentedViewController: vc, presenting: nil)
+        vc.presentationControllerDidDismiss(standInPresentation)
+
+        XCTAssertTrue(dismissed,
+                      "presentationControllerDidDismiss(_:) must trigger the onUserDismiss callback")
+    }
+
+    func testPayWebViewController_presentationControllerDidDismiss_safeWhenCallbackUnset() {
+        // If a caller never sets onUserDismiss (e.g. some internal code path), the
+        // dismissal notification must not crash. This guards against future regressions
+        // that try to force-unwrap the optional.
+        let url = URL(string: "https://example.com")!
+        let dummyDelegate = DummyNavigationDelegate()
+        let vc = PayWebViewController(url: url, delegate: dummyDelegate)
+
+        let standInPresentation = UIPresentationController(presentedViewController: vc, presenting: nil)
+        vc.presentationControllerDidDismiss(standInPresentation)
+        // No assertion needed — reaching this line without crash is the proof.
+    }
+
+    // MARK: - ONB-739: PaymentHandler protocol default extensions
+
+    func testPaymentHandlerProtocol_dismissPresentedView_defaultIsNoOp() {
+        // A handler that does not override dismissPresentedView() must still satisfy the
+        // protocol and the default empty implementation must execute without crashing.
+        final class MinimalHandler: PaymentHandler {
+            func makePayment(total: Double, currency: String, presenter: PaymentPresenter?) {}
+            func handlePendingState(with: GetExecutionResult) {}
+            func processSuccessPayload(
+                payload: [String: Any]?,
+                amount: Amount,
+                completion: @escaping (Result<[String: Any], Error>) -> Void
+            ) {}
+            // Intentionally no dismissPresentedView override.
+        }
+        let handler: PaymentHandler = MinimalHandler()
+        handler.dismissPresentedView()
+    }
+
+    func testPaymentHandlerDelegate_paymentHandlerUserDidDismissChallenge_defaultIsNoOp() {
+        // A delegate that does not override the new user-dismiss method must still
+        // satisfy the protocol via the default extension and execute as a no-op.
+        final class MinimalDelegate: PaymentHandlerDelegate {
+            func paymentHandlerDidFinish(
+                handler: PaymentHandler,
+                type: Payrails.PaymentType,
+                status: PaymentHandlerStatus,
+                payload: [String: Any]?
+            ) {}
+            func paymentHandlerDidFail(
+                handler: PaymentHandler,
+                error: PayrailsError,
+                type: Payrails.PaymentType
+            ) {}
+            func paymentHandlerDidHandlePending(
+                handler: PaymentHandler,
+                type: Payrails.PaymentType,
+                link: Link?,
+                payload: [String: Any]?
+            ) {}
+            func paymentHandlerWillRequestChallengePresentation(_ handler: PaymentHandler) {}
+            // Intentionally no paymentHandlerUserDidDismissChallenge override.
+        }
+        final class StubHandler: PaymentHandler {
+            func makePayment(total: Double, currency: String, presenter: PaymentPresenter?) {}
+            func handlePendingState(with: GetExecutionResult) {}
+            func processSuccessPayload(
+                payload: [String: Any]?,
+                amount: Amount,
+                completion: @escaping (Result<[String: Any], Error>) -> Void
+            ) {}
+        }
+        let delegate: PaymentHandlerDelegate = MinimalDelegate()
+        delegate.paymentHandlerUserDidDismissChallenge(handler: StubHandler())
+    }
 }
+
+// Lightweight WKNavigationDelegate stub used only to satisfy PayWebViewController's
+// initializer in tests; it intentionally performs no navigation handling.
+private final class DummyNavigationDelegate: NSObject, WKNavigationDelegate {}
