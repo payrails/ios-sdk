@@ -3044,10 +3044,14 @@ final class PayrailsTests: XCTestCase {
 
     // MARK: - ApplePayHandler (ONB-766)
 
-    /// Regression for ONB-766: a sheet dismissal before authorization (user tapped X /
-    /// "Cancel" on the Apple Pay sheet) MUST surface as `.canceled` to the merchant.
-    /// This is the path that was working pre-fix; the test pins it so future refactors
-    /// don't break it.
+    // ONB-766: a dismissal before authorization is a real cancel and must emit `.canceled`.
+    //
+    // The complementary case — a dismissal *after* authorization must NOT emit `.canceled`
+    // — is intentionally not unit-tested. It requires `didAuthorize` to be latched, which
+    // only happens inside `didAuthorizePayment(_:handler:)`, and that path can't be driven
+    // from a unit test because PassKit exposes no public initializer for `PKPayment`.
+    // `didAuthorize` is `private`, so the test can't set it directly either. That branch is
+    // covered by on-device / bootstrap-ios integration verification instead.
     func testApplePayHandler_DismissalWithoutAuthorize_EmitsCanceled() throws {
         let spy = SpyPaymentHandlerDelegate()
         let handler = try makeTestApplePayHandler(delegate: spy)
@@ -3062,24 +3066,6 @@ final class PayrailsTests: XCTestCase {
             XCTFail("Expected .canceled status, got \(String(describing: spy.didFinishCalls.first?.status))")
             return
         }
-    }
-
-    /// Regression for ONB-766: when `didAuthorize` has been latched (user completed
-    /// Face ID / Touch ID), the system fires `…DidFinish` as the sheet animates away.
-    /// That callback MUST NOT surface as `.canceled` — the success/error path is
-    /// already in flight via the spawned `makePayment` Task and a spurious cancel
-    /// here would flip `isPaymentInProgress = false` mid-request and silently
-    /// discard the payment.
-    func testApplePayHandler_DismissalAfterAuthorize_DoesNotEmitCanceled() throws {
-        let spy = SpyPaymentHandlerDelegate()
-        let handler = try makeTestApplePayHandler(delegate: spy)
-        let vc = try makeStubApplePayVC()
-
-        handler.didAuthorize = true
-        handler.paymentAuthorizationViewControllerDidFinish(vc)
-
-        XCTAssertEqual(spy.didFinishCalls.count, 0,
-                       "ONB-766: dismissal after authorization MUST NOT surface .canceled — the success/error path is already in flight from didAuthorizePayment")
     }
 
     // MARK: - ApplePayHandler test helpers

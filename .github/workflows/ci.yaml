@@ -71,11 +71,8 @@ jobs:
           fi
 
       - name: Ensure iPhone 16 Pro simulator exists
-        # GitHub's macos-15 runner image occasionally ships without any iPhone
-        # simulators pre-created — only the `Any iOS Simulator Device`
-        # placeholder shows up. xcodebuild then fails the build/test step with
-        # "Unable to find a device matching the provided destination specifier".
-        # Create the simulator on demand from the latest installed iOS runtime.
+        # The macos-15 runner sometimes ships without pre-created iPhone simulators,
+        # which fails xcodebuild's destination lookup. Create one if it's missing.
         run: |
           if ! xcrun simctl list devices available | grep -q "iPhone 16 Pro ("; then
             RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes | map(select(.platform=="iOS" and .isAvailable)) | last | .identifier')
