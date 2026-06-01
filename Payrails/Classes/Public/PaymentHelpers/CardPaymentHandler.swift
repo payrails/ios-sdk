@@ -11,6 +11,14 @@ class CardPaymentHandler: NSObject {
     private var selfLink: String
     private var confirmLink: Link?
 
+    /// Set when the user interactively dismissed the 3DS sheet (swipe-down). Used by
+    /// the WebView navigation delegate to suppress in-flight terminal-URL matches
+    /// (e.g. an issuer redirect to `payrails-error.html` happening concurrently with
+    /// the dismiss). Without this guard, the navigation path can claim the terminal
+    /// first and surface `.error(nil)` → `.unknownError` instead of the swipe's
+    /// intended `.userCancelled` outcome.
+    private var userDidDismissChallenge = false
+
     init(
         delegate: PaymentHandlerDelegate?,
         saveInstrument: Bool,
@@ -95,8 +103,26 @@ extension CardPaymentHandler: PaymentHandler {
                 url: url,
                 delegate: self
             )
+            webViewController.onUserDismiss = { [weak self] in
+                guard let self = self else { return }
+                // Mark BEFORE delegating so any concurrent WebView navigation that
+                // hasn't yet hit `decidePolicyFor` will see the flag and skip its
+                // URL-match terminal action.
+                self.userDidDismissChallenge = true
+                self.delegate?.paymentHandlerUserDidDismissChallenge(handler: self)
+            }
             self.presenter?.presentPayment(webViewController)
             self.webViewController = webViewController
+        }
+    }
+
+    func dismissPresentedView() {
+        // Strong-capture self: when called as part of session teardown, the Session may
+        // release its reference to this handler before the main-queue block runs. The
+        // closure is short-lived so keeping a strong ref for its duration is safe.
+        DispatchQueue.main.async {
+            self.webViewController?.dismiss(animated: true)
+            self.webViewController = nil
         }
     }
 
@@ -151,6 +177,16 @@ extension CardPaymentHandler: PaymentHandler {
 extension CardPaymentHandler: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+
+        // If the user already dismissed the sheet (swipe-down), the swipe-dismiss
+        // handler owns the outcome. Suppress any in-flight terminal-URL matches —
+        // they would otherwise race ahead and claim the terminal first, surfacing
+        // `.unknownError` / `.userCancelled` from the URL match instead of the
+        // intended `.pending` (→ `.userCancelled` + `onSessionExpired`) flow.
+        if userDidDismissChallenge {
+            decisionHandler(.cancel)
+            return
+        }
 
         guard let urlString = navigationAction.request.mainDocumentURL?.absoluteString else {            decisionHandler(.allow)
             return
