@@ -65,24 +65,45 @@ public struct Payrails.Configuration {
 }
 ```
 
-### `Payrails.createSession(with:)`
+### `Payrails.createSession(with:onSessionExpired:)`
 
 Creates and stores a session. All factory methods use the most recently created session.
 
 ```swift
 // Async/await
 public static func createSession(
-    with configuration: Payrails.Configuration
+    with configuration: Payrails.Configuration,
+    onSessionExpired: SessionExpiredHandler? = nil
 ) async throws -> Payrails.Session
 
 // Callback
 public static func createSession(
     with configuration: Payrails.Configuration,
+    onSessionExpired: SessionExpiredHandler? = nil,
     onInit: OnInitCallback
 )
 
 public typealias OnInitCallback = (Result<Payrails.Session, PayrailsError>) -> Void
+
+public typealias SessionExpiredHandler = (
+    @escaping (Result<Payrails.InitData, Error>) -> Void
+) -> Void
 ```
+
+The `onSessionExpired` closure lets the SDK self-heal when the underlying Payrails execution becomes unreusable (typically: user abandoned a 3DS challenge and the backend execution stayed in `authorizePending`). The merchant supplies a closure that fetches fresh `InitData` from their backend; the SDK swaps its internal config in place — the merchant's `Session` reference and cached buttons / forms keep working unchanged.
+
+```swift
+let session = try await Payrails.createSession(
+    with: Payrails.Configuration(initData: initData, option: .init(env: .production)),
+    onSessionExpired: { completion in
+        myBackend.fetchPayrailsInit { result in
+            completion(result)   // .success(Payrails.InitData) or .failure(Error)
+        }
+    }
+)
+```
+
+If the closure is omitted, the SDK logs a warning at init time and cannot recover from a poisoned execution — the next payment attempt against that `Session` will fail naturally.
 
 ---
 
@@ -341,18 +362,51 @@ See [How to Update Checkout Amount](how-to-update-checkout-amount.md) for the fu
 
 ## Callbacks and results
 
-```swift
-public typealias OnInitCallback = (Result<Payrails.Session, PayrailsError>) -> Void
-public typealias OnPayCallback = (OnPayResult) -> Void
+Payment outcomes are delivered to your `CardPaymentButton` / `CardPaymentForm` / `StoredInstrumentPaymentButton` / `GenericRedirectButton` delegate. Failures arrive as an `AuthorizationFailure` struct — a flat `{ code, message, rawError }` shape that mirrors the Web SDK's `onFailed` payload:
 
-public enum OnPayResult {
-    case success
-    case authorizationFailed
-    case failure
-    case error(PayrailsError)
-    case cancelledByUser
+```swift
+/// Payload passed to `onAuthorizeFailed(_:failure:)` on every delegate protocol.
+public struct AuthorizationFailure {
+    /// Discriminating code — switch on this to give each outcome the right UX.
+    public let code: AuthorizationFailureReason
+    /// Human-readable detail. Backend's `errors[0].reason.result` for `.authorizationError`,
+    /// generic fallback for the other cases. Never nil.
+    public let message: String
+    /// Underlying error when one exists (typically populated for `.unknownError`).
+    public let rawError: Error?
+}
+
+/// String-raw-valued discriminator. Raw values match the Web SDK's
+/// `AuthorizationFailureReasons` 1:1.
+public enum AuthorizationFailureReason: String {
+    /// Authorization rejected — issuer declined, 3DS rejected, fraud blocked, etc.
+    case authorizationError  = "AUTHORIZATION_ERROR"
+    /// Session token was rejected (HTTP 401 / 403). The merchant must
+    /// re-initialise the session; the SDK also fires its `onSessionExpired`
+    /// refresh in the background.
+    case authenticationError = "AUTHENTICATION_ERROR"
+    /// The user intentionally abandoned the flow (e.g. swiped the 3DS sheet away).
+    case userCancelled       = "USER_CANCELLED"
+    /// Network failure, decode error, encryption failure, polling timeout, or
+    /// any other unexpected error. `rawError` carries the underlying error.
+    case unknownError        = "UNKNOWN_ERROR"
 }
 ```
+
+> Web's `VALIDATION_FAILED` is intentionally absent on iOS — input validation runs client-side before submission and never reaches this path.
+
+### Delegate callbacks fired
+
+| Outcome | Delegate method fired |
+|---|---|
+| Authorization succeeded | `onAuthorizeSuccess(self)` |
+| Backend declined / rejected authorization | `onAuthorizeFailed(self, failure: .authorizationError(message:))` |
+| Session token expired / rejected | `onAuthorizeFailed(self, failure: .authenticationError)` |
+| User dismissed 3DS sheet (no backend terminal confirmed) | `onAuthorizeFailed(self, failure: .userCancelled)` |
+| Network / SDK error | `onAuthorizeFailed(self, failure: .unknownError(_))` |
+| Backend execution pending with no action required | `onAuthorizePending(self)` |
+
+When the user dismisses the 3DS sheet (or any other path that leaves the Payrails execution in `authorizePending`), the SDK additionally invokes the merchant's `onSessionExpired` closure (supplied at `createSession`) in the background to rebuild its internal config in place — the merchant's `Session` reference keeps working. If the closure was not supplied, the SDK logs a warning at `createSession` time and the next payment attempt against the `Session` will fail naturally against the dead execution.
 
 ---
 
@@ -387,12 +441,27 @@ extension MyCheckoutViewController: PaymentPresenter {
 public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton)
+    func onAuthorizePending(_ button: Payrails.CardPaymentButton)
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton)
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton)
-    // Optional — default implementation provided
+
+    /// Fires for every terminal failure of an authorization attempt. The `failure`
+    /// payload's `.code` discriminates between issuer decline, authentication
+    /// failure, user cancellation, and other errors — see `AuthorizationFailure`.
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, failure: AuthorizationFailure)
+
+    /// Optional — default no-op.
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
 }
 ```
+
+> **Breaking change in ONB-739.** The pre-ONB-739 signature was
+> `onAuthorizeFailed(_ button: Payrails.CardPaymentButton)` with no payload.
+> Merchants migrating from earlier versions must update their delegate
+> conformance to take `failure: AuthorizationFailure` and (if they relied on
+> session-expiry signaling) supply the `onSessionExpired` closure to
+> `createSession`. See the
+> [card-payment-flow documentation](../card-payment-flow-documentation.md)
+> for a migration example.
 
 ### `PayrailsCardFormDelegate`
 

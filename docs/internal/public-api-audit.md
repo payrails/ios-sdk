@@ -106,7 +106,10 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 |---|---|---|
 | `OnInitCallback` | PUBLIC | typealias |
 | `OnPayCallback` | PUBLIC | typealias |
-| `OnPayResult` | PUBLIC | `.success`, `.authorizationFailed`, `.failure`, `.error`, `.cancelledByUser` |
+| `OnPayResult` | PUBLIC | `.success`, `.authorizationFailed(AuthorizationFailure)`, `.pending`. ONB-739 collapsed the prior 5-case enum into a 3-case shape; failure detail moved onto the carried `AuthorizationFailure` struct. `.pending` surfaces when the backend returns `pending` with `actionRequired: nil` (no 3DS, no redirect). |
+| `AuthorizationFailure` | PUBLIC | Struct passed to `onAuthorizeFailed(_:failure:)`. Fields: `code: AuthorizationFailureReason`, `message: String` (backend detail or generic fallback, never nil), `rawError: Error?`. Flat shape, mirrors Web SDK's `onFailed` payload. Added in ONB-739. |
+| `AuthorizationFailureReason` | PUBLIC | String-raw-valued discriminator on `AuthorizationFailure.code`. Cases: `.authorizationError` ("AUTHORIZATION_ERROR"), `.authenticationError` ("AUTHENTICATION_ERROR"), `.userCancelled` ("USER_CANCELLED"), `.unknownError` ("UNKNOWN_ERROR"). Raw values match Web's `AuthorizationFailureReasons` 1:1. Added in ONB-739. |
+| `SessionExpiredHandler` | PUBLIC | typealias for `(@escaping (Result<Payrails.InitData, Error>) -> Void) -> Void`. Closure supplied at `Payrails.createSession(with:onSessionExpired:)` time; the SDK invokes it when it detects the current execution is no longer reusable so the merchant's backend can mint a fresh `InitData`. Added in ONB-739. |
 
 ---
 
@@ -122,8 +125,9 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.CardPaymentButton.setStoredInstrument(_:)` | PUBLIC | Switch to stored instrument mode |
 | `Payrails.CardPaymentButton.clearStoredInstrument()` | PUBLIC | Revert to card form mode |
 | `Payrails.CardPaymentButton.getStoredInstrument()` | PUBLIC | Read current stored instrument |
-| `PayrailsCardPaymentButtonDelegate` | PUBLIC | |
+| `PayrailsCardPaymentButtonDelegate` | PUBLIC | ONB-739: `onAuthorizeFailed` signature changed to `(_:failure:)` taking an `AuthorizationFailure` struct (breaking). Per-button `onSessionExpired(_:)` was removed in favour of the closure on `createSession`. |
 | `PayrailsCardFormDelegate` | PUBLIC | |
+| `PayrailsCardPaymentFormDelegate` | PUBLIC | ONB-739: same `(_:failure:)` change; per-button `onSessionExpired(_:)` removed. |
 
 ---
 
@@ -191,7 +195,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | Symbol | Status | Notes |
 |---|---|---|
 | `Payrails.GenericRedirectButton` | PUBLIC | |
-| `GenericRedirectPaymentButtonDelegate` | PUBLIC | |
+| `GenericRedirectPaymentButtonDelegate` | PUBLIC | ONB-739: `onAuthorizeFailed` signature changed to `(_:failure:)` taking an `AuthorizationFailure` struct (breaking). Per-button `onSessionExpired(_:)` was removed in favour of the closure on `createSession`. Legacy `onPaymentSessionExpired(_:)` retained. |
 
 ---
 
@@ -208,7 +212,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.StoredInstrumentView` | PUBLIC | |
 | `PayrailsStoredInstrumentsDelegate` | PUBLIC | |
 | `PayrailsStoredInstrumentViewDelegate` | PUBLIC | |
-| `PayrailsStoredInstrumentPaymentButtonDelegate` | PUBLIC | |
+| `PayrailsStoredInstrumentPaymentButtonDelegate` | PUBLIC | Deprecated. ONB-739: `onAuthorizeFailed` signature changed to `(_:failure:)` taking an `AuthorizationFailure` struct (breaking). Per-button `onSessionExpired(_:)` was removed in favour of the closure on `createSession`. |
 | `StoredInstrumentsStyle` | PUBLIC | |
 | `StoredInstrumentButtonStyle` | PUBLIC | |
 | `StoredInstrumentsTranslations` | PUBLIC | |

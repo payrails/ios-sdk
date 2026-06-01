@@ -63,26 +63,30 @@ public enum PayrailsError: Error, LocalizedError {
 │                                    ▼                            │
 │                          session.handle(error:)                 │
 │                                    │                            │
-│                    ┌───────────────┼───────────────┐            │
-│                    ▼               ▼               ▼            │
-│            .authenticationError  PayrailsError   raw Error      │
-│                    │               │               │            │
-│                    ▼               ▼               ▼            │
-│           .authorizationFailed  .error(e)   .error(.unknown)   │
+│                                    ▼                            │
+│                         AuthorizationFailure                    │
+│                          { code, message, rawError }            │
 │                                                                 │
 │                           OnPayResult                           │
 │                              │                                  │
 │                              ▼                                  │
 │                 CardPaymentButton.handlePaymentResult           │
 │                              │                                  │
-│              ┌───────────────┼───────────────┐                  │
-│              ▼               ▼               ▼                  │
-│         .success    .authorizationFailed  .failure/.error       │
-│              │          .cancelledByUser      │                 │
-│              ▼               ▼               ▼                  │
-│       onAuthorizeSuccess  onAuthorizeFailed  onAuthorizeFailed  │
-│                          (logged only for                       │
-│                           cancelledByUser)                      │
+│       ┌──────────────────────┼──────────────────────┐           │
+│       ▼                      ▼                      ▼           │
+│   .success         .authorizationFailed         .pending        │
+│       │                  (failure)                  │           │
+│       ▼                      ▼                      ▼           │
+│  onAuthorize-       onAuthorizeFailed         onAuthorize-      │
+│  Success             (failure:)               Pending           │
+│                                                                 │
+│ The `onSessionExpired` closure (supplied at `createSession`)    │
+│ fires in parallel on any path that leaves the Payrails          │
+│ execution non-terminal (pending) on the backend — typically     │
+│ when the user dismissed 3DS and the confirmation-poll grace     │
+│ window found no backend terminal. Backend-confirmed terminals   │
+│ (success / authorization-failed / cancelled-via-URL) do NOT     │
+│ trigger it — those executions are closed cleanly.               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -95,51 +99,52 @@ public enum PayrailsError: Error, LocalizedError {
 ```
 CardPaymentButton.pay()
   └── session.executePayment(with:saveInstrument:presenter:onResult:)
-        ├── prepareHandler() fails → onResult(.error(.unsupportedPayment or .incorrectPaymentSetup))
-        ├── invalid amount format  → onResult(.error(.invalidDataFormat))
+        ├── prepareHandler() fails → onResult(.authorizationFailed(.unknownError(.unsupportedPayment | .incorrectPaymentSetup)))
+        ├── invalid amount format  → onResult(.authorizationFailed(.unknownError(.invalidDataFormat)))
         └── paymentHandler.makePayment()
               └── PayrailsAPI calls
-                    ├── HTTP 401           → handle(error:) → onResult(.authorizationFailed)
-                    ├── PayrailsError      → handle(error:) → onResult(.error(payrailsError))
-                    └── any other Error    → handle(error:) → onResult(.error(.unknown(error:)))
+                    ├── HTTP 401/403       → handle(error:) → onResult(.authorizationFailed(.authenticationError))
+                    │                                       → refreshIfPossible()
+                    ├── backend decline    → onResult(.authorizationFailed(.authorizationError(message: <backend>)))
+                    ├── PayrailsError      → handle(error:) → onResult(.authorizationFailed(.unknownError(payrailsError)))
+                    │                                       → refreshIfPossible() for polling timeout
+                    └── any other Error    → handle(error:) → onResult(.authorizationFailed(.unknownError(error)))
 
 ```
 
 ### Delegate translation
 
-`session.handle(error:)` is the central error-to-delegate translator:
+The session funnels every failure path into `OnPayResult.authorizationFailed(AuthorizationFailure)`, where the carried struct has `.code` (discriminator), `.message` (backend detail or generic fallback), and `.rawError` (underlying error when one exists). Construction goes through static helpers on `AuthorizationFailure`:
 
 ```swift
-private func handle(error: Error) {
-    if let payrailsError = error as? PayrailsError {
-        switch payrailsError {
-        case .authenticationError:
-            onResult?(.authorizationFailed)   // special case: auth errors → authorizationFailed
-        default:
-            onResult?(.error(payrailsError))
-        }
-    } else {
-        onResult?(.error(PayrailsError.unknown(error: error)))
-    }
-    isPaymentInProgress = false
-    onResult = nil
-    paymentHandler = nil
+extension AuthorizationFailure {
+    static func authorizationError(message: String) -> AuthorizationFailure  // backend decline
+    static var authenticationError: AuthorizationFailure                     // 401 / 403
+    static var userCancelled: AuthorizationFailure                           // user abandoned flow
+    static func unknownError(_ error: PayrailsError?) -> AuthorizationFailure
 }
 ```
 
-This means `.authenticationError` is silently converted to `.authorizationFailed` at the `OnPayResult` level. Merchants see a clean "authorization failed" state rather than needing to match a specific error case.
-
 ### CardPaymentButton translation
 
-`CardPaymentButton.handlePaymentResult(_:)` maps `OnPayResult` to delegate calls:
+`CardPaymentButton.handlePaymentResult(_:)` maps `OnPayResult` cases to delegate calls:
 
 ```swift
-case .success         → delegate.onAuthorizeSuccess
-case .authorizationFailed, .failure, .error → delegate.onAuthorizeFailed
-case .cancelledByUser → logged only (no delegate call)
+case .success                       → delegate.onAuthorizeSuccess(self)
+case .authorizationFailed(failure)  → delegate.onAuthorizeFailed(self, failure: failure)
+case .pending                       → delegate.onAuthorizePending(self)
+
+// `failure.message` for `.authorizationError` carries the backend's
+// `errors[0].reason.result`, extracted in PayrailsAPI.checkExecutionStatus →
+// Status.paymentStatus(with:). When the backend provides no detail it falls back
+// to PayrailsAPI.genericAuthorizationFailedMessage ("Authorization failed") —
+// never nil. Mirrors web-sdk's
+// `confirmResult.finalState?.errors?.[0]?.reason?.result || 'Authorization Failed'`.
 ```
 
-Note: `.failure` and `.error` both call `onAuthorizeFailed`. Merchants cannot distinguish these two at the delegate level. If you need to surface more granularity, you must change the delegate protocol and update the audit doc.
+The `onSessionExpired` closure (supplied to `Payrails.createSession(with:onSessionExpired:)`) is invoked by the session — NOT the button — on any path that leaves the Payrails execution non-terminal on the backend. This is single-fire-per-poisoned-execution and decoupled from per-button delegate dispatch; merchants never wire it on a button.
+
+`AuthorizationFailureReason` mirrors the Web SDK's `AuthorizationFailureReasons` enum 1:1 (raw values match). The same mapping is mirrored in `CardPaymentForm`, `StoredInstrumentPaymentButton`, and `GenericRedirectButton`.
 
 ---
 

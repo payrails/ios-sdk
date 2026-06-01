@@ -71,7 +71,16 @@ Assign the delegate before adding the element to the window.
 │                   ──► user completes challenge in SFSafariViewController
 │                   ──► SDK polls for final status
 └─ no 3DS  ──► result delivered immediately
-7. delegate.onAuthorizeSuccess / onAuthorizeFailed called
+7. delegate callback fires:
+   - success  → delegate.onAuthorizeSuccess(_:)
+   - failure  → delegate.onAuthorizeFailed(_:failure:)
+                (failure.code discriminates: .userCancelled / .authorizationError /
+                 .authenticationError / .unknownError)
+   - pending  → delegate.onAuthorizePending(_:)
+   In parallel, if the execution is left in `authorizePending` (e.g. the user
+   abandoned 3DS), the SDK fires the `onSessionExpired` closure supplied at
+   `createSession` time to swap the internal config in place — the merchant's
+   `Session` reference and cached buttons keep working.
 ```
 
 ### Stored instrument payment

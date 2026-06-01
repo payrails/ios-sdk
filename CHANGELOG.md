@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `AuthorizationFailure` struct — payload passed to `onAuthorizeFailed(_:failure:)` on every delegate protocol. Carries `code: AuthorizationFailureReason` (discriminator), `message: String` (backend detail or generic fallback — never nil), and `rawError: Error?` (the underlying error when one exists). Flat `{ code, message, rawError }` shape, matching the Web SDK's `onFailed` payload. (ONB-739)
+- `AuthorizationFailureReason` enum — string-raw-valued discriminator on `AuthorizationFailure.code`. Four cases mirror the Web SDK 1:1: `.authorizationError` ("AUTHORIZATION_ERROR"), `.authenticationError` ("AUTHENTICATION_ERROR"), `.userCancelled` ("USER_CANCELLED"), `.unknownError` ("UNKNOWN_ERROR"). Web's `VALIDATION_FAILED` is intentionally absent — input validation runs client-side before submission. (ONB-739)
+- `SessionExpiredHandler` closure type and a new `onSessionExpired:` parameter on `Payrails.createSession(...)` (both callback and `async` overloads). The merchant supplies a closure that fetches a fresh `InitData` from their backend; the SDK invokes it when it detects the current Payrails execution is no longer reusable and swaps its internal config in place — the merchant's cached `Session` reference and any buttons / forms keep working unchanged. (ONB-739, see ADR-001)
+- `OnPayResult.pending` case for the backend-pending-execution path. Surfaced when the backend returns `pending` with `actionRequired: nil` (no 3DS, no redirect — execution still live and may settle later). Routed to merchants via `onAuthorizePending(_:)`. (ONB-739)
+- Concurrent backend polling during 3DS — a background poll task now runs alongside the WebView so the SDK can resolve payments even when the WebView's redirect chain stalls. A single-shot `claimTerminal()` NSLock arbitrates between WebView URL signals and polling signals so exactly one path reports the outcome. (ONB-739)
+- User-dismiss detection on the 3DS WebView via `UIAdaptivePresentationControllerDelegate.presentationControllerDidDismiss(_:)`. After a 3-attempt × 1s confirmation poll for a real backend terminal, an unresolved dismiss surfaces as `OnPayResult.authorizationFailed(.userCancelled)` and triggers the `onSessionExpired` refresh. (ONB-739)
+
+### Changed
+- **Breaking:** `onAuthorizeFailed(_:)` is now `onAuthorizeFailed(_:failure:)` on every delegate protocol (`PayrailsCardPaymentButtonDelegate`, `PayrailsCardPaymentFormDelegate`, `PayrailsStoredInstrumentPaymentButtonDelegate`, `GenericRedirectPaymentButtonDelegate`). The new `failure: AuthorizationFailure` parameter carries the discriminating code, the backend message, and the raw error. Merchants switch on `failure.code` and read `failure.message` / `failure.rawError`. (ONB-739)
+- **Breaking:** `OnPayResult` collapsed to three cases: `.success`, `.authorizationFailed(AuthorizationFailure)`, `.pending`. The previous `.authorizationFailed`, `.failure`, `.error(_:)`, and `.cancelledByUser` cases are merged into `.authorizationFailed(_)` — the carried `AuthorizationFailure` discriminates via `.code`. User-cancel surfaces as `.authorizationFailed(.userCancelled)` (not a top-level case). Callers of `session.executePayment(..., onResult:)` must update their switch statements. (ONB-739)
+- When the backend returns `pending(executionResult)`, the SDK now branches on `executionResult.actionRequired`: if nil, surface `OnPayResult.pending` to the caller immediately (no 3DS challenge presented); if present, perform the action and start the background poll as before. (ONB-739)
+- Sessions left in `authorizePending` after the user abandons a 3DS challenge are now refreshed automatically by the SDK via the merchant's `onSessionExpired` closure. The merchant's `Session` reference and cached buttons / forms keep working — only the underlying execution changes. If no closure was supplied at `createSession`, the SDK logs a warning at init and the next payment attempt fails naturally against the dead execution. (ONB-739)
+
+### Removed
+- **Breaking:** `onSessionExpired(_:)` delegate method on `PayrailsCardPaymentButtonDelegate`, `PayrailsCardPaymentFormDelegate`, `PayrailsStoredInstrumentPaymentButtonDelegate`, and `GenericRedirectPaymentButtonDelegate` is gone. Session refresh moved from a per-button delegate callback to a Session-init closure (see Added). Merchants who implemented the delegate method should remove it and supply the closure to `createSession` instead. (ONB-739, see ADR-001 — driven by review feedback from @kumaraksi on PR #78)
+
+> ⚠️ **Breaking change:** Existing merchants who conform to any of the four card/redirect delegate protocols must update their `onAuthorizeFailed` signature to take `failure: AuthorizationFailure` instead of no payload. See `docs/public/quick-start.md` for the new switch pattern.
+
+### Fixed
+- 3DS WebView no longer hangs indefinitely when the backend redirect chain stalls on `/redirect/wait/workflow/…` or lands on an unrecognized URL — the concurrent backend poll surfaces the real terminal status. (ONB-739)
+- User dismissing the 3DS sheet (swipe-down) now fires `onAuthorizeFailed(_:failure:)` with `failure.code == .userCancelled` instead of leaving the merchant app in "Processing payment…" indefinitely. (ONB-739)
+- Backend's `errors[0].reason.result` is now threaded through to `AuthorizationFailure.message` instead of being dropped. Merchants get actionable backend copy ("ParamsError", "Insufficient funds", etc.) on the failure callback. (ONB-739)
+- Sessions left in `authorizePending` after a 3DS dismissal are now refreshed automatically by the SDK (via the `onSessionExpired` closure supplied at `createSession`). Previously, merchants had to detect this externally and rebuild the `Session` themselves, which was error-prone across cached button / form references. (ONB-739)
+- The 3-second fixed `Task.sleep` previously used as the user-dismiss grace window has been replaced with a 3-attempt × 1s confirmation-poll loop, eliminating false user-cancel reports when the backend reaches a real terminal within the window. (ONB-739)
+
+### Documentation
+- `docs/public/sdk-api-reference.md` no longer publicly documents `OnPayResult`; the public surface is the `createSession(with:onSessionExpired:)` constructor plus the delegate API (`onAuthorizeSuccess`, `onAuthorizeFailed(_:failure:)`, `onAuthorizePending`). `AuthorizationFailure` and `AuthorizationFailureReason` are documented as the failure payload and discriminator. (ONB-739)
+- ADR-001 captures the design rationale for moving from a per-button `onSessionExpired` delegate to the refresh-closure pattern. (ONB-739)
+
 ## [1.28.0] - 2026-04-22
 
 ### Added

@@ -215,10 +215,14 @@ SDK calls authorize API
         │                              SDK polls for result
         │                                    │
         │                              ├──── Success ──► onAuthorizeSuccess
-        │                              └──── Failure ──► onAuthorizeFailed
+        │                              └──── Failure ──► onAuthorizeFailed(_:failure:)
+        │                                                (+ onSessionExpired closure if execution left pending)
         │
-        └──── Failure ──────────────► onAuthorizeFailed
+        └──── Failure ──────────────► onAuthorizeFailed(_:failure:)
+                                       (+ onSessionExpired closure if execution left pending)
 ```
+
+The `failure` argument is an `AuthorizationFailure` struct with `code: AuthorizationFailureReason`, `message: String`, and `rawError: Error?`. The four `code` values (raw values match the Web SDK 1:1): `.authorizationError` (issuer declined / 3DS rejected / fraud blocked — `message` is the backend's `errors[0].reason.result` with a generic fallback, never nil), `.authenticationError` (session token rejected, HTTP 401 / 403), `.userCancelled` (user dismissed the 3DS sheet), `.unknownError` (network or SDK error — `rawError` carries the underlying error). The `onSessionExpired` closure (supplied at `createSession` time) fires ONLY on paths that leave the Payrails execution non-terminal (pending) on the backend — i.e. the user abandoned 3DS and the confirmation poll couldn't surface a backend terminal during the grace window. Backend-confirmed terminals (success, authorization-failed, cancel-URL) do NOT trigger it, because those executions are closed cleanly. See [`error-handling.md`](error-handling.md) for the full mapping.
 
 ## 3DS flow (detailed)
 

@@ -185,9 +185,18 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate, PaymentPres
         }
     }
 
-    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
+    func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, failure: AuthorizationFailure) {
         activityIndicator.stopAnimating()
-        showError("Payment was not completed. Please try again.")
+        switch failure.code {
+        case .userCancelled:
+            showInfo("Payment cancelled.")
+        case .authorizationError:
+            showError("Declined: \(failure.message)")
+        case .authenticationError:
+            showError("Session expired. Please retry.")
+        case .unknownError:
+            showError("Payment failed: \(failure.rawError?.localizedDescription ?? failure.message).")
+        }
     }
 
     func onThreeDSecureChallenge(_ button: Payrails.CardPaymentButton) {
@@ -195,6 +204,8 @@ extension CheckoutViewController: PayrailsCardPaymentButtonDelegate, PaymentPres
     }
 }
 ```
+
+> Session refresh is handled by the `onSessionExpired` closure supplied to `Payrails.createSession(with:onSessionExpired:)`, NOT by a per-button delegate method. The SDK invokes the closure when it detects the execution is no longer reusable and swaps its internal config in place — the merchant's `Session` reference and cached buttons keep working unchanged.
 
 ---
 
@@ -215,7 +226,8 @@ User taps "Pay"
 SDK authorizes with stored instrument
         │
         ├──── Success ──► onAuthorizeSuccess
-        └──── Failure ──► onAuthorizeFailed
+        └──── Failure ──► onAuthorizeFailed(_:failure:)
+                          (+ onSessionExpired closure if execution left pending)
 ```
 
 If the user deselects the instrument, the button returns to card form mode.
