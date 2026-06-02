@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > ⚠️ **Breaking change:** Existing merchants who conform to any of the four card/redirect delegate protocols must update their `onAuthorizeFailed` signature to take `failure: AuthorizationFailure` instead of no payload. See `docs/public/quick-start.md` for the new switch pattern.
 
 ### Fixed
+- Apple Pay payments no longer fail silently after a successful authorization. The dismissal callback was treated as a user cancellation, which aborted the in-flight `makePayment`. `ApplePayHandler` now latches a `didAuthorize` flag and only emits `.canceled` when no authorization happened. (ONB-766)
+- App no longer crashes with "continuation resumed more than once" after an Apple Pay payment. The `.canceled` branch in `Session.paymentHandlerDidFinish` now nils `onResult` and `paymentHandler`, matching the other terminal paths. (ONB-767)
+- `ApplePayHandler.didAuthorizePayment` now emits `.error(nil)` when `payment.token.paymentData` fails to parse as JSON, instead of leaving the merchant's continuation hanging. (ONB-766)
 - 3DS WebView no longer hangs indefinitely when the backend redirect chain stalls on `/redirect/wait/workflow/…` or lands on an unrecognized URL — the concurrent backend poll surfaces the real terminal status. (ONB-739)
 - User dismissing the 3DS sheet (swipe-down) now fires `onAuthorizeFailed(_:failure:)` with `failure.code == .userCancelled` instead of leaving the merchant app in "Processing payment…" indefinitely. (ONB-739)
 - Backend's `errors[0].reason.result` is now threaded through to `AuthorizationFailure.message` instead of being dropped. Merchants get actionable backend copy ("ParamsError", "Insufficient funds", etc.) on the failure callback. (ONB-739)

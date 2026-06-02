@@ -8,6 +8,7 @@
 import XCTest
 import UIKit
 import WebKit
+import PassKit
 @testable import Payrails
 
 final class PayrailsTests: XCTestCase {
@@ -3040,6 +3041,107 @@ final class PayrailsTests: XCTestCase {
         let delegate: PaymentHandlerDelegate = MinimalDelegate()
         delegate.paymentHandlerUserDidDismissChallenge(handler: StubHandler())
     }
+
+    // MARK: - ApplePayHandler (ONB-766)
+
+    // ONB-766: a dismissal before authorization is a real cancel and must emit `.canceled`.
+    //
+    // The complementary case — a dismissal *after* authorization must NOT emit `.canceled`
+    // — is intentionally not unit-tested. It requires `didAuthorize` to be latched, which
+    // only happens inside `didAuthorizePayment(_:handler:)`, and that path can't be driven
+    // from a unit test because PassKit exposes no public initializer for `PKPayment`.
+    // `didAuthorize` is `private`, so the test can't set it directly either. That branch is
+    // covered by on-device / bootstrap-ios integration verification instead.
+    func testApplePayHandler_DismissalWithoutAuthorize_EmitsCanceled() throws {
+        let spy = SpyPaymentHandlerDelegate()
+        let handler = try makeTestApplePayHandler(delegate: spy)
+        let vc = try makeStubApplePayVC()
+
+        handler.paymentAuthorizationViewControllerDidFinish(vc)
+
+        XCTAssertEqual(spy.didFinishCalls.count, 1,
+                       "Pre-authorization dismissal must emit exactly one terminal status")
+        guard let firstStatus = spy.didFinishCalls.first?.status,
+              case .canceled = firstStatus else {
+            XCTFail("Expected .canceled status, got \(String(describing: spy.didFinishCalls.first?.status))")
+            return
+        }
+    }
+
+    // MARK: - ApplePayHandler test helpers
+
+    private func makeTestApplePayHandler(
+        delegate: PaymentHandlerDelegate
+    ) throws -> ApplePayHandler {
+        let json = """
+        {
+          "parameters": {
+            "countryCode": "US",
+            "merchantCapabilities": ["supports3DS"],
+            "merchantIdentifier": "merchant.payrails.test",
+            "supportedNetworks": ["VISA"]
+          }
+        }
+        """
+        let config = try JSONDecoder().decode(
+            PaymentOptions.ApplePayConfig.self,
+            from: Data(json.utf8)
+        )
+        return ApplePayHandler(config: config, delegate: delegate, saveInstrument: false)
+    }
+
+    /// Minimal stub `PKPaymentAuthorizationViewController` for handing to the delegate
+    /// methods. The handler under test never actually presents the VC, it just calls
+    /// `controller.dismiss(animated:)` which is a no-op on an unmounted VC.
+    /// Skipped (rather than failed) if the test runner's environment refuses to vend
+    /// a VC instance — Apple Pay must be capable at the platform level for the
+    /// initializer to return non-nil.
+    private func makeStubApplePayVC() throws -> PKPaymentAuthorizationViewController {
+        let request = PKPaymentRequest()
+        request.merchantIdentifier = "merchant.payrails.test"
+        request.supportedNetworks = [.visa]
+        request.merchantCapabilities = .threeDSecure
+        request.countryCode = "US"
+        request.currencyCode = "USD"
+        request.paymentSummaryItems = [
+            PKPaymentSummaryItem(label: "Total", amount: NSDecimalNumber(value: 1))
+        ]
+        guard let vc = PKPaymentAuthorizationViewController(paymentRequest: request) else {
+            throw XCTSkip("Apple Pay is not available in this test environment")
+        }
+        return vc
+    }
+}
+
+/// Spy delegate that records each `paymentHandlerDidFinish` invocation for assertion.
+/// Only the methods exercised by the ApplePayHandler tests are non-empty; the rest
+/// satisfy the protocol contract as no-ops.
+private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
+    var didFinishCalls: [(type: Payrails.PaymentType, status: PaymentHandlerStatus)] = []
+
+    func paymentHandlerDidFinish(
+        handler: PaymentHandler,
+        type: Payrails.PaymentType,
+        status: PaymentHandlerStatus,
+        payload: [String: Any]?
+    ) {
+        didFinishCalls.append((type, status))
+    }
+
+    func paymentHandlerDidFail(
+        handler: PaymentHandler,
+        error: PayrailsError,
+        type: Payrails.PaymentType
+    ) {}
+
+    func paymentHandlerDidHandlePending(
+        handler: PaymentHandler,
+        type: Payrails.PaymentType,
+        link: Link?,
+        payload: [String: Any]?
+    ) {}
+
+    func paymentHandlerWillRequestChallengePresentation(_ handler: PaymentHandler) {}
 }
 
 // Lightweight WKNavigationDelegate stub used only to satisfy PayWebViewController's

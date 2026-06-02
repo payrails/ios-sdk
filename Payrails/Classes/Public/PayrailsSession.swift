@@ -355,6 +355,8 @@ extension Payrails.Session: PaymentHandlerDelegate {
             cancelBackgroundPolling()
             isPaymentInProgress = false
             onResult?(.authorizationFailed(.userCancelled))
+            onResult = nil
+            paymentHandler = nil
 
         case .success:
             // Not yet terminal — the confirmation phase still has to run. But the background
