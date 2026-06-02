@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-02
+
 ### Added
 - `AuthorizationFailure` struct — payload passed to `onAuthorizeFailed(_:failure:)` on every delegate protocol. Carries `code: AuthorizationFailureReason` (discriminator), `message: String` (backend detail or generic fallback — never nil), and `rawError: Error?` (the underlying error when one exists). Flat `{ code, message, rawError }` shape, matching the Web SDK's `onFailed` payload. (ONB-739)
 - `AuthorizationFailureReason` enum — string-raw-valued discriminator on `AuthorizationFailure.code`. Four cases mirror the Web SDK 1:1: `.authorizationError` ("AUTHORIZATION_ERROR"), `.authenticationError` ("AUTHENTICATION_ERROR"), `.userCancelled` ("USER_CANCELLED"), `.unknownError` ("UNKNOWN_ERROR"). Web's `VALIDATION_FAILED` is intentionally absent — input validation runs client-side before submission. (ONB-739)

@@ -1,6 +1,6 @@
 # SDK API Reference
 
-**Current version:** 1.28.0
+**Current version:** 2.0.0
 **Minimum deployment target:** iOS 14.0
 **Swift version:** 5.0+
 **Distribution:** CocoaPods (`Payrails/Checkout`) · Swift Package Manager
