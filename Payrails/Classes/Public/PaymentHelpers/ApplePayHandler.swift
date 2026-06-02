@@ -7,6 +7,11 @@ class ApplePayHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
     private let saveInstrument: Bool
 
+    /// Set once the user authorizes (inside `didAuthorizePayment`). Lets `…DidFinish`
+    /// tell a real pre-auth cancel from the dismissal that follows a successful
+    /// payment (ONB-766).
+    private var didAuthorize = false
+
     init(
         config: PaymentOptions.ApplePayConfig,
         delegate: PaymentHandlerDelegate?,
@@ -92,10 +97,17 @@ extension ApplePayHandler: PaymentHandler {
 }
 
 extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
+    // Per Apple's docs this is the final delegate callback of the flow and fires on every
+    // outcome (cancel / success / failure / timeout). It's also the documented place to
+    // dismiss the controller — so this is the single dismiss for all paths.
     func paymentAuthorizationViewControllerDidFinish(
         _ controller: PKPaymentAuthorizationViewController
     ) {
         controller.dismiss(animated: true)
+        // If authorization already happened, the success/error path is in flight from
+        // didAuthorizePayment — don't report a spurious cancel here (ONB-766).
+        guard !didAuthorize else { return }
+        // No authorization observed → a genuine pre-auth cancel (user tapped X / swiped down).
         delegate?.paymentHandlerDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
     }
 
@@ -104,7 +116,14 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         didAuthorizePayment payment: PKPayment,
         handler paymentCompletion: @escaping (PKPaymentAuthorizationResult) -> Void
     ) {
+        didAuthorize = true
         guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
+            delegate?.paymentHandlerDidFinish(
+                handler: self,
+                type: .applePay,
+                status: .error(nil),
+                payload: nil
+            )
             paymentCompletion(.init(status: .failure, errors: nil))
             return
         }
@@ -145,7 +164,6 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         )
 
         paymentCompletion(.init(status: .success, errors: nil))
-        controller.dismiss(animated: true)
     }
 }
 

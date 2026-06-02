@@ -62,6 +62,21 @@ struct Execution: Decodable {
 struct Status: Decodable {
     let code: String
     let time: Date
+    let errors: [StatusError]?
+}
+
+struct StatusError: Decodable {
+    let id: String?
+    let code: String?
+    let detail: String?
+    let docUrl: String?
+    let reason: StatusErrorReason?
+}
+
+struct StatusErrorReason: Decodable {
+    let category: String?
+    let result: String?
+    let source: String?
 }
 
 struct ExecutionLinks: Decodable {

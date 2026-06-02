@@ -6,7 +6,22 @@ public protocol PayrailsCardPaymentFormDelegate: AnyObject {
     func onPaymentButtonClicked(_ form: Payrails.CardPaymentForm)
     func onAuthorizeSuccess(_ form: Payrails.CardPaymentForm)
     func onThreeDSecureChallenge()
-    func onAuthorizeFailed(_ form: Payrails.CardPaymentForm)
+
+    /// Fires for every terminal failure of an authorization attempt. The `failure` carries a
+    /// `code`, human-readable `message`, and underlying `rawError`. See `AuthorizationFailure`
+    /// for the full taxonomy.
+    ///
+    /// **Breaking change vs earlier iOS SDK versions** — the method now takes a `failure`
+    /// argument.
+    func onAuthorizeFailed(_ form: Payrails.CardPaymentForm, failure: AuthorizationFailure)
+
+    /// Fires when the backend left the execution in a pending state with no action for the
+    /// SDK to perform. Default implementation is a no-op.
+    func onAuthorizePending(_ form: Payrails.CardPaymentForm)
+}
+
+public extension PayrailsCardPaymentFormDelegate {
+    func onAuthorizePending(_ form: Payrails.CardPaymentForm) {}
 }
 
 public extension Payrails {
@@ -152,20 +167,17 @@ public extension Payrails {
             }
         }
 
-        private func handlePaymentResult(_ result: OnPayResult?) {
+        // internal for @testable test drive — see CardPaymentButton.
+        internal func handlePaymentResult(_ result: OnPayResult?) {
             switch result {
             case .success:
                 delegate?.onAuthorizeSuccess(self)
-            case .authorizationFailed:
-                delegate?.onAuthorizeFailed(self)
-            case .failure:
-                delegate?.onAuthorizeFailed(self)
-            case let .error(error):
-                delegate?.onAuthorizeFailed(self)
-            case .cancelledByUser:
-                logMessage("Payment was cancelled by user")
-            default:
-                logMessage("Payment result: unknown state")
+            case let .authorizationFailed(failure):
+                delegate?.onAuthorizeFailed(self, failure: failure)
+            case .pending:
+                delegate?.onAuthorizePending(self)
+            case .none:
+                logMessage("Payment result: nil")
             }
         }
 

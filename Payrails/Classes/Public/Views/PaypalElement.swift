@@ -58,11 +58,6 @@ public extension Payrails {
                 delegate?.onPaymentButtonClicked(button)
             }
 
-            print("--------------------")
-            print("save instrument: ", self.saveInstrument)
-            Payrails.log("save instrument: ", self.saveInstrument)
-            print("--------------------")
-
             paymentTask = Task { [weak self] in
                 guard let self = self else { return }
                 do {
@@ -79,16 +74,14 @@ public extension Payrails {
                             switch result {
                             case .success:
                                 self.delegate?.onAuthorizeSuccess(button)
+                            case let .authorizationFailed(failure) where failure.code == .userCancelled:
+                                self.delegate?.onPaymentSessionExpired(button)
                             case .authorizationFailed:
                                 self.delegate?.onAuthorizeFailed(button)
-                            case .failure:
-                                self.delegate?.onAuthorizeFailed(button)
-                            case let .error(error):
-                                self.delegate?.onAuthorizeFailed(button)
-                            case .cancelledByUser:
+                            case .pending:
                                 self.delegate?.onPaymentSessionExpired(button)
-                            default:
-                                print("PayPal payment result: \(String(describing: result))")
+                            case .none:
+                                print("PayPal payment result: nil")
                             }
                         }
 

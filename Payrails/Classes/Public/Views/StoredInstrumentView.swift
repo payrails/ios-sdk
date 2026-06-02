@@ -286,9 +286,10 @@ extension Payrails.StoredInstrumentView: PayrailsCardPaymentButtonDelegate {
         Payrails.log("3DS challenge called for stored instrument (unexpected)")
     }
 
-    public func onAuthorizeFailed(_ button: Payrails.CardPaymentButton) {
-        // Create a generic error since we don't have specific error details
-        let error = PayrailsError.authenticationError
+    public func onAuthorizeFailed(_ button: Payrails.CardPaymentButton, failure: AuthorizationFailure) {
+        // The legacy storedInstrumentView delegate API surfaces a single PayrailsError.
+        // Prefer the underlying error when present, otherwise fall back to a generic one.
+        let error = (failure.rawError as? PayrailsError) ?? PayrailsError.unknown(error: failure.rawError)
         delegate?.storedInstrumentView(self, didFailPaymentForInstrument: instrument, error: error)
     }
 }

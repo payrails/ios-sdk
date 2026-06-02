@@ -79,16 +79,14 @@ public extension Payrails {
                             switch result {
                             case .success:
                                 self.delegate?.onAuthorizeSuccess(button)
+                            case let .authorizationFailed(failure) where failure.code == .userCancelled:
+                                self.delegate?.onPaymentSessionExpired(button)
                             case .authorizationFailed:
                                 self.delegate?.onAuthorizeFailed(button)
-                            case .failure:
-                                self.delegate?.onAuthorizeFailed(button)
-                            case let .error(error):
-                                self.delegate?.onAuthorizeFailed(button)
-                            case .cancelledByUser:
+                            case .pending:
                                 self.delegate?.onPaymentSessionExpired(button)
-                            default:
-                                print("Apple Pay payment result: \(String(describing: result))")
+                            case .none:
+                                print("Apple Pay payment result: nil")
                             }
                         }
 

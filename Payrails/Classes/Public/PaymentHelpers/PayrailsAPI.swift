@@ -8,8 +8,17 @@ class PayrailsAPI {
     var authorizeRequestDate  = Date()
 
     enum PaymentStatus {
-        case success, failed, pending(GetExecutionResult)
+        case success
+        /// Carries the backend's failure message, extracted from the matched
+        /// `authorizeFailed` status entry's `errors[0].reason.result`. Falls back to
+        /// "Authorization failed" when the backend provides no detail, so callers
+        /// never see nil. Mirrors web-sdk's `confirmResult.finalState?.errors?.[0]?.reason?.result || 'Authorization Failed'`.
+        case failed(message: String)
+        case pending(GetExecutionResult)
     }
+
+    /// Fallback message used when the backend payload provides no `errors[0].reason.result`.
+    static let genericAuthorizationFailedMessage = "Authorization failed"
 
     enum PaymentAuthorizeStatus: String {
         case authorizePending, authorizeSuccessful, authorizeFailed
@@ -134,6 +143,39 @@ class PayrailsAPI {
         )
 
         return paymentStatus
+    }
+
+    /// Polls the execution URL until the workflow reaches an actual terminal authorization status
+    /// (`authorizeSuccessful` or `authorizeFailed`). Intended to run concurrently with the 3DS
+    /// WebView so that, if the WebView gets stuck or the backend redirect chain stalls, the SDK
+    /// can still discover the real outcome from the backend and resolve the payment.
+    func pollForTerminalDuringChallenge(executionUrl: URL) async throws -> PaymentStatus {
+        return try await checkExecutionStatus(
+            url: executionUrl,
+            targetStatuses: statusesAfterPending
+        )
+    }
+
+    /// Single, immediate read of the execution's current status — performs ONE plain
+    /// `getExecution` call with NO `waitWhile` long-poll and NO retry loop.
+    ///
+    /// This is the bounded counterpart to `pollForTerminalDuringChallenge` (which can block
+    /// for up to ~310s via `checkExecutionStatus`'s 10-attempt search + 300s long poll). The
+    /// 3DS swipe-dismiss confirmation window must resolve quickly so the button's loading
+    /// state can clear; it issues a few of these one-shot reads spaced ~1s apart instead of
+    /// awaiting the long poll.
+    ///
+    /// Returns the terminal `PaymentStatus` (`.success` / `.failed`) if the backend has
+    /// already reached one, or `nil` if the execution has not yet settled.
+    func fetchTerminalStatusOnce(executionUrl: URL) async throws -> PaymentStatus? {
+        let result = try await getExecution(url: executionUrl)
+        guard let terminal = result.sortedStatus.first(where: {
+            $0.code == PaymentAuthorizeStatus.authorizeSuccessful.rawValue ||
+            $0.code == PaymentAuthorizeStatus.authorizeFailed.rawValue
+        }) else {
+            return nil
+        }
+        return terminal.paymentStatus(with: result)
     }
 
     func confirmPaymentWithRetry(
@@ -526,7 +568,12 @@ private extension Status {
         case PayrailsAPI.PaymentAuthorizeStatus.authorizeSuccessful.rawValue:
             return .success
         case PayrailsAPI.PaymentAuthorizeStatus.authorizeFailed.rawValue:
-            return .failed
+            // Extract the failure message from the backend payload, falling back
+            // to a generic literal so callers never need to handle nil.
+            let message = self.errors?.first?.reason?.result
+                ?? self.errors?.first?.detail
+                ?? PayrailsAPI.genericAuthorizationFailedMessage
+            return .failed(message: message)
         case PayrailsAPI.PaymentAuthorizeStatus.authorizePending.rawValue:
             return .pending(executionResult)
         default:

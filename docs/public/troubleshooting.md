@@ -111,19 +111,25 @@ The SDK writes to `LogStore.shared` and also calls `Swift.print`. To see logs in
 - The PayPal SDK requires a client ID in the init payload config; verify the payload includes it
 
 **PayPal checkout WebView dismissed with no result**
-- The user cancelled — `OnPayResult.cancelledByUser` is delivered via the delegate callback
+- The user cancelled — `onAuthorizeFailed(_:failure:)` fires with `failure.code == .userCancelled`. In parallel, the SDK invokes the `onSessionExpired` closure supplied at `createSession` time to refresh the underlying execution; the merchant's cached `Session` reference keeps working.
 
 ---
 
 ## Payment issues
 
-**Payment results in `.authorizationFailed`**
-- This maps to `PayrailsError.authenticationError` — the session token has expired
-- Re-initialize the session with a fresh init payload from your backend
+**Payment failed — how do I know why?**
+- `onAuthorizeFailed(_ button:, failure:)` carries an `AuthorizationFailure` struct. Switch on `failure.code` to give each case the right UX, and read `failure.message` / `failure.rawError` for detail:
+  - `.userCancelled` — user dismissed the 3DS sheet. Show neutral copy, no error banner.
+  - `.authorizationError` — authorization rejected (issuer decline, 3DS rejected, fraud blocked, etc.). `failure.message` is the backend's `errors[0].reason.result`, falling back to "Authorization failed" when no detail is provided.
+  - `.authenticationError` — session token rejected (HTTP 401 / 403). The SDK also fires its `onSessionExpired` refresh in the background.
+  - `.unknownError` — network, SDK, or other unexpected failure. Inspect `failure.rawError` for the underlying error.
 
-**Payment results in `.failure` after 3DS**
-- The card issuer declined the transaction post-3DS; this is not an SDK error
-- Show the user an appropriate message and optionally offer another payment method
+**My retry on the same card doesn't work after a failure**
+- Payrails executions are single-use. Once a payment terminates (success or failure), the same execution cannot be retried. Supply the `onSessionExpired` closure to `Payrails.createSession(with:onSessionExpired:)` so the SDK can mint a fresh execution in-place when needed; the merchant's `Session` reference and cached buttons keep working unchanged.
+
+**3DS challenge never appears / `presentPayment(_:)` not called**
+- Confirm that `payButton.presenter = self` is set on the `CardPaymentButton`
+- Confirm your view controller conforms to both `PaymentPresenter` and `PayrailsCardPaymentFormDelegate` if needed
 
 **3DS challenge never appears / `presentPayment(_:)` not called**
 - Confirm that `payButton.presenter = self` is set on the `CardPaymentButton`

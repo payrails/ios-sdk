@@ -4,7 +4,19 @@ import UIKit
 public protocol PayrailsStoredInstrumentPaymentButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.StoredInstrumentPaymentButton)
     func onAuthorizeSuccess(_ button: Payrails.StoredInstrumentPaymentButton)
-    func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton)
+
+    /// Fires for every terminal authorization failure. The `failure` carries a `code`,
+    /// human-readable `message`, and underlying `rawError`.
+    /// **Breaking change vs earlier versions.**
+    func onAuthorizeFailed(_ button: Payrails.StoredInstrumentPaymentButton, failure: AuthorizationFailure)
+
+    /// Fires when the backend left the execution in a pending state with no action for the
+    /// SDK to perform. Default implementation is a no-op.
+    func onAuthorizePending(_ button: Payrails.StoredInstrumentPaymentButton)
+}
+
+public extension PayrailsStoredInstrumentPaymentButtonDelegate {
+    func onAuthorizePending(_ button: Payrails.StoredInstrumentPaymentButton) {}
 }
 
 public struct StoredInstrumentButtonTranslations {
@@ -136,8 +148,6 @@ public extension Payrails {
                 Payrails.log("Session not available")
                 return
             }
-            print("🧩🧩🧩🧩🧩🧩🧩🧩🧩🧩")
-            print("pay with stored instrument")
 
             paymentTask = Task { [weak self, weak session] in
                 await MainActor.run {
@@ -159,20 +169,17 @@ public extension Payrails {
             }
         }
 
-        private func handlePaymentResult(_ result: OnPayResult?) {
+        // internal for @testable test drive — see CardPaymentButton.
+        internal func handlePaymentResult(_ result: OnPayResult?) {
             switch result {
             case .success:
                 delegate?.onAuthorizeSuccess(self)
-            case .authorizationFailed:
-                delegate?.onAuthorizeFailed(self)
-            case .failure:
-                delegate?.onAuthorizeFailed(self)
-            case .error:
-                delegate?.onAuthorizeFailed(self)
-            case .cancelledByUser:
-                Payrails.log("Payment was cancelled by user")
-            default:
-                Payrails.log("Payment result: unknown state")
+            case let .authorizationFailed(failure):
+                delegate?.onAuthorizeFailed(self, failure: failure)
+            case .pending:
+                delegate?.onAuthorizePending(self)
+            case .none:
+                Payrails.log("Payment result: nil")
             }
         }
 
