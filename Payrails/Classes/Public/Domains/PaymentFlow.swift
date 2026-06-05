@@ -114,11 +114,35 @@ struct SaveInstrumentBody: Encodable {
     let storeInstrument: Bool
     let futureUsage: String
     let data: SaveInstrumentBodyData
+
+    // Pin the wire keys explicitly so a Swift property rename can't silently change the
+    // backend payload. These names are the create-instrument contract, not Swift conventions.
+    enum CodingKeys: String, CodingKey {
+        case holderReference
+        case paymentMethod
+        case storeInstrument
+        case futureUsage
+        case data
+    }
 }
 
+/// Wire shape of the create-instrument `data` object. These keys are defined by the backend
+/// (and mirror the web-sdk): a **card** sends `encryptedData` (vault ciphertext) + `vaultProviderConfigId`;
+/// a **wallet** (Apple Pay) sends `paymentToken` (the stringified wallet payment). They're
+/// per-method and mutually exclusive — the JSON encoder omits the unused (nil) fields.
 struct SaveInstrumentBodyData: Encodable {
-    let encryptedData: String
-    let vaultProviderConfigId: String
+    var encryptedData: String?
+    var vaultProviderConfigId: String?
+    var paymentToken: String?
+
+    // Backend-defined keys. `nil` fields are still omitted by JSONEncoder, so the card
+    // (encryptedData + vaultProviderConfigId) and wallet (paymentToken) shapes stay mutually
+    // exclusive — CodingKeys only pins the names, not which keys are emitted.
+    enum CodingKeys: String, CodingKey {
+        case encryptedData
+        case vaultProviderConfigId
+        case paymentToken
+    }
 }
 
 public struct SaveInstrumentResponse: Decodable {
