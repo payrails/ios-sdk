@@ -3059,6 +3059,12 @@ final class PayrailsTests: XCTestCase {
 
         handler.paymentAuthorizationViewControllerDidFinish(vc)
 
+        // The terminal status is delivered asynchronously on the main queue, after the Apple Pay
+        // controller finishes dismissing. Drain the main queue before asserting.
+        let delivered = expectation(description: "terminal status delivered")
+        DispatchQueue.main.async { delivered.fulfill() }
+        wait(for: [delivered], timeout: 1.0)
+
         XCTAssertEqual(spy.didFinishCalls.count, 1,
                        "Pre-authorization dismissal must emit exactly one terminal status")
         guard let firstStatus = spy.didFinishCalls.first?.status,
