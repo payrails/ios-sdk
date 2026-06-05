@@ -3074,10 +3074,52 @@ final class PayrailsTests: XCTestCase {
         }
     }
 
+    func testApplePayHandler_DismissalWithoutAuthorize_Tokenize_EmitsCancellation() throws {
+        let spy = SpyPaymentHandlerDelegate()
+        let handler = try makeTestApplePayHandler(delegate: spy, mode: .tokenize)
+        let vc = try makeStubApplePayVC()
+
+        handler.paymentAuthorizationViewControllerDidFinish(vc)
+
+        let delivered = expectation(description: "tokenization cancellation delivered")
+        DispatchQueue.main.async { delivered.fulfill() }
+        wait(for: [delivered], timeout: 1.0)
+
+        XCTAssertEqual(spy.didFailTokenizationCalls.count, 1,
+                       "Pre-authorization dismissal in tokenize mode must report exactly one cancellation")
+        XCTAssertTrue(spy.didFailTokenizationCalls.first is CancellationError,
+                      "Tokenize cancellation must be reported as a CancellationError")
+        XCTAssertTrue(spy.didFinishCalls.isEmpty,
+                      "Tokenize mode must not emit a payment terminal status")
+    }
+
+    // MARK: - OnTokenizeResult mapping (callback API)
+
+    func testOnTokenizeResult_mapsCancellationErrorToCancelled() {
+        guard case .cancelled = OnTokenizeResult(failure: CancellationError()) else {
+            return XCTFail("CancellationError must map to .cancelled")
+        }
+    }
+
+    func testOnTokenizeResult_mapsPayrailsErrorToFailedUnchanged() {
+        guard case .failed(.invalidDataFormat) = OnTokenizeResult(failure: PayrailsError.invalidDataFormat) else {
+            return XCTFail("A PayrailsError must map to .failed with the same case")
+        }
+    }
+
+    func testOnTokenizeResult_wrapsUnknownErrorInFailedUnknown() {
+        let underlying = NSError(domain: "test", code: 42)
+        guard case .failed(.unknown(let wrapped)) = OnTokenizeResult(failure: underlying) else {
+            return XCTFail("A non-PayrailsError must map to .failed(.unknown)")
+        }
+        XCTAssertEqual((wrapped as NSError?)?.code, 42, "The underlying error must be preserved")
+    }
+
     // MARK: - ApplePayHandler test helpers
 
     private func makeTestApplePayHandler(
-        delegate: PaymentHandlerDelegate
+        delegate: PaymentHandlerDelegate,
+        mode: ApplePayHandler.Mode = .payment
     ) throws -> ApplePayHandler {
         let json = """
         {
@@ -3093,7 +3135,7 @@ final class PayrailsTests: XCTestCase {
             PaymentOptions.ApplePayConfig.self,
             from: Data(json.utf8)
         )
-        return ApplePayHandler(config: config, delegate: delegate, saveInstrument: false)
+        return ApplePayHandler(config: config, delegate: delegate, saveInstrument: false, mode: mode)
     }
 
     /// Minimal stub `PKPaymentAuthorizationViewController` for handing to the delegate
@@ -3124,6 +3166,7 @@ final class PayrailsTests: XCTestCase {
 /// satisfy the protocol contract as no-ops.
 private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
     var didFinishCalls: [(type: Payrails.PaymentType, status: PaymentHandlerStatus)] = []
+    var didFailTokenizationCalls: [Error] = []
 
     func paymentHandlerDidFinish(
         handler: PaymentHandler,
@@ -3132,6 +3175,10 @@ private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
         payload: [String: Any]?
     ) {
         didFinishCalls.append((type, status))
+    }
+
+    func paymentHandlerDidFailTokenization(handler: PaymentHandler, error: Error) {
+        didFailTokenizationCalls.append(error)
     }
 
     func paymentHandlerDidFail(
