@@ -10,6 +10,12 @@ public extension Payrails {
         var executionId: String?
 
         private var onResult: OnPayCallback?
+        // 2- [rev. question] : what does these two properties do ? applePayTokenizeContinuation and applePayTokenizeOptions
+        /// Bridges the Apple Pay sheet's delegate callbacks back into the `async tokenize`
+        /// call: held while the sheet is open, resumed exactly once when tokenization
+        /// finishes, fails, or the user cancels.
+        private var applePayTokenizeContinuation: CheckedContinuation<SaveInstrumentResponse, Error>?
+        private var applePayTokenizeOptions = TokenizeOptions()
         private var paymentHandler: PaymentHandler?
         private var currentTask: Task<Void, Error>?
         private var payrailsCSE: PayrailsCSE?
@@ -197,6 +203,41 @@ public extension Payrails {
             }
 
             paymentHandler.makePayment(total: total, currency: config.amount.currency, presenter: presenter)
+        }
+
+        /// Presents the Apple Pay sheet in TOKENIZE mode. The outcome flows back through the
+        /// PaymentHandlerDelegate callbacks, which resume `applePayTokenizeContinuation`.
+        private func presentApplePayTokenizationSheet(presenter: PaymentPresenter?) {
+            // 3- [rev. question] : what the config is ?
+            // 4- [rev. question] : is the paymentComposition here is coming from the /init response ?
+            guard let paymentComposition = config.paymentOption(for: .applePay),
+                  case let .applePay(applePayConfig) = paymentComposition.config else {
+                finishApplePayTokenization(with: .failure(PayrailsError.unsupportedPayment(type: .applePay)))
+                return
+            }
+            guard let total = Double(config.amount.value) else {
+                finishApplePayTokenization(with: .failure(PayrailsError.invalidDataFormat))
+                return
+            }
+
+            // 5- [rev. question] : Do we call the payment handler here to present the apple pay sheet ?
+            let handler = ApplePayHandler(
+                config: applePayConfig,
+                delegate: self,
+                saveInstrument: true,
+                // 6- [rev. question] : what does this `mode` do ? this is to instruct the sheet to show the sheet to obtina apple pay token ?
+                // 7- [rev. question] : where this property `mode` is declared ?
+                mode: .tokenize
+            )
+            self.paymentHandler = handler
+            handler.makePayment(total: total, currency: config.amount.currency, presenter: presenter)
+        }
+
+        /// Resumes the pending tokenization continuation exactly once, then clears state.
+        private func finishApplePayTokenization(with result: Result<SaveInstrumentResponse, Error>) {
+            applePayTokenizeContinuation?.resume(with: result)
+            applePayTokenizeContinuation = nil
+            paymentHandler = nil
         }
 
         func cancelPayment() {
@@ -415,6 +456,47 @@ extension Payrails.Session: PaymentHandlerDelegate {
         isPaymentInProgress = false
         onResult?(.authorizationFailed(.unknownError(error)))
         paymentHandler = nil
+    }
+
+    /// Handler captured an Apple Pay token in tokenize mode. Save it via the shared core,
+    /// then close the sheet (`completion`). The awaiting `tokenize` call resumes only after
+    /// Apple Pay reports that its controller has fully dismissed.
+    func paymentHandlerDidRequestTokenization(
+        handler: PaymentHandler,
+        paymentToken: String,
+        completion: @escaping (Result<SaveInstrumentResponse, PayrailsError>) -> Void
+    ) {
+        Task { [weak self] in
+            guard let self = self else { return }
+            do {
+                let response = try await self.saveInstrument(
+                    paymentMethod: "applePay",
+                    data: SaveInstrumentBodyData(paymentToken: paymentToken),
+                    options: self.applePayTokenizeOptions
+                )
+                await MainActor.run {
+                    completion(.success(response))
+                }
+            } catch {
+                let payrailsError = (error as? PayrailsError) ?? .unknown(error: error)
+                await MainActor.run {
+                    completion(.failure(payrailsError))
+                }
+            }
+        }
+    }
+
+    func paymentHandlerDidFinishTokenization(
+        handler: PaymentHandler,
+        result: Result<SaveInstrumentResponse, Error>
+    ) {
+        finishApplePayTokenization(with: result)
+    }
+
+    /// Tokenization ended without a usable token (user dismissed the sheet, or serialization
+    /// failed). Resume the awaiting `tokenize` call by throwing.
+    func paymentHandlerDidFailTokenization(handler: PaymentHandler, error: Error) {
+        finishApplePayTokenization(with: .failure(error))
     }
 
     /// Called when the user interactively dismissed the 3DS challenge (e.g. swipe-down on
@@ -847,26 +929,67 @@ extension Payrails.Session {
         return try await payrailsAPI.updateInstrument(instrumentId: instrumentId, body: body)
     }
 
+    /// Tokenizes a payment method by presenting the SDK's own UI (e.g. the Apple Pay sheet),
+    /// capturing the token, and saving the instrument. Returns the saved instrument (use `.id`
+    /// for the stable Payrails instrument id).
+    ///
+    /// Only methods the SDK tokenizes via presented UI are supported (currently `.applePay`).
+    /// Cards tokenize via `cardForm.tokenize()`; other methods throw `.unsupportedPayment`.
+    public func tokenize(
+        _ method: Payrails.PaymentType,
+        presenter: PaymentPresenter,
+        options: TokenizeOptions = TokenizeOptions()
+    ) async throws -> SaveInstrumentResponse {
+        switch method {
+        case .applePay:
+            // Bridge the Apple Pay sheet's delegate callbacks into async/await. The continuation
+            // is resumed (once) from the PaymentHandlerDelegate methods — AFTER the
+            // create-instrument POST completes — so the sheet stays open across it.
+            self.applePayTokenizeOptions = options
+            return try await withCheckedThrowingContinuation { continuation in
+                self.applePayTokenizeContinuation = continuation
+                Task { @MainActor in
+                    self.presentApplePayTokenizationSheet(presenter: presenter)
+                }
+            }
+        case .card, .payPal, .genericRedirect:
+            // Not tokenizable via a presented sheet here. Cards use `cardForm.tokenize()`.
+            throw PayrailsError.unsupportedPayment(type: method)
+        }
+    }
+
+    /// Card tokenization entry point (called by `CardForm.tokenize()`). Independent of the
+    /// wallet `tokenize(_:presenter:)` path — cards have their own embedded-form collection, so
+    /// this stays the single source of truth for card tokenization.
     func tokenize(encryptedData: String, options: TokenizeOptions) async throws -> SaveInstrumentResponse {
         guard let providerConfigId = config?.vaultConfiguration?.providerConfigId else {
-            throw PayrailsError.missingData("Vault configuration with providerConfigId is required for tokenization.")
+            throw PayrailsError.missingData("Vault configuration with providerConfigId is required for card tokenization.")
         }
+        return try await saveInstrument(
+            paymentMethod: "card",
+            data: SaveInstrumentBodyData(encryptedData: encryptedData, vaultProviderConfigId: providerConfigId),
+            options: options
+        )
+    }
 
+    /// Shared tokenization core: builds the request body and POSTs to the instruments
+    /// endpoint (`POST /public/payment/instruments`). Used by BOTH the card and wallet paths,
+    /// so the POST logic exists exactly once. The backend routes by `paymentMethod`.
+    private func saveInstrument(
+        paymentMethod: String,
+        data: SaveInstrumentBodyData,
+        options: TokenizeOptions
+    ) async throws -> SaveInstrumentResponse {
         guard let holderReference = config?.holderReference else {
             throw PayrailsError.missingData("holderReference is required for tokenization.")
         }
-
         let body = SaveInstrumentBody(
             holderReference: holderReference,
-            paymentMethod: "card",
+            paymentMethod: paymentMethod,
             storeInstrument: options.storeInstrument,
             futureUsage: options.futureUsage.rawValue,
-            data: SaveInstrumentBodyData(
-                encryptedData: encryptedData,
-                vaultProviderConfigId: providerConfigId
-            )
+            data: data
         )
-
         return try await payrailsAPI.saveInstrument(body: body)
     }
 
