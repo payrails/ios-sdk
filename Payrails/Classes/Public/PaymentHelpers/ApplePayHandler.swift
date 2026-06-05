@@ -1,21 +1,32 @@
 import Foundation
 import PassKit
+import Contacts
 
 class ApplePayHandler: NSObject {
+
+    /// Whether this handler runs a normal payment (authorize) or a tokenization
+    /// (save the instrument, no payment). Chosen once when the handler is created.
+    enum Mode {
+        case payment
+        case tokenize
+    }
 
     private let request = PKPaymentRequest()
     private weak var delegate: PaymentHandlerDelegate?
     private let saveInstrument: Bool
+    private let mode: Mode
 
     /// Set once the user authorizes (inside `didAuthorizePayment`). Lets `…DidFinish`
     /// tell a real pre-auth cancel from the dismissal that follows a successful
     /// payment (ONB-766).
     private var didAuthorize = false
+    private var finishAfterDismissal: ((ApplePayHandler) -> Void)?
 
     init(
         config: PaymentOptions.ApplePayConfig,
         delegate: PaymentHandlerDelegate?,
-        saveInstrument: Bool
+        saveInstrument: Bool,
+        mode: Mode = .payment
     ) {
         request.merchantIdentifier = config.parameters.merchantIdentifier
         request.supportedNetworks = config.parameters.supportedNetworks.paymentNetworks
@@ -25,6 +36,64 @@ class ApplePayHandler: NSObject {
         request.countryCode = config.parameters.countryCode
         self.delegate = delegate
         self.saveInstrument = saveInstrument
+        self.mode = mode
+    }
+
+    /// Serializes a `PKPayment` into the exact JSON string the backend's create-instrument
+    /// endpoint expects: the full `ApplePayPayment` shape
+    /// `{ billingContact, shippingContact, token: { paymentData, paymentMethod, transactionIdentifier } }`.
+    ///
+    /// NOTE: this is a DIFFERENT shape from the flattened payload the payment/authorize path
+    /// builds — do not confuse the two.
+    private func makeTokenizationPaymentToken(from payment: PKPayment) -> String? {
+        // `paymentData` is the encrypted-payment JSON; decode it so it nests as JSON
+        // (not as an escaped string) inside `token`.
+        guard let paymentDataObject = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
+            return nil
+        }
+
+        let token: [String: Any] = [
+            "paymentData": paymentDataObject,
+            "paymentMethod": [
+                "displayName": payment.token.paymentMethod.displayName ?? "",
+                "network": payment.token.paymentMethod.network?.rawValue ?? "",
+                "type": "credit"
+            ],
+            "transactionIdentifier": payment.token.transactionIdentifier
+        ]
+
+        var root: [String: Any] = ["token": token]
+        // Contacts are best-effort: include them if Apple Pay provided them. If the backend
+        // turns out to require them, we expand the mapping here.
+        if let billing = payment.billingContact { root["billingContact"] = contactDict(billing) }
+        if let shipping = payment.shippingContact { root["shippingContact"] = contactDict(shipping) }
+
+        guard let data = try? JSONSerialization.data(withJSONObject: root),
+              let string = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return string
+    }
+
+    // 9- [rev. question] : what does this function do ? what is the input and output of it ?
+    // This function takes a PKContact object (input) and converts it into a dictionary representation (output)
+    // suitable for JSON serialization. The dictionary includes the contact's name, email, and postal address.
+    private func contactDict(_ contact: PKContact) -> [String: Any] {
+        var dict: [String: Any] = [:]
+        if let given = contact.name?.givenName { dict["givenName"] = given }
+        if let family = contact.name?.familyName { dict["familyName"] = family }
+        if let email = contact.emailAddress { dict["emailAddress"] = email }
+        if let address = contact.postalAddress {
+            dict["addressLines"] = address.street.isEmpty ? [] : [address.street]
+            dict["locality"] = address.city
+            dict["subLocality"] = address.subLocality
+            dict["administrativeArea"] = address.state
+            dict["subAdministrativeArea"] = address.subAdministrativeArea
+            dict["postalCode"] = address.postalCode
+            dict["country"] = address.country
+            dict["countryCode"] = address.isoCountryCode
+        }
+        return dict
     }
 }
 
@@ -103,12 +172,22 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
     func paymentAuthorizationViewControllerDidFinish(
         _ controller: PKPaymentAuthorizationViewController
     ) {
-        controller.dismiss(animated: true)
-        // If authorization already happened, the success/error path is in flight from
-        // didAuthorizePayment — don't report a spurious cancel here (ONB-766).
-        guard !didAuthorize else { return }
-        // No authorization observed → a genuine pre-auth cancel (user tapped X / swiped down).
-        delegate?.paymentHandlerDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
+        dismiss(controller) { [weak self] in
+            guard let self else { return }
+
+            if self.didAuthorize {
+                let finish = self.finishAfterDismissal
+                self.finishAfterDismissal = nil
+                finish?(self)
+                return
+            }
+
+            if self.mode == .tokenize {
+                self.delegate?.paymentHandlerDidFailTokenization(handler: self, error: CancellationError())
+            } else {
+                self.delegate?.paymentHandlerDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
+            }
+        }
     }
 
     func paymentAuthorizationViewController(
@@ -117,13 +196,59 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         handler paymentCompletion: @escaping (PKPaymentAuthorizationResult) -> Void
     ) {
         didAuthorize = true
-        guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
-            delegate?.paymentHandlerDidFinish(
+
+        // TOKENIZE flow: route the token to the create-instrument call and KEEP the sheet
+        // open (don't call paymentCompletion yet). We complete only when tokenization returns,
+        // so a failed tokenize shows as an error in the sheet instead of a false success.
+        // 8- [rev. question] : Does this mean that a failed tokenization will necessarily make the payment fail ?
+        if mode == .tokenize {
+            guard let paymentToken = makeTokenizationPaymentToken(from: payment) else {
+                // 9- [rev. question] : Do we actaully need to make the payment fail due to serialization failure ? or we can just report the error to the delegate and let it decide how to handle it ?
+                // 10- [rev. question] : what finish finishAfterDismissal do ? 
+                finishAfterDismissal = { handler in
+                    handler.delegate?.paymentHandlerDidFailTokenization(
+                        handler: handler,
+                        error: PayrailsError.invalidDataFormat
+                    )
+                }
+                paymentCompletion(.init(status: .failure, errors: nil))
+                return
+            }
+            delegate?.paymentHandlerDidRequestTokenization(
                 handler: self,
-                type: .applePay,
-                status: .error(nil),
-                payload: nil
-            )
+                paymentToken: paymentToken
+            ) { [weak self] result in
+                guard let self else { return }
+                let tokenizationResult = result.mapError { $0 as Error }
+                self.finishAfterDismissal = { handler in
+                    handler.delegate?.paymentHandlerDidFinishTokenization(
+                        handler: handler,
+                        result: tokenizationResult
+                    )
+                }
+                switch result {
+                case .success:
+                    paymentCompletion(.init(status: .success, errors: nil))
+                case .failure:
+                    paymentCompletion(.init(status: .failure, errors: nil))
+                }
+            }
+            return
+        }
+
+        // PAYMENT flow: build the authorize payload, but do not notify the session until the
+        // Apple Pay controller has completed its dismissal. Starting the next UIKit/network
+        // phase while PassKit is still dismissing can leave the host app unable to present
+        // navigation UI immediately after the sheet closes.
+        guard let paymentData = try? JSONSerialization.jsonObject(with: payment.token.paymentData) else {
+            finishAfterDismissal = { handler in
+                handler.delegate?.paymentHandlerDidFinish(
+                    handler: handler,
+                    type: .applePay,
+                    status: .error(nil),
+                    payload: nil
+                )
+            }
             paymentCompletion(.init(status: .failure, errors: nil))
             return
         }
@@ -142,28 +267,57 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         ]
 
         guard let payloadData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
-            delegate?.paymentHandlerDidFinish(
-                handler: self,
-                type: .applePay,
-                status: .error(nil),
-                payload: nil
-            )
+            finishAfterDismissal = { handler in
+                handler.delegate?.paymentHandlerDidFinish(
+                    handler: handler,
+                    type: .applePay,
+                    status: .error(nil),
+                    payload: nil
+                )
+            }
             paymentCompletion(.init(status: .failure, errors: nil))
             return
         }
 
-        delegate?.paymentHandlerDidFinish(
-            handler: self,
-            type: .applePay,
-            status: .success,
-            payload: [
-                "paymentInstrumentData": [
-                    "paymentToken": String(data: payloadData, encoding: String.Encoding.utf8)
-                ]
+        let successPayload: [String: Any] = [
+            "paymentInstrumentData": [
+                "paymentToken": String(data: payloadData, encoding: String.Encoding.utf8)
             ]
-        )
+        ]
+        finishAfterDismissal = { handler in
+            handler.delegate?.paymentHandlerDidFinish(
+                handler: handler,
+                type: .applePay,
+                status: .success,
+                payload: successPayload
+            )
+        }
 
         paymentCompletion(.init(status: .success, errors: nil))
+    }
+
+    private func dismiss(
+        _ controller: PKPaymentAuthorizationViewController,
+        completion: @escaping () -> Void
+    ) {
+        let complete = {
+            if Thread.isMainThread {
+                completion()
+            } else {
+                DispatchQueue.main.async(execute: completion)
+            }
+        }
+
+        DispatchQueue.main.async {
+            guard controller.presentingViewController != nil else {
+                complete()
+                return
+            }
+
+            controller.dismiss(animated: true) {
+                complete()
+            }
+        }
     }
 }
 
