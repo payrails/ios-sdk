@@ -10,7 +10,6 @@ public extension Payrails {
         var executionId: String?
 
         private var onResult: OnPayCallback?
-        // 2- [rev. question] : what does these two properties do ? applePayTokenizeContinuation and applePayTokenizeOptions
         /// Bridges the Apple Pay sheet's delegate callbacks back into the `async tokenize`
         /// call: held while the sheet is open, resumed exactly once when tokenization
         /// finishes, fails, or the user cancels.
@@ -208,8 +207,6 @@ public extension Payrails {
         /// Presents the Apple Pay sheet in TOKENIZE mode. The outcome flows back through the
         /// PaymentHandlerDelegate callbacks, which resume `applePayTokenizeContinuation`.
         private func presentApplePayTokenizationSheet(presenter: PaymentPresenter?) {
-            // 3- [rev. question] : what the config is ?
-            // 4- [rev. question] : is the paymentComposition here is coming from the /init response ?
             guard let paymentComposition = config.paymentOption(for: .applePay),
                   case let .applePay(applePayConfig) = paymentComposition.config else {
                 finishApplePayTokenization(with: .failure(PayrailsError.unsupportedPayment(type: .applePay)))
@@ -220,13 +217,10 @@ public extension Payrails {
                 return
             }
 
-            // 5- [rev. question] : Do we call the payment handler here to present the apple pay sheet ?
             let handler = ApplePayHandler(
                 config: applePayConfig,
                 delegate: self,
                 saveInstrument: true,
-                // 6- [rev. question] : what does this `mode` do ? this is to instruct the sheet to show the sheet to obtina apple pay token ?
-                // 7- [rev. question] : where this property `mode` is declared ?
                 mode: .tokenize
             )
             self.paymentHandler = handler
@@ -955,6 +949,26 @@ extension Payrails.Session {
         case .card, .payPal, .genericRedirect:
             // Not tokenizable via a presented sheet here. Cards use `cardForm.tokenize()`.
             throw PayrailsError.unsupportedPayment(type: method)
+        }
+    }
+
+    /// Callback-based counterpart to `tokenize(_:presenter:options:)` — the same flow delivered
+    /// through an `onResult` closure (matching `executePayment`) instead of `async/await`, for
+    /// merchants not using structured concurrency. The closure is invoked exactly once, on the
+    /// main thread; user cancellation arrives as `.cancelled` rather than a thrown error.
+    public func tokenize(
+        _ method: Payrails.PaymentType,
+        presenter: PaymentPresenter,
+        options: TokenizeOptions = TokenizeOptions(),
+        onResult: @escaping OnTokenizeCallback
+    ) {
+        Task { @MainActor in
+            do {
+                let response = try await self.tokenize(method, presenter: presenter, options: options)
+                onResult(.success(response))
+            } catch {
+                onResult(OnTokenizeResult(failure: error))
+            }
         }
     }
 

@@ -75,9 +75,7 @@ class ApplePayHandler: NSObject {
         return string
     }
 
-    // 9- [rev. question] : what does this function do ? what is the input and output of it ?
-    // This function takes a PKContact object (input) and converts it into a dictionary representation (output)
-    // suitable for JSON serialization. The dictionary includes the contact's name, email, and postal address.
+    /// Converts a `PKContact` into a JSON-serializable dictionary of name, email, and postal address.
     private func contactDict(_ contact: PKContact) -> [String: Any] {
         var dict: [String: Any] = [:]
         if let given = contact.name?.givenName { dict["givenName"] = given }
@@ -182,11 +180,24 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
                 return
             }
 
-            if self.mode == .tokenize {
-                self.delegate?.paymentHandlerDidFailTokenization(handler: self, error: CancellationError())
-            } else {
-                self.delegate?.paymentHandlerDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
-            }
+            // didAuthorize == false: the user dismissed the sheet before authorizing. No token or
+            // payment processing has started yet, so nothing could have failed — this is a
+            // cancellation, reported through the channel that matches the active flow.
+            self.notifyCancellation()
+        }
+    }
+
+    /// Reports a user cancellation (sheet dismissed without authorizing) to the delegate, via the
+    /// terminal channel appropriate to the active flow:
+    /// - `.tokenize`: resumes the awaiting async `tokenize()` by throwing `CancellationError`
+    ///   (Swift's "cancelled, not an error" sentinel).
+    /// - `.payment`: delivers a `.canceled` status to the payment completion handler.
+    private func notifyCancellation() {
+        switch mode {
+        case .tokenize:
+            delegate?.paymentHandlerDidFailTokenization(handler: self, error: CancellationError())
+        case .payment:
+            delegate?.paymentHandlerDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
         }
     }
 
@@ -200,11 +211,8 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         // TOKENIZE flow: route the token to the create-instrument call and KEEP the sheet
         // open (don't call paymentCompletion yet). We complete only when tokenization returns,
         // so a failed tokenize shows as an error in the sheet instead of a false success.
-        // 8- [rev. question] : Does this mean that a failed tokenization will necessarily make the payment fail ?
         if mode == .tokenize {
             guard let paymentToken = makeTokenizationPaymentToken(from: payment) else {
-                // 9- [rev. question] : Do we actaully need to make the payment fail due to serialization failure ? or we can just report the error to the delegate and let it decide how to handle it ?
-                // 10- [rev. question] : what finish finishAfterDismissal do ? 
                 finishAfterDismissal = { handler in
                     handler.delegate?.paymentHandlerDidFailTokenization(
                         handler: handler,

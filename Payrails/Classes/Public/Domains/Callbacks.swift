@@ -2,6 +2,7 @@ import Foundation
 
 public typealias OnInitCallback = ((Result<Payrails.Session, PayrailsError>) -> Void)
 public typealias OnPayCallback = ((OnPayResult) -> Void)
+public typealias OnTokenizeCallback = ((OnTokenizeResult) -> Void)
 
 /// Closure the merchant provides at `Payrails.createSession` time. The SDK invokes it
 /// when it detects the current Payrails execution is no longer reusable — most commonly
@@ -62,6 +63,29 @@ public enum OnPayResult {
     /// Surfaced to the merchant via `onAuthorizePending`. No session refresh is triggered:
     /// the execution is still live and may settle later.
     case pending
+}
+
+/// Result delivered to `tokenize(_:presenter:options:onResult:)` — the callback-based
+/// counterpart to awaiting `tokenize(...)`. Mirrors `OnPayResult`'s shape, but `.success`
+/// carries the saved instrument and user cancellation is a first-class `.cancelled` case
+/// (instead of a thrown `CancellationError`).
+public enum OnTokenizeResult {
+    case success(SaveInstrumentResponse)
+    case cancelled
+    case failed(PayrailsError)
+}
+
+public extension OnTokenizeResult {
+    /// Maps a thrown tokenize error to the matching non-success case: a `CancellationError`
+    /// (the user dismissed the sheet) becomes `.cancelled`; anything else becomes `.failed`,
+    /// with non-`PayrailsError` errors wrapped in `.unknown(error:)`.
+    init(failure error: Error) {
+        if error is CancellationError {
+            self = .cancelled
+        } else {
+            self = .failed(error as? PayrailsError ?? .unknown(error: error))
+        }
+    }
 }
 
 /// Discriminating code for an authorization failure. Raw values match the Web SDK's
