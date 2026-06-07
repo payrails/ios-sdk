@@ -36,17 +36,14 @@ protocol PaymentHandlerDelegate: AnyObject {
         completion: @escaping (Result<SaveInstrumentResponse, PayrailsError>) -> Void
     )
 
-    /// Fired after the tokenization sheet has fully dismissed. Lets the session resume the
-    /// awaiting `tokenize` call only after UIKit has completed the Apple Pay transition.
+    /// Fired once a tokenization reaches a terminal outcome, AFTER the sheet has fully dismissed.
+    /// `result` carries either the saved instrument (`.success`) or the reason it ended without
+    /// one (`.failure` — the user cancelled the sheet, or the token couldn't be serialized). Lets
+    /// the session resume the awaiting `tokenize` call only after UIKit has completed the transition.
     func paymentHandlerDidFinishTokenization(
         handler: PaymentHandler,
         result: Result<SaveInstrumentResponse, Error>
     )
-
-    /// Fired when a tokenization ended WITHOUT a usable token — the user dismissed the sheet
-    /// (cancel) or serialization failed. Lets the session resume the awaiting `tokenize` call
-    /// by throwing, instead of leaving it suspended forever.
-    func paymentHandlerDidFailTokenization(handler: PaymentHandler, error: Error)
 }
 
 extension PaymentHandlerDelegate {
@@ -65,8 +62,6 @@ extension PaymentHandlerDelegate {
         handler: PaymentHandler,
         result: Result<SaveInstrumentResponse, Error>
     ) {}
-
-    func paymentHandlerDidFailTokenization(handler: PaymentHandler, error: Error) {}
 }
 
 enum PaymentHandlerStatus {

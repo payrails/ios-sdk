@@ -1829,7 +1829,7 @@ final class PayrailsTests: XCTestCase {
             paymentMethod: "card",
             storeInstrument: true,
             futureUsage: "CardOnFile",
-            data: SaveInstrumentBodyData(
+            data: .card(
                 encryptedData: "encrypted-data-xyz",
                 vaultProviderConfigId: "vault-config-abc"
             )
@@ -1846,6 +1846,33 @@ final class PayrailsTests: XCTestCase {
         let dataDict = decoded?["data"] as? [String: Any]
         XCTAssertEqual(dataDict?["encryptedData"] as? String, "encrypted-data-xyz")
         XCTAssertEqual(dataDict?["vaultProviderConfigId"] as? String, "vault-config-abc")
+    }
+
+    /// The Apple Pay (wallet) tokenization body: only `paymentToken` is sent, and the
+    /// card-only keys are omitted entirely — the two shapes are mutually exclusive, so the
+    /// backend must never see a wallet payload carrying empty card fields. Mirrors the card
+    /// case above and locks the wire contract that `SaveInstrumentBodyData.applePay` produces.
+    func testSaveInstrumentBodyEncoding_applePay_emitsWalletShapeOnly() throws {
+        let body = SaveInstrumentBody(
+            holderReference: "holder-ref-123",
+            paymentMethod: "applePay",
+            storeInstrument: true,
+            futureUsage: "CardOnFile",
+            data: .applePay(paymentToken: "wallet-token-xyz")
+        )
+
+        let jsonData = try JSONEncoder().encode(body)
+        let decoded = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+
+        XCTAssertEqual(decoded?["holderReference"] as? String, "holder-ref-123")
+        XCTAssertEqual(decoded?["paymentMethod"] as? String, "applePay")
+        XCTAssertEqual(decoded?["storeInstrument"] as? Bool, true)
+        XCTAssertEqual(decoded?["futureUsage"] as? String, "CardOnFile")
+
+        let dataDict = decoded?["data"] as? [String: Any]
+        XCTAssertEqual(dataDict?["paymentToken"] as? String, "wallet-token-xyz")
+        XCTAssertNil(dataDict?["encryptedData"], "Apple Pay body must omit encryptedData")
+        XCTAssertNil(dataDict?["vaultProviderConfigId"], "Apple Pay body must omit vaultProviderConfigId")
     }
 
     func testSaveInstrumentResponseDecoding() throws {
@@ -3085,9 +3112,12 @@ final class PayrailsTests: XCTestCase {
         DispatchQueue.main.async { delivered.fulfill() }
         wait(for: [delivered], timeout: 1.0)
 
-        XCTAssertEqual(spy.didFailTokenizationCalls.count, 1,
-                       "Pre-authorization dismissal in tokenize mode must report exactly one cancellation")
-        XCTAssertTrue(spy.didFailTokenizationCalls.first is CancellationError,
+        XCTAssertEqual(spy.didFinishTokenizationResults.count, 1,
+                       "Pre-authorization dismissal in tokenize mode must report exactly one terminal result")
+        guard case .failure(let error)? = spy.didFinishTokenizationResults.first else {
+            return XCTFail("Tokenize cancellation must be reported as a .failure result")
+        }
+        XCTAssertTrue(error is CancellationError,
                       "Tokenize cancellation must be reported as a CancellationError")
         XCTAssertTrue(spy.didFinishCalls.isEmpty,
                       "Tokenize mode must not emit a payment terminal status")
@@ -3166,7 +3196,7 @@ final class PayrailsTests: XCTestCase {
 /// satisfy the protocol contract as no-ops.
 private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
     var didFinishCalls: [(type: Payrails.PaymentType, status: PaymentHandlerStatus)] = []
-    var didFailTokenizationCalls: [Error] = []
+    var didFinishTokenizationResults: [Result<SaveInstrumentResponse, Error>] = []
 
     func paymentHandlerDidFinish(
         handler: PaymentHandler,
@@ -3177,8 +3207,11 @@ private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
         didFinishCalls.append((type, status))
     }
 
-    func paymentHandlerDidFailTokenization(handler: PaymentHandler, error: Error) {
-        didFailTokenizationCalls.append(error)
+    func paymentHandlerDidFinishTokenization(
+        handler: PaymentHandler,
+        result: Result<SaveInstrumentResponse, Error>
+    ) {
+        didFinishTokenizationResults.append(result)
     }
 
     func paymentHandlerDidFail(

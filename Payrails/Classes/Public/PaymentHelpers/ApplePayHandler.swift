@@ -54,11 +54,7 @@ class ApplePayHandler: NSObject {
 
         let token: [String: Any] = [
             "paymentData": paymentDataObject,
-            "paymentMethod": [
-                "displayName": payment.token.paymentMethod.displayName ?? "",
-                "network": payment.token.paymentMethod.network?.rawValue ?? "",
-                "type": "credit"
-            ],
+            "paymentMethod": paymentMethodDict(from: payment),
             "transactionIdentifier": payment.token.transactionIdentifier
         ]
 
@@ -73,6 +69,27 @@ class ApplePayHandler: NSObject {
             return nil
         }
         return string
+    }
+
+    /// Maps Apple Pay's `PKPaymentMethodType` to the backend's instrument `type` string, so
+    /// debit / prepaid / store cards aren't all mis-reported to the backend as "credit".
+    private func paymentMethodTypeString(_ type: PKPaymentMethodType) -> String {
+        switch type {
+        case .credit:  return "credit"
+        case .debit:   return "debit"
+        case .prepaid: return "prepaid"
+        case .store:   return "store"
+        default:       return "unknown"
+        }
+    }
+
+    /// The `paymentMethod` sub-object shared by the tokenize token and the authorize payload.
+    private func paymentMethodDict(from payment: PKPayment) -> [String: Any] {
+        [
+            "displayName": payment.token.paymentMethod.displayName ?? "",
+            "network": payment.token.paymentMethod.network?.rawValue ?? "",
+            "type": paymentMethodTypeString(payment.token.paymentMethod.type)
+        ]
     }
 
     /// Converts a `PKContact` into a JSON-serializable dictionary of name, email, and postal address.
@@ -195,7 +212,7 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
     private func notifyCancellation() {
         switch mode {
         case .tokenize:
-            delegate?.paymentHandlerDidFailTokenization(handler: self, error: CancellationError())
+            delegate?.paymentHandlerDidFinishTokenization(handler: self, result: .failure(CancellationError()))
         case .payment:
             delegate?.paymentHandlerDidFinish(handler: self, type: .applePay, status: .canceled, payload: nil)
         }
@@ -214,9 +231,9 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         if mode == .tokenize {
             guard let paymentToken = makeTokenizationPaymentToken(from: payment) else {
                 finishAfterDismissal = { handler in
-                    handler.delegate?.paymentHandlerDidFailTokenization(
+                    handler.delegate?.paymentHandlerDidFinishTokenization(
                         handler: handler,
-                        error: PayrailsError.invalidDataFormat
+                        result: .failure(PayrailsError.invalidDataFormat)
                     )
                 }
                 paymentCompletion(.init(status: .failure, errors: nil))
@@ -264,11 +281,7 @@ extension ApplePayHandler: PKPaymentAuthorizationViewControllerDelegate {
         // Create the restructured payload with paymentMethod object
         let payload: [String: Any] = [
             "paymentData": paymentData,
-            "paymentMethod": [
-                "displayName": payment.token.paymentMethod.displayName ?? "",
-                "network": payment.token.paymentMethod.network?.rawValue ?? "",
-                "type": "credit"
-            ],
+            "paymentMethod": paymentMethodDict(from: payment),
             "transactionIdentifier": payment.token.transactionIdentifier,
             "paymentNetwork": payment.token.paymentMethod.network?.rawValue ?? "",
             "paymentInstrumentName": payment.token.paymentMethod.displayName ?? ""

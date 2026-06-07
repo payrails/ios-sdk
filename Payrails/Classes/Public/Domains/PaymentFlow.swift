@@ -135,6 +135,24 @@ struct SaveInstrumentBodyData: Encodable {
     var vaultProviderConfigId: String?
     var paymentToken: String?
 
+    // Construct only via the per-method factories below, so an empty or half-filled payload
+    // can't be built by accident at a call site.
+    private init(encryptedData: String? = nil, vaultProviderConfigId: String? = nil, paymentToken: String? = nil) {
+        self.encryptedData = encryptedData
+        self.vaultProviderConfigId = vaultProviderConfigId
+        self.paymentToken = paymentToken
+    }
+
+    /// Card create-instrument payload: vault ciphertext + the provider config that produced it.
+    static func card(encryptedData: String, vaultProviderConfigId: String) -> Self {
+        .init(encryptedData: encryptedData, vaultProviderConfigId: vaultProviderConfigId)
+    }
+
+    /// Wallet (Apple Pay) create-instrument payload: the stringified wallet payment token.
+    static func applePay(paymentToken: String) -> Self {
+        .init(paymentToken: paymentToken)
+    }
+
     // Backend-defined keys. `nil` fields are still omitted by JSONEncoder, so the card
     // (encryptedData + vaultProviderConfigId) and wallet (paymentToken) shapes stay mutually
     // exclusive — CodingKeys only pins the names, not which keys are emitted.
