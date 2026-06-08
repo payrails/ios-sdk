@@ -210,20 +210,40 @@ Notes:
 - SDK default colors semantic iOS colors and adapt to light/dark mode.
 - Merchant-provided style colors always take precedence over SDK defaults.
 
-### Tokenizing a Card (Save Without Payment)
+### Tokenizing Payment Methods (Save Without Payment)
 
-Use `cardForm.tokenize()` to encrypt card data and register it in the vault as a stored instrument without processing a payment:
+Use the session's unified tokenization API to save a card or Apple Pay instrument without processing a payment:
 
 ```swift
 let cardForm = Payrails.createCardForm()
 
 do {
-    let response = try await cardForm.tokenize(options: TokenizeOptions(
-        storeInstrument: true,
-        futureUsage: .cardOnFile // .subscription or .unscheduledCardOnFile
-    ))
+    let response = try await session.tokenize(
+        .card(cardForm),
+        options: TokenizeOptions(
+            storeInstrument: true,
+            futureUsage: .cardOnFile // .subscription or .unscheduledCardOnFile
+        )
+    )
     print("Instrument saved: \(response.id)")
     print("Card ending in: \(response.data.suffix ?? "")")
+} catch {
+    print("Tokenization failed: \(error)")
+}
+```
+
+`cardForm.tokenize(options:)` remains available as a convenience for the card path. For Apple Pay, pass a `PaymentPresenter` so the SDK can present the wallet sheet:
+
+```swift
+do {
+    let response = try await session.tokenize(
+        .applePay(presenter: self),
+        options: TokenizeOptions(
+            storeInstrument: true,
+            futureUsage: .cardOnFile
+        )
+    )
+    print("Instrument saved: \(response.id)")
 } catch {
     print("Tokenization failed: \(error)")
 }
