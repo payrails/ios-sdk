@@ -461,7 +461,16 @@ public extension Payrails {
             guard let session = self.session else {
                 throw PayrailsError.missingData("Session is required for tokenization.")
             }
+            // Single entry point: route through the unified `tokenize` so the card and wallet
+            // paths share one implementation. `Session.tokenize(.card(_:))` calls back into
+            // `encryptCardData()` below (NOT this method), so there is no recursion.
+            return try await session.tokenize(.card(self), options: options)
+        }
 
+        /// Collects the live card fields from the embedded form and encrypts them with the CSE,
+        /// returning the vault ciphertext. Called by `Session.tokenize(.card(_:))`: the form owns
+        /// the PAN and the encryption (the PCI boundary), so this stays on the form, not the session.
+        func encryptCardData() async throws -> String {
             guard self.container != nil else {
                 throw PayrailsError.missingData("Card form container is not available")
             }
@@ -513,8 +522,7 @@ public extension Payrails {
                 securityCode: securityCode
             )
 
-            let encryptedData = try payrailsCSE.encryptCardData(card: payrailsCard)
-            return try await session.tokenize(encryptedData: encryptedData, options: options)
+            return try payrailsCSE.encryptCardData(card: payrailsCard)
         }
 
         private func notifyCollectionFailure(_ error: Error) {

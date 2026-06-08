@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-06-08
+
+### Added
+- Unified `Payrails.Session.tokenize(_:options:)` API for saving card and Apple Pay instruments without charging. `Payrails.TokenizationRequest` selects `.card(CardForm)` or `.applePay(presenter:)`, and both paths return `SaveInstrumentResponse`. (ONB-768)
+- Callback-based tokenization with distinct `onSuccess`, `onFailed`, and `onCancelled` outcomes for integrations that do not use async/await. (ONB-768)
+
+### Changed
+- `CardForm.tokenize(options:)` now routes through the unified session tokenization path, keeping card and Apple Pay instrument creation on the same backend contract. (ONB-768)
+
+### Fixed
+- Empty required card fields now apply the configured invalid underline or border styling instead of falling back to the base style. (ONB-856)
+- Card field style updates now write `requiredAstrisk` configuration to the correct style slot. (ONB-856)
+
+### Documentation
+- Added unified card and Apple Pay tokenization examples and updated the public API reference, concepts, architecture, and merchant usage guides. (ONB-768)
+
 ## [2.0.0] - 2026-06-02
 
 ### Added

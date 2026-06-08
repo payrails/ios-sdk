@@ -58,11 +58,6 @@ public extension Payrails {
                 delegate?.onPaymentButtonClicked(button)
             }
 
-            print("--------------------")
-            print("save instrument: ", self.saveInstrument)
-            Payrails.log("save instrumentsssss: ", self.saveInstrument)
-            print("--------------------")
-
             paymentTask = Task { [weak self] in
                 guard let self = self else { return }
                 do {

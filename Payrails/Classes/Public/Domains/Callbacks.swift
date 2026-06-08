@@ -64,6 +64,29 @@ public enum OnPayResult {
     case pending
 }
 
+/// Tokenize outcome — `.success` carries the saved instrument, `.cancelled` is the user dismissing
+/// the sheet (not a thrown `CancellationError`), and `.failed` carries the error. The callback-based
+/// `tokenize(_:options:onSuccess:onFailed:onCancelled:)` uses this to map a thrown error onto the
+/// matching outcome closure; the async `tokenize` returns / throws directly.
+enum OnTokenizeResult {
+    case success(SaveInstrumentResponse)
+    case cancelled
+    case failed(PayrailsError)
+}
+
+extension OnTokenizeResult {
+    /// Maps a thrown tokenize error to the matching non-success case: a `CancellationError`
+    /// (the user dismissed the sheet) becomes `.cancelled`; anything else becomes `.failed`,
+    /// with non-`PayrailsError` errors wrapped in `.unknown(error:)`.
+    init(failure error: Error) {
+        if error is CancellationError {
+            self = .cancelled
+        } else {
+            self = .failed(error as? PayrailsError ?? .unknown(error: error))
+        }
+    }
+}
+
 /// Discriminating code for an authorization failure. Raw values match the Web SDK's
 /// `AuthorizationFailureReasons` string constants so both SDKs report identical codes.
 ///

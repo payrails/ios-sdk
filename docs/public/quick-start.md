@@ -18,7 +18,7 @@ Get up and running with the Payrails iOS SDK in about 15 minutes. By the end you
 Add the dependency to your `Podfile`:
 
 ```ruby
-pod 'Payrails/Checkout', '~> 1.26'
+pod 'Payrails/Checkout', '~> 2.1'
 ```
 
 Then run:
@@ -41,7 +41,7 @@ Or add it directly to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/payrails/ios-sdk.git", from: "1.26.1")
+    .package(url: "https://github.com/payrails/ios-sdk.git", from: "2.1.0")
 ]
 ```
 
