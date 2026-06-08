@@ -39,7 +39,9 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 | `Payrails.Session.executePayment(withStoredInstrument:...:onResult:)` | PUBLIC | Stored instrument payment |
 | `Payrails.Session.executePayment(with:...) async` | PUBLIC | Async variant |
 | `Payrails.Session.cancelPayment()` | INTERNAL | Only called by SDK UI components on dispose; merchants using async `executePayment(...)` cancel their own `Task`. Matches Android SDK. |
-| `Payrails.Session.tokenize(encryptedData:options:)` | PUBLIC | Card vaulting without payment |
+| `Payrails.Session.tokenize(_:options:) async` | PUBLIC | Unified tokenize (async). `TokenizationRequest` = `.applePay(presenter:)` / `.card(CardForm)`; returns `SaveInstrumentResponse`. |
+| `Payrails.Session.tokenize(_:options:onSuccess:onFailed:onCancelled:)` | PUBLIC | Callback counterpart of the async tokenize. |
+| `Payrails.Session.tokenize(encryptedData:options:)` | INTERNAL | Shared card-vaulting core; reached via `tokenize(.card(...))`. Not merchant-facing. |
 | `Payrails.Session.deleteInstrument(instrumentId:)` | PUBLIC | Direct instrument deletion |
 | `Payrails.Session.updateInstrument(instrumentId:body:)` | PUBLIC | Direct instrument update |
 | `Payrails.Session.update(_:)` | PUBLIC | Runtime session state mutation |
@@ -228,7 +230,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 |---|---|---|
 | `DeleteInstrumentResponse` | PUBLIC | Returned from `session.deleteInstrument(instrumentId:)` |
 | `UpdateInstrumentResponse` | PUBLIC | Returned from `session.updateInstrument(instrumentId:body:)` |
-| `SaveInstrumentResponse` | PUBLIC | Returned from `CardForm.tokenize(options:)` |
+| `SaveInstrumentResponse` | PUBLIC | Returned from `session.tokenize(_:options:)` and `CardForm.tokenize(options:)` |
 | `UpdateInstrumentBody` | PUBLIC | Body payload for `updateInstrument` |
 
 > **Removed in 1.28.0:** `InstrumentAPIResponse` enum was removed alongside `Payrails.api(_:_:_:)`. Session methods now return their concrete response types directly.
@@ -239,6 +241,7 @@ Living document tracking every public symbol in the SDK. Update this whenever a 
 
 | Symbol | Status | Notes |
 |---|---|---|
+| `Payrails.TokenizationRequest` | PUBLIC | Selects the method to tokenize: `.applePay(presenter:)` / `.card(CardForm)`. Not `Decodable` (holds live runtime objects). |
 | `TokenizeOptions` | PUBLIC | |
 | `FutureUsage` | PUBLIC | `.cardOnFile`, `.subscription`, `.unscheduledCardOnFile` |
 

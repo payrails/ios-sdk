@@ -114,7 +114,7 @@ If the closure is omitted, the SDK logs a warning at init time and cannot recove
 **When to use `query(_:)` vs session methods directly:**
 
 - **`query(_:)`** — stateless reads of session metadata (holder reference, amount, execution ID, API links, payment method config, stored instruments). Single unified accessor returning a `PayrailsQueryResult` enum.
-- **Session methods** — actions and mutations (`executePayment`, `deleteInstrument`, `updateInstrument`, `update`), device-capability checks (`isApplePayAvailable`), or typed reads where merchants prefer concrete return types over an enum (`getPaymentMethodConfig(_:)`).
+- **Session methods** — actions and mutations (`executePayment`, `tokenize`, `deleteInstrument`, `updateInstrument`, `update`), device-capability checks (`isApplePayAvailable`), or typed reads where merchants prefer concrete return types over an enum (`getPaymentMethodConfig(_:)`).
 
 Rule of thumb: **`query(_:)` reads data; session methods do things, check the device, or return typed values.**
 
@@ -155,6 +155,20 @@ public class Payrails.Session {
         withStoredInstrument instrument: StoredInstrument,
         presenter: PaymentPresenter?
     ) async -> OnPayResult
+
+    // Tokenization — save an instrument without paying (async + callback)
+    public func tokenize(
+        _ request: Payrails.TokenizationRequest,
+        options: TokenizeOptions = TokenizeOptions()
+    ) async throws -> SaveInstrumentResponse
+
+    public func tokenize(
+        _ request: Payrails.TokenizationRequest,
+        options: TokenizeOptions = TokenizeOptions(),
+        onSuccess: @escaping (SaveInstrumentResponse) -> Void,
+        onFailed: @escaping (PayrailsError) -> Void,
+        onCancelled: @escaping () -> Void
+    )
 
     // Instrument management
     public func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse
@@ -529,10 +543,17 @@ public enum PayrailsError: Error, LocalizedError {
 
 ## Tokenization
 
+Saves a payment method as a reusable instrument without charging the customer. `tokenize` is unified across methods: the `TokenizationRequest` case selects which instrument to tokenize and carries what that method needs. Both overloads live on `Payrails.Session` (see [Session](#session)), alongside `executePayment`.
+
 ```swift
+public enum Payrails.TokenizationRequest {
+    case applePay(presenter: PaymentPresenter)  // SDK presents the Apple Pay sheet
+    case card(CardForm)                          // SDK reads + encrypts the embedded card form
+}
+
 public struct TokenizeOptions {
-    public let storeInstrument: Bool
-    public let futureUsage: FutureUsage
+    public let storeInstrument: Bool    // default false
+    public let futureUsage: FutureUsage // default .cardOnFile
 }
 
 public enum FutureUsage: String {
@@ -540,6 +561,26 @@ public enum FutureUsage: String {
     case subscription
     case unscheduledCardOnFile
 }
+
+public struct SaveInstrumentResponse: Decodable {
+    public let id: String             // stable Payrails instrument id
+    public let createdAt: String
+    public let holderId: String
+    public let paymentMethod: String  // e.g. "applePay", "card"
+    public let status: String
+    public let data: InstrumentData
+    public let fingerprint: String?
+    public let futureUsage: String?
+}
+```
+
+```swift
+// Apple Pay — async; `self` conforms to PaymentPresenter
+let response = try await session.tokenize(
+    .applePay(presenter: self),
+    options: TokenizeOptions(storeInstrument: true)
+)
+let instrumentId = response.id
 ```
 
 See [How to Tokenize a Card](how-to-tokenize-card.md).

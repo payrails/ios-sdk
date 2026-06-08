@@ -305,6 +305,41 @@ if !session.isApplePayAvailable {
 
 ---
 
+## Tokenization (save without pay)
+
+`session.tokenize` saves an instrument without charging — the two-step counterpart to `executePayment`: tokenize → charge later with `executePayment(withStoredInstrument:)`. It is unified across methods via `TokenizationRequest`, and offers both async and callback overloads. The returned id is `SaveInstrumentResponse.id`.
+
+```swift
+// Apple Pay — async; `self` conforms to PaymentPresenter
+let saved = try await session.tokenize(
+    .applePay(presenter: self),
+    options: TokenizeOptions(storeInstrument: true, futureUsage: .cardOnFile)
+)
+let instrumentId = saved.id
+
+// Card — tokenize the embedded card form (options default to TokenizeOptions())
+let savedCard = try await session.tokenize(.card(cardForm))
+
+// Callback variant (options has a default, so it can be omitted)
+session.tokenize(
+    .applePay(presenter: self),
+    onSuccess: { saved in /* saved.id */ },
+    onFailed:  { error in /* PayrailsError */ },
+    onCancelled: { /* customer dismissed the Apple Pay sheet */ }
+)
+```
+
+Charge a tokenized instrument later by resolving it from the stored instruments and calling `executePayment`:
+
+```swift
+let result = await session.executePayment(
+    withStoredInstrument: storedInstrument,
+    presenter: self
+)
+```
+
+---
+
 ## PayPal
 
 ```swift
