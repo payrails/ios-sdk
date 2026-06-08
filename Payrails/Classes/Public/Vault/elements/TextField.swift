@@ -285,7 +285,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
          updateStyle(update.inputStyles.empty, &collectInput.inputStyles.empty)
          updateStyle(update.inputStyles.focus, &collectInput.inputStyles.focus)
          updateStyle(update.inputStyles.invalid, &collectInput.inputStyles.invalid)
-         updateStyle(update.inputStyles.requiredAstrisk, &collectInput.inputStyles.invalid)
+         updateStyle(update.inputStyles.requiredAstrisk, &collectInput.inputStyles.requiredAstrisk)
 
          updateStyle(update.labelStyles.base, &collectInput.labelStyles.base)
          updateStyle(update.labelStyles.complete, &collectInput.labelStyles.complete)
@@ -1355,7 +1355,12 @@ extension TextField {
         } else if currentState["isEmpty"] as! Bool || self.actualValue.isEmpty { // Check if empty
             if currentState["isRequired"] as! Bool { // Check if required
                 isRequiredCheckFailed = true // Set the original flag
-                updateInputStyle(collectInput!.inputStyles.empty)
+                // An empty required field is an error state, so it must use the same
+                // error styling (e.g. red underline) as an invalid value. Merchants only
+                // configure `invalid`; `empty` is left unstyled and would fall back to the
+                // base/black border, leaving the underline inconsistent with the red error
+                // message. See ONB-856.
+                updateInputStyle(collectInput!.inputStyles.invalid)
                 errorMessage.alpha = 1.0 // Show error label
             } else {
                 updateInputStyle(collectInput!.inputStyles.complete)

@@ -1403,6 +1403,81 @@ final class PayrailsTests: XCTestCase {
         )
     }
 
+    // MARK: - Error-state underline styling (ONB-856)
+
+    func testEmptyRequiredFieldAppliesInvalidUnderlineColor() {
+        // ONB-856 regression: an empty *required* field in its error state must adopt the
+        // `invalid` border color for the underline. Previously it used the (unstyled) `empty`
+        // slot and fell back to the base/black color while still showing a red error message.
+        UIView.setAnimationsEnabled(false)
+        let field = makeErrorStateField(baseColor: .black, invalidColor: .systemRed)
+        flushMainQueue()
+
+        XCTAssertEqual(
+            field.textField.underlineLayer?.strokeColor,
+            UIColor.black.cgColor,
+            "Field should start on the base underline color"
+        )
+
+        // Empty + required, exactly as a submit/blur with no value triggers.
+        field.updateErrorMessage()
+        flushMainQueue()
+
+        XCTAssertEqual(
+            field.textField.underlineLayer?.strokeColor,
+            UIColor.systemRed.cgColor,
+            "Empty required field in error state should use the invalid border color, not base"
+        )
+    }
+
+    func testErrorTriggeredFieldAppliesInvalidUnderlineColor() {
+        // Programmatic error (setError) must also drive the invalid underline color.
+        UIView.setAnimationsEnabled(false)
+        let field = makeErrorStateField(baseColor: .black, invalidColor: .systemRed)
+        flushMainQueue()
+
+        field.setError("Invalid value")
+        flushMainQueue()
+
+        XCTAssertEqual(
+            field.textField.underlineLayer?.strokeColor,
+            UIColor.systemRed.cgColor,
+            "setError should apply the invalid border color to the underline"
+        )
+    }
+
+    private func makeErrorStateField(
+        baseColor: UIColor,
+        invalidColor: UIColor,
+        borderWidth: CGFloat = 1
+    ) -> TextField {
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            inputStyles: Styles(
+                base: Style(borderColor: baseColor, borderWidth: borderWidth),
+                invalid: Style(borderColor: invalidColor)
+            ),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            label: "Card number",
+            placeholder: "",
+            type: .CARD_NUMBER
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: false,
+            enableCopy: false,
+            fieldVariant: .filled
+        )
+        return TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+    }
+
     // MARK: - Composable Field Stretching Tests
 
     func testComposableContainerSingleFieldRowHasTrailingConstraint() throws {
