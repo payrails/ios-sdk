@@ -125,6 +125,18 @@ Assign the delegate before adding the element to the window.
 
 ---
 
+## Tokenization
+
+Tokenization saves a payment method as a reusable Payrails **instrument** without charging the customer. It returns a stable instrument `id` that identifies the saved method for later use.
+
+This exists to support a **two-step model**: tokenize first, run the resulting instrument through an external decision — a saved-card list, a subscription setup — and only then, if at all, charge it with `executePayment`. Charging is a separate, deliberate action, never a side effect of tokenizing.
+
+Tokenization is **unified across payment methods**. The same `session.tokenize` call handles Apple Pay (the SDK presents the Apple Pay sheet) and cards (the SDK encrypts the embedded card form), selected by the `TokenizationRequest` case, and both return the same `SaveInstrumentResponse`. Adding a method later does not change how the call is made.
+
+Tokenization is distinct from **pay-and-save**: pay-and-save (the `storeInstrument` toggle on a payment) charges the customer and vaults the method in one step, whereas tokenization vaults without any charge.
+
+---
+
 ## 3D Secure
 
 When a card payment requires a 3DS challenge, the SDK presents an `SFSafariViewController`. Your view controller must conform to `PaymentPresenter` and implement `presentPayment(_:)`:

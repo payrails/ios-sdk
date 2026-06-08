@@ -1403,6 +1403,81 @@ final class PayrailsTests: XCTestCase {
         )
     }
 
+    // MARK: - Error-state underline styling (ONB-856)
+
+    func testEmptyRequiredFieldAppliesInvalidUnderlineColor() {
+        // ONB-856 regression: an empty *required* field in its error state must adopt the
+        // `invalid` border color for the underline. Previously it used the (unstyled) `empty`
+        // slot and fell back to the base/black color while still showing a red error message.
+        UIView.setAnimationsEnabled(false)
+        let field = makeErrorStateField(baseColor: .black, invalidColor: .systemRed)
+        flushMainQueue()
+
+        XCTAssertEqual(
+            field.textField.underlineLayer?.strokeColor,
+            UIColor.black.cgColor,
+            "Field should start on the base underline color"
+        )
+
+        // Empty + required, exactly as a submit/blur with no value triggers.
+        field.updateErrorMessage()
+        flushMainQueue()
+
+        XCTAssertEqual(
+            field.textField.underlineLayer?.strokeColor,
+            UIColor.systemRed.cgColor,
+            "Empty required field in error state should use the invalid border color, not base"
+        )
+    }
+
+    func testErrorTriggeredFieldAppliesInvalidUnderlineColor() {
+        // Programmatic error (setError) must also drive the invalid underline color.
+        UIView.setAnimationsEnabled(false)
+        let field = makeErrorStateField(baseColor: .black, invalidColor: .systemRed)
+        flushMainQueue()
+
+        field.setError("Invalid value")
+        flushMainQueue()
+
+        XCTAssertEqual(
+            field.textField.underlineLayer?.strokeColor,
+            UIColor.systemRed.cgColor,
+            "setError should apply the invalid border color to the underline"
+        )
+    }
+
+    private func makeErrorStateField(
+        baseColor: UIColor,
+        invalidColor: UIColor,
+        borderWidth: CGFloat = 1
+    ) -> TextField {
+        let input = CollectElementInput(
+            table: "cards",
+            column: "card_number",
+            inputStyles: Styles(
+                base: Style(borderColor: baseColor, borderWidth: borderWidth),
+                invalid: Style(borderColor: invalidColor)
+            ),
+            labelStyles: Styles(base: Style()),
+            errorTextStyles: Styles(base: Style()),
+            label: "Card number",
+            placeholder: "",
+            type: .CARD_NUMBER
+        )
+        let options = CollectElementOptions(
+            required: true,
+            enableCardIcon: false,
+            enableCopy: false,
+            fieldVariant: .filled
+        )
+        return TextField(
+            input: input,
+            options: options,
+            contextOptions: ContextOptions(env: .DEV),
+            elements: []
+        )
+    }
+
     // MARK: - Composable Field Stretching Tests
 
     func testComposableContainerSingleFieldRowHasTrailingConstraint() throws {
@@ -1829,7 +1904,7 @@ final class PayrailsTests: XCTestCase {
             paymentMethod: "card",
             storeInstrument: true,
             futureUsage: "CardOnFile",
-            data: SaveInstrumentBodyData(
+            data: .card(
                 encryptedData: "encrypted-data-xyz",
                 vaultProviderConfigId: "vault-config-abc"
             )
@@ -1846,6 +1921,33 @@ final class PayrailsTests: XCTestCase {
         let dataDict = decoded?["data"] as? [String: Any]
         XCTAssertEqual(dataDict?["encryptedData"] as? String, "encrypted-data-xyz")
         XCTAssertEqual(dataDict?["vaultProviderConfigId"] as? String, "vault-config-abc")
+    }
+
+    /// The Apple Pay (wallet) tokenization body: only `paymentToken` is sent, and the
+    /// card-only keys are omitted entirely — the two shapes are mutually exclusive, so the
+    /// backend must never see a wallet payload carrying empty card fields. Mirrors the card
+    /// case above and locks the wire contract that `SaveInstrumentBodyData.applePay` produces.
+    func testSaveInstrumentBodyEncoding_applePay_emitsWalletShapeOnly() throws {
+        let body = SaveInstrumentBody(
+            holderReference: "holder-ref-123",
+            paymentMethod: "applePay",
+            storeInstrument: true,
+            futureUsage: "CardOnFile",
+            data: .applePay(paymentToken: "wallet-token-xyz")
+        )
+
+        let jsonData = try JSONEncoder().encode(body)
+        let decoded = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+
+        XCTAssertEqual(decoded?["holderReference"] as? String, "holder-ref-123")
+        XCTAssertEqual(decoded?["paymentMethod"] as? String, "applePay")
+        XCTAssertEqual(decoded?["storeInstrument"] as? Bool, true)
+        XCTAssertEqual(decoded?["futureUsage"] as? String, "CardOnFile")
+
+        let dataDict = decoded?["data"] as? [String: Any]
+        XCTAssertEqual(dataDict?["paymentToken"] as? String, "wallet-token-xyz")
+        XCTAssertNil(dataDict?["encryptedData"], "Apple Pay body must omit encryptedData")
+        XCTAssertNil(dataDict?["vaultProviderConfigId"], "Apple Pay body must omit vaultProviderConfigId")
     }
 
     func testSaveInstrumentResponseDecoding() throws {
@@ -3059,6 +3161,12 @@ final class PayrailsTests: XCTestCase {
 
         handler.paymentAuthorizationViewControllerDidFinish(vc)
 
+        // The terminal status is delivered asynchronously on the main queue, after the Apple Pay
+        // controller finishes dismissing. Drain the main queue before asserting.
+        let delivered = expectation(description: "terminal status delivered")
+        DispatchQueue.main.async { delivered.fulfill() }
+        wait(for: [delivered], timeout: 1.0)
+
         XCTAssertEqual(spy.didFinishCalls.count, 1,
                        "Pre-authorization dismissal must emit exactly one terminal status")
         guard let firstStatus = spy.didFinishCalls.first?.status,
@@ -3068,10 +3176,55 @@ final class PayrailsTests: XCTestCase {
         }
     }
 
+    func testApplePayHandler_DismissalWithoutAuthorize_Tokenize_EmitsCancellation() throws {
+        let spy = SpyPaymentHandlerDelegate()
+        let handler = try makeTestApplePayHandler(delegate: spy, mode: .tokenize)
+        let vc = try makeStubApplePayVC()
+
+        handler.paymentAuthorizationViewControllerDidFinish(vc)
+
+        let delivered = expectation(description: "tokenization cancellation delivered")
+        DispatchQueue.main.async { delivered.fulfill() }
+        wait(for: [delivered], timeout: 1.0)
+
+        XCTAssertEqual(spy.didFinishTokenizationResults.count, 1,
+                       "Pre-authorization dismissal in tokenize mode must report exactly one terminal result")
+        guard case .failure(let error)? = spy.didFinishTokenizationResults.first else {
+            return XCTFail("Tokenize cancellation must be reported as a .failure result")
+        }
+        XCTAssertTrue(error is CancellationError,
+                      "Tokenize cancellation must be reported as a CancellationError")
+        XCTAssertTrue(spy.didFinishCalls.isEmpty,
+                      "Tokenize mode must not emit a payment terminal status")
+    }
+
+    // MARK: - OnTokenizeResult mapping (callback API)
+
+    func testOnTokenizeResult_mapsCancellationErrorToCancelled() {
+        guard case .cancelled = OnTokenizeResult(failure: CancellationError()) else {
+            return XCTFail("CancellationError must map to .cancelled")
+        }
+    }
+
+    func testOnTokenizeResult_mapsPayrailsErrorToFailedUnchanged() {
+        guard case .failed(.invalidDataFormat) = OnTokenizeResult(failure: PayrailsError.invalidDataFormat) else {
+            return XCTFail("A PayrailsError must map to .failed with the same case")
+        }
+    }
+
+    func testOnTokenizeResult_wrapsUnknownErrorInFailedUnknown() {
+        let underlying = NSError(domain: "test", code: 42)
+        guard case .failed(.unknown(let wrapped)) = OnTokenizeResult(failure: underlying) else {
+            return XCTFail("A non-PayrailsError must map to .failed(.unknown)")
+        }
+        XCTAssertEqual((wrapped as NSError?)?.code, 42, "The underlying error must be preserved")
+    }
+
     // MARK: - ApplePayHandler test helpers
 
     private func makeTestApplePayHandler(
-        delegate: PaymentHandlerDelegate
+        delegate: PaymentHandlerDelegate,
+        mode: ApplePayHandler.Mode = .payment
     ) throws -> ApplePayHandler {
         let json = """
         {
@@ -3087,7 +3240,7 @@ final class PayrailsTests: XCTestCase {
             PaymentOptions.ApplePayConfig.self,
             from: Data(json.utf8)
         )
-        return ApplePayHandler(config: config, delegate: delegate, saveInstrument: false)
+        return ApplePayHandler(config: config, delegate: delegate, saveInstrument: false, mode: mode)
     }
 
     /// Minimal stub `PKPaymentAuthorizationViewController` for handing to the delegate
@@ -3118,6 +3271,7 @@ final class PayrailsTests: XCTestCase {
 /// satisfy the protocol contract as no-ops.
 private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
     var didFinishCalls: [(type: Payrails.PaymentType, status: PaymentHandlerStatus)] = []
+    var didFinishTokenizationResults: [Result<SaveInstrumentResponse, Error>] = []
 
     func paymentHandlerDidFinish(
         handler: PaymentHandler,
@@ -3126,6 +3280,13 @@ private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
         payload: [String: Any]?
     ) {
         didFinishCalls.append((type, status))
+    }
+
+    func paymentHandlerDidFinishTokenization(
+        handler: PaymentHandler,
+        result: Result<SaveInstrumentResponse, Error>
+    ) {
+        didFinishTokenizationResults.append(result)
     }
 
     func paymentHandlerDidFail(

@@ -224,6 +224,34 @@ SDK calls authorize API
 
 The `failure` argument is an `AuthorizationFailure` struct with `code: AuthorizationFailureReason`, `message: String`, and `rawError: Error?`. The four `code` values (raw values match the Web SDK 1:1): `.authorizationError` (issuer declined / 3DS rejected / fraud blocked — `message` is the backend's `errors[0].reason.result` with a generic fallback, never nil), `.authenticationError` (session token rejected, HTTP 401 / 403), `.userCancelled` (user dismissed the 3DS sheet), `.unknownError` (network or SDK error — `rawError` carries the underlying error). The `onSessionExpired` closure (supplied at `createSession` time) fires ONLY on paths that leave the Payrails execution non-terminal (pending) on the backend — i.e. the user abandoned 3DS and the confirmation poll couldn't surface a backend terminal during the grace window. Backend-confirmed terminals (success, authorization-failed, cancel-URL) do NOT trigger it, because those executions are closed cleanly. See [`error-handling.md`](error-handling.md) for the full mapping.
 
+## Apple Pay tokenization flow (happy path)
+
+```mermaid
+sequenceDiagram
+    participant App as Merchant App
+    participant Session as PayrailsSession
+    participant Handler as ApplePayHandler
+    participant Sheet as Apple Pay Sheet
+    participant API as Payrails API
+
+    App->>Session: tokenize(.applePay(presenter:))
+    Session->>Handler: present (Mode.tokenize)
+    Handler->>Sheet: present PKPaymentAuthorizationViewController
+    Sheet-->>Handler: didAuthorizePayment(PKPayment)
+    Handler->>API: POST /instruments (makeTokenizationPaymentToken)
+    API-->>Handler: SaveInstrumentResponse
+    Handler-->>Session: resume continuation(.success)
+    Session-->>App: SaveInstrumentResponse
+```
+
+`ApplePayHandler` runs in one of two modes chosen at construction: `.payment` (authorize) or `.tokenize` (save, no charge). `session.tokenize(.applePay(presenter:))` bridges PassKit's delegate callbacks into `async/await` with a checked continuation — the continuation is stored, the sheet is presented on the main actor, and it is resumed exactly once from the `PaymentHandlerDelegate` methods.
+
+In tokenize mode the resume happens **after** the create-instrument POST returns, so the Apple Pay sheet stays open across the network call and the customer sees a single uninterrupted interaction. The handler serializes the `PKPayment` into the create-instrument shape via `makeTokenizationPaymentToken` — `{ token: { paymentData, paymentMethod, transactionIdentifier }, billingContact?, shippingContact? }`, a different shape from the flattened authorize payload — and the session POSTs it through the shared `saveInstrument` core (`paymentMethod: "applePay"`, `data.paymentToken`), the same core the card path uses. A pre-authorization dismissal is reported as a `CancellationError`, distinct from a failure.
+
+Inside the token, `paymentMethod.type` is mapped from PassKit's numeric `PKPaymentMethodType` to the backend's lowercase strings (`credit`/`debit`/`prepaid`/`store`) so the iOS wallet payload matches the web SDK's.
+
+---
+
 ## 3DS flow (detailed)
 
 ```
