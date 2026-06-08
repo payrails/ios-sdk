@@ -17,12 +17,12 @@ Both must be updated to the same value before releasing.
 
 ```ruby
 # Payrails.podspec
-spec.version = "2.0.0"
+spec.version = "2.1.0"
 ```
 
 ```swift
 // Version.swift
-var SDK_VERSION = "2.0.0"
+var SDK_VERSION = "2.1.0"
 ```
 
 ---

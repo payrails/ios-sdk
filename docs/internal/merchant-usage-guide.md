@@ -24,7 +24,7 @@ platform :ios, '14.0'
 use_frameworks!
 
 target 'MyApp' do
-  pod 'Payrails/Checkout', '~> 1.25'
+  pod 'Payrails/Checkout', '~> 2.1'
 end
 ```
 
