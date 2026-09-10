@@ -7,11 +7,23 @@ class SDKConfig: Decodable {
     let execution: Execution?
     var amount: Amount
     let links: SDKConfigLinks?
+    let featureConfig: SDKFeatureConfig?
+    let preferredSchemes: [String]?
+
+    // Read-only convenience for the co-branded BIN lookup endpoint under links.binLookup.
+    var binLookupLink: Link? {
+        links?.binLookup
+    }
 }
 
 struct SDKConfigLinks: Decodable {
+    let binLookup: Link?
     let instrumentDelete: Link?
     let instrumentUpdate: Link?
+}
+
+struct SDKFeatureConfig: Decodable {
+    let coBrandedCardsRollout: Double?
 }
 
 struct VaultConfiguration: Decodable {
@@ -33,6 +45,27 @@ struct Link: Decodable {
     let method: String?
     let href: String?
     let action: LinkAction?
+
+    enum CodingKeys: String, CodingKey {
+        case method
+        case href
+        case link
+        case action
+    }
+
+    init(method: String?, href: String?, action: LinkAction? = nil) {
+        self.method = method
+        self.href = href
+        self.action = action
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        method = try container.decodeIfPresent(String.self, forKey: .method)
+        href = try container.decodeIfPresent(String.self, forKey: .href)
+            ?? container.decodeIfPresent(String.self, forKey: .link)
+        action = try container.decodeIfPresent(LinkAction.self, forKey: .action)
+    }
 }
 
 struct LinkAction: Decodable {

@@ -273,6 +273,28 @@ class PayrailsAPI {
         )
     }
 
+    /// Co-branded BIN lookup. Returns `nil` when no `links.binLookup` endpoint is configured;
+    /// throws on a genuine request failure. As-you-type orchestration (throttle/cache/de-dup/
+    /// stale-guard) lives in `BinLookupService`, which calls this and swallows the error.
+    func binLookup(bin: String) async throws -> BinLookupResponse? {
+        guard let binLookupLink = config.binLookupLink,
+              let href = binLookupLink.href,
+              !href.isEmpty,
+              let url = URL(string: href) else {
+            return nil
+        }
+
+        let method = Method(rawValue: binLookupLink.method ?? "POST") ?? .POST
+        let body = try? JSONSerialization.data(withJSONObject: ["bin": bin], options: [])
+
+        return try await call(
+            url: url,
+            method: method,
+            body: body,
+            type: BinLookupResponse.self
+        )
+    }
+
     private func authorizePayment(
         type: Payrails.PaymentType,
         payload: [String: Any]?
@@ -611,10 +633,14 @@ func convertToJSON(body: [String: Any]) -> Data? {
                 compositionDict["paymentInstrumentData"] = composition.paymentInstrumentData
             } else {
                 // For other payment methods, use the standard structure
-                compositionDict["paymentInstrumentData"] = [
+                var paymentInstrumentData: [String: Any?] = [
                     "encryptedData": (composition.paymentInstrumentData as? PaymentInstrumentData)?.encryptedData,
                     "vaultProviderConfigId": (composition.paymentInstrumentData as? PaymentInstrumentData)?.vaultProviderConfigId
                 ]
+                if let preferredScheme = (composition.paymentInstrumentData as? PaymentInstrumentData)?.preferredScheme {
+                    paymentInstrumentData["preferredScheme"] = preferredScheme
+                }
+                compositionDict["paymentInstrumentData"] = paymentInstrumentData.compactMapValues { $0 }
             }
 
             paymentCompositionDicts.append(compositionDict)

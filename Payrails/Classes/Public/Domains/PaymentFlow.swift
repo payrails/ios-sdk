@@ -26,6 +26,40 @@ struct GetExecutionResult: Decodable {
     let actionRequired: String?
 }
 
+public struct BinLookupResponse: Decodable {
+    public let bin: String
+    // Optional: a local-only / unknown BIN can come back without a `network`. Keeping it optional
+    // lets the response decode (instead of failing the whole lookup) and lets CardBrandResolver,
+    // which already takes `network: String?`, handle the absence.
+    public let network: String?
+    public let localNetwork: String?
+    public let issuer: String?
+    public let issuerCountry: IssuerCountry?
+    public let type: String?
+
+    init(
+        bin: String,
+        network: String? = nil,
+        localNetwork: String? = nil,
+        issuer: String? = nil,
+        issuerCountry: IssuerCountry? = nil,
+        type: String? = nil
+    ) {
+        self.bin = bin
+        self.network = network
+        self.localNetwork = localNetwork
+        self.issuer = issuer
+        self.issuerCountry = issuerCountry
+        self.type = type
+    }
+
+    public struct IssuerCountry: Decodable {
+        public let code: String?
+        public let name: String?
+        public let iso3: String?
+    }
+}
+
 public struct DeleteInstrumentResponse: Decodable {
     public let success: Bool
 }
@@ -74,6 +108,7 @@ public struct UpdateInstrumentResponse: Decodable {
         public struct BinLookup: Decodable {
             public let bin: String
             public let network: String
+            public let localNetwork: String?
             public let issuer: String?
             public let issuerCountry: IssuerCountry?
             public let type: String?
@@ -185,6 +220,7 @@ public struct SaveInstrumentResponse: Decodable {
         public struct BinLookup: Decodable {
             public let bin: String?
             public let network: String?
+            public let localNetwork: String?
             public let issuer: String?
             public let issuerCountry: IssuerCountry?
             public let type: String?

@@ -39,10 +39,23 @@ public extension Payrails {
         /// the `Session` and reassign it on every cached button / form.
         private let onSessionExpired: SessionExpiredHandler?
 
+        /// Optional pre-authorization gate supplied by the merchant at `createSession` time.
+        /// Consulted by `awaitRequestStart(_:)` before every authorization request, and before
+        /// any provider UI is presented. See `RequestStartHandler`.
+        private let onRequestStart: RequestStartHandler?
+
+        /// How long the SDK waits for a `RequestStartHandler` to answer before treating the
+        /// silence as a block. Bounds a merchant endpoint that hangs, so the initiating button
+        /// can never be stranded in its loading state.
+        ///
+        /// Internal and mutable only so tests can shorten it; not part of the public API.
+        static var requestStartTimeout: TimeInterval = 10
+
         /// Single-shot guard preventing overlapping refreshes. Cleared once the closure's
         /// completion fires (whether success or failure).
         private var isRefreshing = false
         private let refreshLock = NSLock()
+        private let featureFlags = FeatureFlagEvaluator()
 
         var debugConfig: SDKConfig {
             return self.config
@@ -56,10 +69,12 @@ public extension Payrails {
 
         init(
             _ configuration: Payrails.Configuration,
-            onSessionExpired: SessionExpiredHandler? = nil
+            onSessionExpired: SessionExpiredHandler? = nil,
+            onRequestStart: RequestStartHandler? = nil
         ) throws {
             self.option = configuration.option
             self.onSessionExpired = onSessionExpired
+            self.onRequestStart = onRequestStart
             self.config = try parse(config: configuration)
 
             self.payrailsAPI = PayrailsAPI(config: config)
@@ -74,6 +89,55 @@ public extension Payrails {
 
             if onSessionExpired == nil {
                 Payrails.log("⚠️ No onSessionExpired handler provided to createSession. The SDK cannot self-heal if the user abandons a 3DS challenge — the next payment attempt against this Session will fail. See SessionExpiredHandler docs.")
+            }
+        }
+
+        /// Consults the merchant's `RequestStartHandler` and returns its decision. Returns
+        /// `.proceed` immediately when no handler was supplied.
+        ///
+        /// Tolerates the two ways a merchant closure can misbehave. If the completion is never
+        /// called, `requestStartTimeout` resolves the gate as a block and logs a warning — the
+        /// alternative is a button stuck in its loading state forever. If it is called more than
+        /// once, the first answer wins and the rest are ignored.
+        ///
+        /// Blocking on silence rather than proceeding is deliberate, and differs from the Web
+        /// SDK: a gate that fails open is not a gate.
+        private func awaitRequestStart(
+            _ context: Payrails.RequestStartContext
+        ) async -> Payrails.RequestStartDecision {
+            guard let handler = onRequestStart else { return .proceed }
+
+            let gate = RequestStartGate()
+
+            // The cancellation handler matters: `cancelPayment()` cancels this task, and a
+            // cancelled task never resumes a continuation on its own — the gate would hang
+            // forever. Treat a cancelled attempt as blocked.
+            return await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    gate.begin(continuation)
+
+                    let timeoutTask = Task {
+                        try? await Task.sleep(
+                            nanoseconds: UInt64(Self.requestStartTimeout * 1_000_000_000)
+                        )
+                        // No merchant message: the diagnostic below describes an integration
+                        // fault and is not phrased for a customer, so the generic SDK
+                        // description is used instead.
+                        if gate.resolve(.refuse()) {
+                            Payrails.log(
+                                "⚠️ onRequestStart did not answer within \(Int(Self.requestStartTimeout))s for \(context.paymentMethodCode); the payment was blocked. Make sure the completion is always called, on every branch."
+                            )
+                        }
+                    }
+
+                    handler(context) { decision in
+                        if gate.resolve(decision) {
+                            timeoutTask.cancel()
+                        }
+                    }
+                }
+            } onCancel: {
+                gate.resolve(.refuse())
             }
         }
 
@@ -140,6 +204,39 @@ public extension Payrails {
             self.onResult = onResult
             resetTerminalGuard()
 
+            // Fast path: with no gate registered this behaves exactly as before.
+            guard onRequestStart != nil else {
+                startStoredInstrumentPayment(instrument, presenter: presenter)
+                return
+            }
+
+            let context = Payrails.RequestStartContext(
+                executionId: executionId,
+                paymentMethodCode: instrument.type.rawValue,
+                action: .authorize
+            )
+
+            currentTask = Task { @MainActor [weak self, weak presenter] in
+                guard let self else { return }
+
+                if case let .refuse(message) = await self.awaitRequestStart(context) {
+                    self.reportRequestStartBlocked(message: message)
+                    return
+                }
+
+                self.startStoredInstrumentPayment(instrument, presenter: presenter)
+            }
+        }
+
+        /// The original body of `executePayment(withStoredInstrument:…)`, unchanged, split out so
+        /// the `onRequestStart` gate can sit in front of it.
+        ///
+        /// The gate runs before this, not inside it, so a vetoed attempt never builds a payment
+        /// handler at all.
+        private func startStoredInstrumentPayment(
+            _ instrument: StoredInstrument,
+            presenter: PaymentPresenter?
+        ) {
             guard prepareHandler(
                 for: instrument.type,
                 saveInstrument: false,
@@ -150,6 +247,7 @@ public extension Payrails {
 
             currentTask = Task { [weak self] in
                 guard let strongSelf = self else { return }
+
                 let body = [
                     "paymentInstrumentId": instrument.id,
                     "integrationType": "api",
@@ -176,19 +274,74 @@ public extension Payrails {
             with type: PaymentType,
             paymentMethodCode: String? = nil,
             saveInstrument: Bool = false,
+            preferredScheme: String? = nil,
             presenter: PaymentPresenter? = nil,
             onResult: @escaping OnPayCallback
         ) {
-            weak var presenter = presenter
-
             isPaymentInProgress = true
             self.onResult = onResult
             resetTerminalGuard()
+
+            // Fast path: with no gate registered this stays fully synchronous, exactly as before.
+            // Only sessions that opted in pay for the extra hop.
+            guard onRequestStart != nil else {
+                startPayment(
+                    with: type,
+                    paymentMethodCode: paymentMethodCode,
+                    saveInstrument: saveInstrument,
+                    preferredScheme: preferredScheme,
+                    presenter: presenter
+                )
+                return
+            }
+
+            let context = Payrails.RequestStartContext(
+                executionId: executionId,
+                paymentMethodCode: paymentMethodCode ?? type.rawValue,
+                action: .authorize
+            )
+
+            // Held weakly across the gate: the merchant's check is arbitrarily slow, and the
+            // presenting view controller may be gone by the time it answers. A nil presenter is
+            // already handled downstream by `prepareHandler` / `makePayment`.
+            currentTask = Task { @MainActor [weak self, weak presenter] in
+                guard let self else { return }
+
+                if case let .refuse(message) = await self.awaitRequestStart(context) {
+                    self.reportRequestStartBlocked(message: message)
+                    return
+                }
+
+                self.startPayment(
+                    with: type,
+                    paymentMethodCode: paymentMethodCode,
+                    saveInstrument: saveInstrument,
+                    preferredScheme: preferredScheme,
+                    presenter: presenter
+                )
+            }
+        }
+
+        /// The original body of `executePayment(with:…)`, unchanged, split out so the
+        /// `onRequestStart` gate can sit in front of it without duplicating any of it.
+        ///
+        /// Reports through the stored `onResult` rather than taking it as a parameter — the caller
+        /// assigns it immediately before invoking this, so there is one source of truth, matching
+        /// `handle(error:)` and `reportRequestStartBlocked()`.
+        private func startPayment(
+            with type: PaymentType,
+            paymentMethodCode: String?,
+            saveInstrument: Bool,
+            preferredScheme: String?,
+            presenter: PaymentPresenter?
+        ) {
+            weak var presenter = presenter
 
             guard prepareHandler(
                 for: type,
                 paymentMethodCode: paymentMethodCode,
                 saveInstrument: saveInstrument,
+                preferredScheme: preferredScheme,
                 presenter: presenter
             ),
                 let paymentHandler else {
@@ -196,12 +349,29 @@ public extension Payrails {
             }
 
             guard let total = Double(config.amount.value) else {
-                onResult(.authorizationFailed(.unknownError(.invalidDataFormat)))
+                onResult?(.authorizationFailed(.unknownError(.invalidDataFormat)))
                 isPaymentInProgress = false
                 return
             }
 
             paymentHandler.makePayment(total: total, currency: config.amount.currency, presenter: presenter)
+        }
+
+        /// Reports an `onRequestStart` refusal on the stored `onResult` and returns the session to
+        /// idle so the initiating button leaves its loading state.
+        ///
+        /// `message` is the merchant's own reason from `.refuse(message:)`, passed straight through
+        /// to `AuthorizationFailure.message`; `nil` leaves the SDK's generic description in place.
+        ///
+        /// Deliberately does **not** route through `handle(error:)`: that claims the terminal
+        /// guard and remaps everything it doesn't recognise to `.unknownError`, which would
+        /// present a merchant's own decision as an unexpected SDK failure. Mirrors the shape of
+        /// the other early returns in `startPayment`.
+        private func reportRequestStartBlocked(message: String? = nil) {
+            onResult?(.authorizationFailed(.validationFailed(message: message)))
+            isPaymentInProgress = false
+            onResult = nil
+            paymentHandler = nil
         }
 
         /// Presents the Apple Pay sheet in TOKENIZE mode. The outcome flows back through the
@@ -244,6 +414,7 @@ public extension Payrails {
             for type: PaymentType,
             paymentMethodCode: String? = nil,
             saveInstrument: Bool,
+            preferredScheme: String? = nil,
             presenter: PaymentPresenter?
         ) -> Bool {
             let paymentComposition: PaymentOptions?
@@ -300,7 +471,8 @@ public extension Payrails {
                     delegate: self,
                     saveInstrument: saveInstrument,
                     presenter: presenter,
-                    vaultProviderConfigId: providerConfigId
+                    vaultProviderConfigId: providerConfigId,
+                    preferredScheme: preferredScheme
                 )
                 self.paymentHandler = cardPaymentHandler
                 return true
@@ -726,6 +898,7 @@ extension Payrails.Session: PaymentHandlerDelegate {
                         self.config = newConfig
                         self.payrailsAPI = PayrailsAPI(config: newConfig)
                         self.executionId = newConfig.execution?.id
+                        self.featureFlags.reset()
                         do {
                             self.payrailsCSE = try PayrailsCSE(
                                 data: newInitData.data,
@@ -857,6 +1030,7 @@ public extension Payrails.Session {
         with type: Payrails.PaymentType,
         paymentMethodCode: String? = nil,
         saveInstrument: Bool = false,
+        preferredScheme: String? = nil,
         presenter: PaymentPresenter?
     ) async -> OnPayResult {
         let result = await withCheckedContinuation({ continuation in
@@ -864,6 +1038,7 @@ public extension Payrails.Session {
                 with: type,
                 paymentMethodCode: paymentMethodCode,
                 saveInstrument: saveInstrument,
+                preferredScheme: preferredScheme,
                 presenter: presenter
             ) { result in
                 continuation.resume(returning: result)
@@ -907,6 +1082,36 @@ extension Payrails.Session {
     func getSDKConfiguration() -> PublicSDKConfig? {
         guard let config = self.config else { return nil }
         return PublicSDKConfig(from: config)
+    }
+
+    /// Whether co-branded card handling should run. Combines the backend feature flag with the
+    /// availability of the BIN lookup endpoint: both are required. The flag alone is not enough —
+    /// without `links.binLookup` in the client init response the SDK cannot resolve a card's local
+    /// scheme, so co-branded stays off regardless of the flag.
+    func isCoBrandedCardsEnabled() -> Bool {
+        guard let config = self.config else {
+            return false
+        }
+
+        guard let href = config.binLookupLink?.href, !href.isEmpty else {
+            return false
+        }
+
+        return featureFlags.isEnabled(.coBrandedCards, config: config)
+    }
+
+    func preferredCardSchemes() -> [String] {
+        config?.preferredSchemes ?? []
+    }
+
+    var apiForBinLookupService: PayrailsAPI? {
+        payrailsAPI
+    }
+
+    public func binLookup(_ bin: String) async -> BinLookupResponse? {
+        await BinLookupService(apiProvider: { [weak self] in
+            self?.apiForBinLookupService
+        }).binLookup(bin: bin)
     }
 
     public func deleteInstrument(instrumentId: String) async throws -> DeleteInstrumentResponse {
@@ -1015,7 +1220,7 @@ extension Payrails.Session {
 
     /// Returns configuration for payment methods matching the given filter.
     ///
-    /// Mirrors the web SDK's `getPaymentMethodConfig(paymentMethod)` API.
+    /// Mirrors the Web SDK's `getPaymentMethodConfig(paymentMethod)` API.
     ///
     /// - Parameter filter:
     ///   - `.all` (default) returns every configured payment method.
@@ -1059,7 +1264,7 @@ extension Payrails.Session {
             return .string(id)
 
         case .binLookup:
-            guard let link = config?.execution?.links.lookup else { return nil }
+            guard let link = config?.binLookupLink else { return nil }
             return .link(PayrailsLink(method: link.method, href: link.href))
 
         case .instrumentDelete:
@@ -1088,5 +1293,52 @@ extension Payrails.Session {
             let instruments = storedInstruments(for: type)
             return .storedInstruments(instruments)
         }
+    }
+}
+
+/// Resume-once wrapper around the `onRequestStart` continuation.
+///
+/// The merchant's completion and the SDK's timeout race to answer; whichever arrives first resumes
+/// the continuation and the loser becomes a no-op. Without this, a merchant calling the completion
+/// twice would trap the process on a double resume, and a merchant never calling it would leave the
+/// continuation suspended forever.
+private final class RequestStartGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Payrails.RequestStartDecision, Never>?
+
+    /// Set by the first `resolve`. Also covers an answer that arrives *before* `begin` — the
+    /// cancellation handler can fire before the continuation is installed — in which case
+    /// `begin` resumes with it immediately rather than waiting for an answer that already came.
+    private var answer: Payrails.RequestStartDecision?
+
+    func begin(_ continuation: CheckedContinuation<Payrails.RequestStartDecision, Never>) {
+        lock.lock()
+        if let answer {
+            lock.unlock()
+            continuation.resume(returning: answer)
+            return
+        }
+        self.continuation = continuation
+        lock.unlock()
+    }
+
+    /// Resolves the gate, returning `true` if this call was the one that decided the outcome.
+    @discardableResult
+    func resolve(_ decision: Payrails.RequestStartDecision) -> Bool {
+        lock.lock()
+        guard answer == nil else {
+            lock.unlock()
+            return false
+        }
+        answer = decision
+        guard let pending = continuation else {
+            // Answered before `begin`; it will pick this up.
+            lock.unlock()
+            return true
+        }
+        continuation = nil
+        lock.unlock()
+        pending.resume(returning: decision)
+        return true
     }
 }

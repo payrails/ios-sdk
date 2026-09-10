@@ -5,6 +5,19 @@ import PayrailsCSE
 public protocol PayrailsCardFormDelegate: AnyObject {
     func cardForm(_ view: Payrails.CardForm, didCollectCardData data: String)
     func cardForm(_ view: Payrails.CardForm, didFailWithError error: Error)
+
+    /// Called when the co-branded scheme set or the selected (preferred) scheme changes: when a
+    /// co-branded BIN resolves (default scheme chosen), when the shopper picks a different brand in
+    /// the card-brand selector, and when the card number changes so co-branded state clears
+    /// (`cardSchemes` empty, `preferredScheme` nil). Mirrors the web SDK's `onPreferredSchemeChanged`
+    /// / `onChange.cardSchemes`. Optional — a default no-op is provided below.
+    func cardForm(_ view: Payrails.CardForm, didChangePreferredScheme change: PreferredSchemeChange)
+}
+
+// Default no-op so adding the method above is source-compatible for merchants that only
+// implement the two original callbacks.
+public extension PayrailsCardFormDelegate {
+    func cardForm(_ view: Payrails.CardForm, didChangePreferredScheme change: PreferredSchemeChange) {}
 }
 
 // Extension to Payrails for CardForm
@@ -69,6 +82,25 @@ public extension Payrails {
         public var cardContainer: CardCollectContainer?
         private var payrailsCSE: PayrailsCSE?
         private weak var session: Payrails.Session?
+        // Constructed after `super.init` because `getCurrentBin` captures `self`.
+        private var binLookupService: BinLookupService!
+        private weak var cardNumberField: TextField?
+        private var binLookupTask: Task<Void, Never>?
+        private let coBrandedSchemeState = CoBrandedSchemeState()
+        // Built lazily so `config` (set in init) is available for the merchant's title/subtitle
+        // translations and selector styling. Falls back to the SDK defaults when unset.
+        private lazy var cardBrandSelector = CardBrandSelectorView(
+            title: config.translations?.labels.cardBrandSelectorTitle ?? CardBrandSelectorView.defaultTitle,
+            subtitle: config.translations?.labels.cardBrandSelectorSubtitle ?? CardBrandSelectorView.defaultSubtitle,
+            style: config.styles?.cardBrandSelector
+        )
+        // Last payload sent to the delegate; used to de-duplicate so layout re-renders that don't
+        // actually change the schemes/selection never spam the merchant.
+        private var lastEmittedSchemeChange = PreferredSchemeChange(preferredScheme: nil, cardSchemes: [])
+
+        internal var selectedPreferredScheme: String? {
+            coBrandedSchemeState.preferredSchemeForPayment
+        }
 
         // Save instrument properties
         public var saveInstrument: Bool = false {
@@ -91,6 +123,14 @@ public extension Payrails {
             self.session = session
 
             super.init(frame: .zero)
+
+            // Centralised BIN lookup module: `resolve(bin:)` adds throttle + cache + in-flight
+            // de-dup + stale-guard on top of the raw call. `getCurrentBin` lets it discard a
+            // response that lands after the user has typed past the BIN it was fetched for.
+            self.binLookupService = BinLookupService(
+                getCurrentBin: { [weak self] in self?.currentCardNumberBin() ?? "" },
+                apiProvider: { [weak session] in session?.apiForBinLookupService }
+            )
 
             let stylesConfig = config.styles ?? CardFormStylesConfig.defaultConfig
             let wrapperStyle = stylesConfig.wrapperStyle ?? CardWrapperStyle.defaultStyle
@@ -123,6 +163,10 @@ public extension Payrails {
             fatalError(
                 "Not implemented: please use init(skyflow: Skyflow.Client, config: Skyflow.Configuration)"
             )
+        }
+
+        deinit {
+            binLookupTask?.cancel()
         }
 
         private func setupViews() {
@@ -176,10 +220,14 @@ public extension Payrails {
                     showRequiredAsterisk: config.showRequiredAsterisk,
                     fieldVariant: config.fieldVariant
                 )
-                _ = container.create(input: input, options: options)
+                let field = container.create(input: input, options: options)
+                if fieldType == .CARD_NUMBER {
+                    cardNumberField = field
+                }
             }
 
             container.setupDynamicCVVLengthHandling()
+            setupCoBrandedCardsHandling()
 
             self.axis = .vertical
             self.spacing = stylesConfig.fieldSpacing ?? 10
@@ -191,9 +239,131 @@ public extension Payrails {
                 print("Error getting composable view: \(error)")
             }
 
+            self.addArrangedSubview(cardBrandSelector)
+
             if config.showSaveInstrument {
                 setupSaveInstrumentToggle()
             }
+        }
+
+        private func setupCoBrandedCardsHandling() {
+            guard session?.isCoBrandedCardsEnabled() == true,
+                  let cardNumberField else {
+                cardBrandSelector.isHidden = true
+                return
+            }
+
+            cardBrandSelector.onSchemeSelected = { [weak self] cardType in
+                guard let self,
+                      self.coBrandedSchemeState.selectScheme(displayName: cardType.instance.defaultName) else {
+                    return
+                }
+                self.applyCoBrandedSchemesToCardField()
+            }
+
+            // We chain onto the field's existing onChangeHandler rather than registering a separate
+            // observer. NOTE: anything that assigns `onChangeHandler` after this setup would replace
+            // this chain — if a multi-listener hook is added to the field later, migrate to it.
+            let existingOnChange = cardNumberField.onChangeHandler
+            cardNumberField.onChangeHandler = { [weak self] state in
+                existingOnChange?(state)
+                self?.handleCardNumberChange(state)
+            }
+        }
+
+        private func handleCardNumberChange(_ state: [String: Any]) {
+            // The change-handler is only installed when co-branded is enabled at setup, so there's
+            // no need to re-evaluate the feature flag on every keystroke — just bail if the session
+            // has gone away.
+            guard let session else {
+                resetCoBrandedSchemes()
+                return
+            }
+
+            if let selectedSchemeName = state["selectedCardScheme"] as? String,
+               coBrandedSchemeState.selectScheme(displayName: selectedSchemeName) {
+                applyCoBrandedSchemesToCardField()
+            }
+
+            let bin = Self.normalizedBin(from: state)
+            if coBrandedSchemeState.clearIfBinChanged(bin) {
+                applyCoBrandedSchemesToCardField()
+            }
+
+            guard bin.count >= BinLookupService.binLookupLength else {
+                binLookupTask?.cancel()
+                resetCoBrandedSchemes()
+                return
+            }
+
+            // The module owns throttling, caching, in-flight de-dup, and the stale-response guard;
+            // the form just hands it the BIN and applies whatever non-nil lookup comes back.
+            binLookupTask?.cancel()
+            binLookupTask = Task { [weak self, weak session, binLookupService] in
+                guard let binLookupService,
+                      let lookup = await binLookupService.resolve(bin: bin) else { return }
+                await MainActor.run {
+                    guard let self, let session, !Task.isCancelled else { return }
+                    if self.coBrandedSchemeState.applyLookup(
+                        bin: bin,
+                        lookup: lookup,
+                        preferredSchemes: session.preferredCardSchemes()
+                    ) {
+                        self.applyCoBrandedSchemesToCardField()
+                    }
+                }
+            }
+        }
+
+        private func resetCoBrandedSchemes() {
+            guard coBrandedSchemeState.isCoBranded || !coBrandedSchemeState.availableSchemes.isEmpty else {
+                return
+            }
+            coBrandedSchemeState.reset()
+            applyCoBrandedSchemesToCardField()
+        }
+
+        private func applyCoBrandedSchemesToCardField() {
+            var options = CollectElementOptions()
+            options.cardSchemeMetadata = CardSchemeMetadata(
+                schemes: coBrandedSchemeState.availableCardTypes,
+                selectedScheme: coBrandedSchemeState.selectedCardType
+            )
+            cardNumberField?.update(updateOptions: options)
+            cardBrandSelector.update(
+                cardTypes: coBrandedSchemeState.availableCardTypes,
+                selected: coBrandedSchemeState.selectedCardType
+            )
+
+            notifyPreferredSchemeChangeIfNeeded()
+        }
+
+        /// Emits the current co-branded scheme state to the merchant's delegate, de-duplicated so an
+        /// unchanged payload (e.g. from a pure layout refresh) is not re-sent. This is the single
+        /// place every transition flows through — BIN resolve, shopper selection, and clear — so the
+        /// merchant sees each real change exactly once.
+        private func notifyPreferredSchemeChangeIfNeeded() {
+            let change = PreferredSchemeChange(
+                preferredScheme: coBrandedSchemeState.preferredSchemeForPayment,
+                cardSchemes: coBrandedSchemeState.cardSchemes
+            )
+            guard change != lastEmittedSchemeChange else { return }
+            lastEmittedSchemeChange = change
+            delegate?.cardForm(self, didChangePreferredScheme: change)
+        }
+
+        private func currentCardNumberBin() -> String {
+            guard let cardNumberField,
+                  let state = (cardNumberField.state as? StateforText)?.getStateForListener() else {
+                return ""
+            }
+
+            return Self.normalizedBin(from: state)
+        }
+
+        private static func normalizedBin(from state: [String: Any]) -> String {
+            let value = (state["value"] as? String) ?? ""
+            return String(value.filter(\.isNumber).prefix(8))
         }
 
         private func requestLayoutRefresh() {

@@ -4,8 +4,29 @@ import PassKit
 public protocol PayrailsApplePayButtonDelegate: AnyObject {
     func onPaymentButtonClicked(_ button: Payrails.ApplePayButton)
     func onAuthorizeSuccess(_ button: Payrails.ApplePayButton)
+
+    @available(*, deprecated, message: "Implement onAuthorizeFailed(_:failure:) instead — it carries the discriminating code, which is the only way to tell a blocked payment from a decline.")
     func onAuthorizeFailed(_ button: Payrails.ApplePayButton)
+
+    /// The payment did not authorize. `failure.code` discriminates the cause — an issuer decline,
+    /// an expired session, or `.validationFailed` when the merchant's own `onRequestStart` gate
+    /// stopped the payment before it started.
+    ///
+    /// Matches the shape already used by the card, generic-redirect and stored-instrument
+    /// delegates.
+    func onAuthorizeFailed(_ button: Payrails.ApplePayButton, failure: AuthorizationFailure)
+
     func onPaymentSessionExpired(_ button: Payrails.ApplePayButton)
+}
+
+public extension PayrailsApplePayButtonDelegate {
+    func onAuthorizeFailed(_ button: Payrails.ApplePayButton) {}
+
+    /// Forwards to the legacy no-reason method so integrations written before
+    /// `onAuthorizeFailed(_:failure:)` existed keep receiving failures unchanged.
+    func onAuthorizeFailed(_ button: Payrails.ApplePayButton, failure: AuthorizationFailure) {
+        onAuthorizeFailed(button)
+    }
 }
 
 public extension Payrails {
@@ -76,8 +97,8 @@ public extension Payrails {
                                 self.delegate?.onAuthorizeSuccess(button)
                             case let .authorizationFailed(failure) where failure.code == .userCancelled:
                                 self.delegate?.onPaymentSessionExpired(button)
-                            case .authorizationFailed:
-                                self.delegate?.onAuthorizeFailed(button)
+                            case let .authorizationFailed(failure):
+                                self.delegate?.onAuthorizeFailed(button, failure: failure)
                             case .pending:
                                 self.delegate?.onPaymentSessionExpired(button)
                             case .none:
@@ -93,7 +114,10 @@ public extension Payrails {
                     await MainActor.run {
                         let payrailsError = PayrailsError.unknown(error: error)
                         if let button = self as? ApplePayButton {
-                            self.delegate?.onAuthorizeFailed(button)
+                            self.delegate?.onAuthorizeFailed(
+                                button,
+                                failure: .unknownError(payrailsError)
+                            )
                         }
                         self.isProcessing = false
                     }

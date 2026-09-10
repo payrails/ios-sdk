@@ -42,6 +42,20 @@ internal class FormatTextField: UITextField {
       return textRect
     }
 
+    override func rightViewRect(forBounds bounds: CGRect) -> CGRect {
+        var rightRect = super.rightViewRect(forBounds: bounds)
+        guard let rightView else {
+            return rightRect
+        }
+
+        let width = rightView.bounds.width > 0 ? rightView.bounds.width : rightView.frame.width
+        let height = rightView.bounds.height > 0 ? rightView.bounds.height : rightView.frame.height
+        rightRect.size = CGSize(width: width, height: max(height, rightRect.height))
+        rightRect.origin.x = bounds.maxX - width
+        rightRect.origin.y = bounds.midY - rightRect.height / 2
+        return rightRect
+    }
+
     /**
      Overriding the var text from UITextField so if any text
      is applied programmatically by calling formatText
@@ -78,12 +92,7 @@ internal class FormatTextField: UITextField {
     internal var padding = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 
     override open func textRect(forBounds bounds: CGRect) -> CGRect {
-        if super.rightViewMode == .always {
-            let newBound = CGRect(x: bounds.origin.x, y: bounds.origin.y, width: bounds.size.width - 25, height: bounds.size.height).inset(by: padding)
-            return newBound
-        } else {
-            return bounds.inset(by: padding)
-        }
+        return contentRect(forBounds: bounds)
     }
 
     override open func placeholderRect(forBounds bounds: CGRect) -> CGRect {
@@ -91,12 +100,22 @@ internal class FormatTextField: UITextField {
     }
 
     override open func editingRect(forBounds bounds: CGRect) -> CGRect {
-        if super.rightViewMode == .always {
-            let newBound = CGRect(x: bounds.origin.x, y: bounds.origin.y, width: bounds.size.width - 25, height: bounds.size.height).inset(by: padding)
-            return newBound
-        } else {
+        return contentRect(forBounds: bounds)
+    }
+
+    private func contentRect(forBounds bounds: CGRect) -> CGRect {
+        guard super.rightViewMode == .always else {
             return bounds.inset(by: padding)
         }
+
+        let rightAccessoryWidth = rightView?.bounds.width ?? rightView?.frame.width ?? 0
+        let adjustedBounds = CGRect(
+            x: bounds.origin.x,
+            y: bounds.origin.y,
+            width: max(0, bounds.width - rightAccessoryWidth),
+            height: bounds.height
+        )
+        return adjustedBounds.inset(by: padding)
     }
 
     // MARK: - Underline Variant

@@ -65,7 +65,7 @@ public struct Payrails.Configuration {
 }
 ```
 
-### `Payrails.createSession(with:onSessionExpired:)`
+### `Payrails.createSession(with:onSessionExpired:onRequestStart:)`
 
 Creates and stores a session. All factory methods use the most recently created session.
 
@@ -73,13 +73,15 @@ Creates and stores a session. All factory methods use the most recently created 
 // Async/await
 public static func createSession(
     with configuration: Payrails.Configuration,
-    onSessionExpired: SessionExpiredHandler? = nil
+    onSessionExpired: SessionExpiredHandler? = nil,
+    onRequestStart: RequestStartHandler? = nil
 ) async throws -> Payrails.Session
 
 // Callback
 public static func createSession(
     with configuration: Payrails.Configuration,
     onSessionExpired: SessionExpiredHandler? = nil,
+    onRequestStart: RequestStartHandler? = nil,
     onInit: OnInitCallback
 )
 
@@ -87,6 +89,11 @@ public typealias OnInitCallback = (Result<Payrails.Session, PayrailsError>) -> V
 
 public typealias SessionExpiredHandler = (
     @escaping (Result<Payrails.InitData, Error>) -> Void
+) -> Void
+
+public typealias RequestStartHandler = (
+    Payrails.RequestStartContext,
+    @escaping (Payrails.RequestStartDecision) -> Void
 ) -> Void
 ```
 
@@ -104,6 +111,58 @@ let session = try await Payrails.createSession(
 ```
 
 If the closure is omitted, the SDK logs a warning at init time and cannot recover from a poisoned execution — the next payment attempt against that `Session` will fail naturally.
+
+#### `onRequestStart`
+
+Optional gate invoked once per payment attempt, before the authorization request is sent and before any provider UI (wallet sheet, PayPal sheet, redirect) is presented. Calling `completion(.proceed)` lets the attempt continue; `completion(.refuse())` stops it.
+
+The gate fires for every payment method configured on the session. A handler that only gates one method must call `completion(.proceed)` on the other branches.
+
+```swift
+public extension Payrails {
+    enum RequestStartDecision {
+        case proceed
+        case refuse(message: String?)
+
+        /// Refuse without a reason.
+        public static func refuse() -> RequestStartDecision
+    }
+
+    struct RequestStartContext {
+        /// The Payrails execution this attempt runs against, when one is known.
+        public let executionId: String?
+        /// `"card"`, `"payPal"`, `"applePay"`, or any other configured code.
+        public let paymentMethodCode: String
+        /// Whether the SDK is about to authorize or tokenize.
+        public let action: Action
+
+        public enum Action: String {
+            case authorize = "AUTHORIZE"
+            case tokenize  = "TOKENIZE"
+        }
+    }
+}
+```
+
+`Action.tokenize` is reserved. The tokenization flow is not gated in this version, so `action` is always `.authorize` today.
+
+`refuse(message:)`'s message, when supplied, becomes `AuthorizationFailure.message` on the delivered `.validationFailed`. It is passed through verbatim and is not displayed by the SDK.
+
+| Handler behaviour | Result |
+|---|---|
+| `completion(.proceed)` | Authorization proceeds |
+| `completion(.refuse(message:))` | Attempt stopped; delegate receives `.validationFailed` carrying `message` |
+| `completion(.refuse())` | Attempt stopped; delegate receives `.validationFailed` with a generic description |
+| `completion` not called within 10 seconds | Attempt stopped with a generic description; a warning is logged |
+| `completion` called more than once | First answer decides; later calls ignored |
+
+The timeout case does not carry the SDK's diagnostic into `failure.message`: it describes an integration fault rather than something phrased for a customer. Only a deliberate `.refuse(message:)` travels outward.
+
+When the attempt is stopped, no authorization request is sent, `isPaymentInProgress` returns to `false`, and the initiating element's delegate receives `onAuthorizeFailed(_:failure:)` with `failure.code == .validationFailed`.
+
+Omitting the handler leaves the payment path fully synchronous — the SDK skips the gate rather than taking an asynchronous detour.
+
+See [How to run a merchant check before authorization](how-to-gate-payment-authorization.md).
 
 ---
 
@@ -404,10 +463,14 @@ public enum AuthorizationFailureReason: String {
     /// Network failure, decode error, encryption failure, polling timeout, or
     /// any other unexpected error. `rawError` carries the underlying error.
     case unknownError        = "UNKNOWN_ERROR"
+    /// The merchant's `onRequestStart` handler stopped the payment before it
+    /// started — it answered `false`, or did not answer within the timeout.
+    /// No authorization request was sent, so this is not a decline.
+    case validationFailed    = "VALIDATION_FAILED"
 }
 ```
 
-> Web's `VALIDATION_FAILED` is intentionally absent on iOS — input validation runs client-side before submission and never reaches this path.
+> Client-side *input* validation never reaches this path: an element early-returns on an invalid form rather than emitting a failure. `.validationFailed` is reserved for an `onRequestStart` handler blocking the attempt.
 
 ### Delegate callbacks fired
 
@@ -418,6 +481,7 @@ public enum AuthorizationFailureReason: String {
 | Session token expired / rejected | `onAuthorizeFailed(self, failure: .authenticationError)` |
 | User dismissed 3DS sheet (no backend terminal confirmed) | `onAuthorizeFailed(self, failure: .userCancelled)` |
 | Network / SDK error | `onAuthorizeFailed(self, failure: .unknownError(_))` |
+| `onRequestStart` refused the attempt | `onAuthorizeFailed(self, failure: .validationFailed(message:))` |
 | Backend execution pending with no action required | `onAuthorizePending(self)` |
 
 When the user dismisses the 3DS sheet (or any other path that leaves the Payrails execution in `authorizePending`), the SDK additionally invokes the merchant's `onSessionExpired` closure (supplied at `createSession`) in the background to rebuild its internal config in place — the merchant's `Session` reference keeps working. If the closure was not supplied, the SDK logs a warning at `createSession` time and the next payment attempt against the `Session` will fail naturally against the dead execution.
@@ -448,6 +512,11 @@ extension MyCheckoutViewController: PaymentPresenter {
 ---
 
 ## Delegate protocols
+
+> **`onPaymentButtonClicked` is a notification, not a gate.** It tells you the customer tapped, for
+> analytics, observability or showing a spinner. It returns `Void` and the SDK does not wait for it,
+> so it cannot stop or defer a payment. To make the payment conditional on your own check, use
+> [`onRequestStart`](#onrequeststart) — the SDK awaits that one and honours its answer.
 
 ### `PayrailsCardPaymentButtonDelegate`
 
@@ -490,17 +559,31 @@ public protocol PayrailsCardFormDelegate: AnyObject {
 
 ```swift
 public protocol PayrailsApplePayButtonDelegate: AnyObject {
-    // Called on payment result
+    func onPaymentButtonClicked(_ button: Payrails.ApplePayButton)
+    func onAuthorizeSuccess(_ button: Payrails.ApplePayButton)
+    func onAuthorizeFailed(_ button: Payrails.ApplePayButton, failure: AuthorizationFailure)
+    func onPaymentSessionExpired(_ button: Payrails.ApplePayButton)
 }
 ```
+
+> **Deprecated:** `onAuthorizeFailed(_ button: Payrails.ApplePayButton)` with no payload. A default
+> implementation forwards to it, so existing integrations keep receiving failures, but only the
+> `failure:` variant carries the discriminating `code` — the sole way to distinguish an
+> `onRequestStart` block from an issuer decline.
 
 ### `PayrailsPayPalButtonDelegate`
 
 ```swift
 public protocol PayrailsPayPalButtonDelegate: AnyObject {
-    // Called on payment result
+    func onPaymentButtonClicked(_ button: Payrails.PayPalButton)
+    func onAuthorizeSuccess(_ button: Payrails.PayPalButton)
+    func onAuthorizeFailed(_ button: Payrails.PayPalButton, failure: AuthorizationFailure)
+    func onPaymentSessionExpired(_ button: Payrails.PayPalButton)
 }
 ```
+
+> **Deprecated:** `onAuthorizeFailed(_ button: Payrails.PayPalButton)` with no payload. Same
+> forwarding default and same reasoning as Apple Pay above.
 
 ### `PayrailsStoredInstrumentsDelegate`
 

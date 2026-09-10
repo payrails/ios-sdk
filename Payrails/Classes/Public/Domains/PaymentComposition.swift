@@ -16,4 +16,15 @@ struct PaymentComposition {
 struct PaymentInstrumentData {
     let encryptedData: String
     let vaultProviderConfigId: String
+    let preferredScheme: String?
+
+    init(
+        encryptedData: String,
+        vaultProviderConfigId: String,
+        preferredScheme: String? = nil
+    ) {
+        self.encryptedData = encryptedData
+        self.vaultProviderConfigId = vaultProviderConfigId
+        self.preferredScheme = preferredScheme
+    }
 }

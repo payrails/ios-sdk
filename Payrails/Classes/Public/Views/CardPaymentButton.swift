@@ -21,11 +21,18 @@ public protocol PayrailsCardPaymentButtonDelegate: AnyObject {
     func onAuthorizePending(_ button: Payrails.CardPaymentButton)
 
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?)
+
+    /// Forwards the embedded card form's co-branded scheme changes (see
+    /// `PayrailsCardFormDelegate.cardForm(_:didChangePreferredScheme:)`) for merchants who drive the
+    /// card flow through the button rather than holding the form's delegate directly.
+    /// Default implementation is a no-op.
+    func onCardBrandSchemeChanged(_ button: Payrails.CardPaymentButton, change: PreferredSchemeChange)
 }
 
 public extension PayrailsCardPaymentButtonDelegate {
     func onAuthorizePending(_ button: Payrails.CardPaymentButton) {}
     func onStoredInstrumentChanged(_ button: Payrails.CardPaymentButton, instrument: StoredInstrument?) {}
+    func onCardBrandSchemeChanged(_ button: Payrails.CardPaymentButton, change: PreferredSchemeChange) {}
 }
 
 public extension Payrails {
@@ -244,6 +251,7 @@ public extension Payrails {
                         result = await session.executePayment(
                             with: paymentType,
                             saveInstrument: saveInstrument,
+                            preferredScheme: self?.cardForm?.selectedPreferredScheme,
                             presenter: presenter
                         )
                     }
@@ -310,6 +318,12 @@ extension Payrails.CardPaymentButton: PayrailsCardFormDelegate {
             // Start the payment process
             self.pay(with: .card)
         }
+    }
+
+    public func cardForm(_ view: Payrails.CardForm, didChangePreferredScheme change: PreferredSchemeChange) {
+        // Re-surface the form's co-branded selection change on the button's delegate so button-based
+        // integrations (which own the button delegate, not the form delegate) receive it.
+        delegate?.onCardBrandSchemeChanged(self, change: change)
     }
 
     public func cardForm(_ view: Payrails.CardForm, didFailWithError error: Error) {

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-09-10
+
+### Added
+- Optional pre-authorization gate: `Payrails.createSession(with:onSessionExpired:onRequestStart:)` accepts a `RequestStartHandler` the SDK awaits before every authorization request and before any provider UI is presented. Answering `.refuse` skips the authorize call entirely, returns the initiating element to idle, and reports `.validationFailed`. Covers every payment method — card, PayPal, Apple Pay, generic redirect and stored instruments — because all of them route through `Session`. Opt-in: sessions without a handler keep a fully synchronous payment path. (ONB-1384)
+- `Payrails.RequestStartDecision` — the enum a `RequestStartHandler` answers with: `.proceed`, or `.refuse(message:)` where the optional message becomes `AuthorizationFailure.message` on the delivered `.validationFailed`. An enum rather than a `Bool` so a merchant refusing for a specific reason can say so, instead of the SDK substituting a generic string. The SDK does not pass its own diagnostics through this channel: a silent handler yields the generic description, since a timeout describes an integration fault. `AuthorizationFailure.validationFailed` is correspondingly a function with a defaulted `message:` parameter rather than a static property. (ONB-1384)
+- `Payrails.RequestStartContext` — the payload handed to a `RequestStartHandler`, carrying `executionId`, `paymentMethodCode` and `action`. Gate one payment method without gating the rest by branching on `paymentMethodCode`. `Action.tokenize` is reserved; `action` is always `.authorize` in this version. (ONB-1384)
+- `AuthorizationFailureReason.validationFailed` ("VALIDATION_FAILED") — reports that a merchant's `onRequestStart` handler stopped the payment before it started. Matches the Web SDK's code. Distinct from `.authorizationError` so a merchant's own decision is never recorded as an issuer decline. (ONB-1384)
+- `onAuthorizeFailed(_:failure:)` on `PayrailsPayPalButtonDelegate` and `PayrailsApplePayButtonDelegate`, bringing them in line with the four delegates that already carried the failure payload. (ONB-1384)
+
+### Changed
+- A `RequestStartHandler` that throws, or that never calls its completion within 10 seconds, blocks the payment rather than allowing it. This diverges deliberately from the Web SDK, whose event emitter isolates a throwing handler and authorizes anyway; the timeout also prevents an unreachable merchant endpoint from stranding an element in its loading state. (ONB-1384)
+
+### Deprecated
+- `onAuthorizeFailed(_ button:)` with no payload on `PayrailsPayPalButtonDelegate` and `PayrailsApplePayButtonDelegate`. A protocol-extension default forwards to it, so existing integrations continue to receive failures unchanged, but only the `failure:` variant carries the code needed to tell a gate block from a decline. (ONB-1384)
+
+### Documentation
+- New how-to guide for running a merchant check before authorization, plus an explanation of the gate in Concepts, full API reference entries, and troubleshooting for the block and timeout cases. Documented `PayrailsPayPalButtonDelegate` and `PayrailsApplePayButtonDelegate`, which were previously reference placeholders. (ONB-1384)
+
+### Upgrade notes
+- `AuthorizationFailureReason` gains a case. Exhaustive `switch` statements over it without a `default` will need the new case added.
+
 ## [2.1.0] - 2026-06-08
 
 ### Added

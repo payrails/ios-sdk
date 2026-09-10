@@ -21,17 +21,27 @@ public struct CardTranslations {
         public var saveInstrument: String?
         private var storeInstrument: String?
         private var paymentInstallments: String?
+        /// Title shown above the co-branded Card Brand selector. Supply a localized string to
+        /// translate it; `nil` uses the SDK default ("Card Brand").
+        public var cardBrandSelectorTitle: String?
+        /// Subtitle shown under the Card Brand title. Supply a localized string to translate it;
+        /// `nil` uses the SDK default.
+        public var cardBrandSelectorSubtitle: String?
 
         public init(
             values: [CardFieldType: String] = [:],
             saveInstrument: String? = nil,
             storeInstrument: String? = nil,
-            paymentInstallments: String? = nil
+            paymentInstallments: String? = nil,
+            cardBrandSelectorTitle: String? = nil,
+            cardBrandSelectorSubtitle: String? = nil
         ) {
             self.values = values
             self.saveInstrument = saveInstrument
             self.storeInstrument = storeInstrument
             self.paymentInstallments = paymentInstallments
+            self.cardBrandSelectorTitle = cardBrandSelectorTitle
+            self.cardBrandSelectorSubtitle = cardBrandSelectorSubtitle
         }
 
         public subscript(type: CardFieldType) -> String? {
@@ -101,7 +111,9 @@ extension CardTranslations {
             values: mergedLabelValues,
             saveInstrument: other.labels.saveInstrumentText ?? self.labels.saveInstrumentText,
             storeInstrument: other.labels.storeInstrumentText ?? self.labels.storeInstrumentText,
-            paymentInstallments: other.labels.paymentInstallmentsText ?? self.labels.paymentInstallmentsText
+            paymentInstallments: other.labels.paymentInstallmentsText ?? self.labels.paymentInstallmentsText,
+            cardBrandSelectorTitle: other.labels.cardBrandSelectorTitle ?? self.labels.cardBrandSelectorTitle,
+            cardBrandSelectorSubtitle: other.labels.cardBrandSelectorSubtitle ?? self.labels.cardBrandSelectorSubtitle
         )
 
         var mergedErrorValues = self.error.allValues

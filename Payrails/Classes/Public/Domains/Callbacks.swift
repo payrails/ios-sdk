@@ -34,6 +34,78 @@ public typealias SessionExpiredHandler = (
     @escaping (Result<Payrails.InitData, Error>) -> Void
 ) -> Void
 
+/// Optional gate the merchant provides at `Payrails.createSession` time. The SDK invokes it once
+/// per payment attempt, **before** it sends the authorization request and before any provider UI
+/// (wallet sheet, PayPal sheet, redirect) is presented, then waits for the answer.
+///
+/// Call `completion(.proceed)` to let the attempt continue, or `completion(.refuse())` to stop it.
+/// On a refusal no network request is made, the initiating button returns to idle, and the
+/// merchant's delegate receives `onAuthorizeFailed(_:failure:)` with code
+/// `AuthorizationFailureReason.validationFailed` — never a decline.
+///
+/// This is what makes a merchant-side pre-payment check possible: revalidating a voucher, wallet
+/// balance or loyalty points at the moment the customer commits, rather than when the button was
+/// drawn.
+///
+///     let session = try await Payrails.createSession(
+///         with: configuration,
+///         onSessionExpired: { completion in /* … */ },
+///         onRequestStart: { context, completion in
+///             guard context.paymentMethodCode == "payPal" else {
+///                 completion(.proceed)   // don't gate anything else
+///                 return
+///             }
+///             myBackend.validatePrePayment(executionId: context.executionId) { result in
+///                 switch result {
+///                 case .valid:
+///                     completion(.proceed)
+///                 case .expired(let reason):
+///                     completion(.refuse(message: reason))   // e.g. "Your voucher expired."
+///                 }
+///             }
+///         }
+///     )
+///
+/// The gate fires for every payment method, so a handler that forgets to `completion(.proceed)` on
+/// the branches it doesn't care about will block those payments.
+///
+/// **Timeouts.** The SDK waits at most 10 seconds. If `completion` has not been called by then the
+/// attempt is stopped and a warning is logged, so a slow or unreachable merchant endpoint can never
+/// leave the button spinning indefinitely. Calling `completion` more than once is safe: the first
+/// answer wins and later calls are ignored.
+///
+/// Omitting the handler leaves the payment flow exactly as it was — the SDK skips the gate entirely
+/// rather than taking an asynchronous detour.
+public typealias RequestStartHandler = (
+    Payrails.RequestStartContext,
+    @escaping (Payrails.RequestStartDecision) -> Void
+) -> Void
+
+public extension Payrails {
+    /// A `RequestStartHandler`'s verdict on one payment attempt.
+    ///
+    /// An enum rather than a `Bool` so that a refusal can carry its own reason. The merchant knows
+    /// why they refused — "your voucher expired", "the basket changed" — and only they can phrase
+    /// it for the customer; a bare `false` would leave the SDK substituting a generic string and
+    /// the merchant correlating the real reason out of band by `executionId`.
+    enum RequestStartDecision {
+        /// Continue with the payment.
+        case proceed
+
+        /// Stop the payment before authorization.
+        ///
+        /// `message`, when given, becomes `AuthorizationFailure.message` on the
+        /// `.validationFailed` delivered to the merchant's delegate, so it travels to the same
+        /// place the merchant already reads failure text from. It is passed through verbatim and is
+        /// not displayed by the SDK — presenting it is the merchant's call. Pass `nil` (or call
+        /// `.refuse()`) to get a generic SDK description instead.
+        case refuse(message: String?)
+
+        /// Refuse without a reason, leaving the SDK's generic description in place.
+        public static func refuse() -> RequestStartDecision { .refuse(message: nil) }
+    }
+}
+
 /// The result type emitted by the low-level `OnPayCallback` API.
 ///
 /// **Audience.** Most merchants integrate via the higher-level **delegate-driven button
@@ -90,9 +162,9 @@ extension OnTokenizeResult {
 /// Discriminating code for an authorization failure. Raw values match the Web SDK's
 /// `AuthorizationFailureReasons` string constants so both SDKs report identical codes.
 ///
-/// Web's `VALIDATION_FAILED` is intentionally absent: input validation happens client-side
-/// before submission and never reaches this path (the button early-returns on an invalid
-/// form instead of emitting a failure).
+/// Note that client-side *input* validation still never reaches this path — the button
+/// early-returns on an invalid form instead of emitting a failure. `validationFailed` is reserved
+/// for a merchant's own `RequestStartHandler` deciding the payment must not proceed.
 public enum AuthorizationFailureReason: String {
     /// The authorization was rejected by the backend — issuer declined, 3DS rejected, fraud
     /// blocked, etc. The accompanying `message` carries the backend detail
@@ -111,6 +183,11 @@ public enum AuthorizationFailureReason: String {
     /// unexpected error. The SDK never invents an `authorizationError`; anything it cannot
     /// attribute to a backend authorization decision lands here, with `rawError` attached.
     case unknownError = "UNKNOWN_ERROR"
+
+    /// The merchant's `RequestStartHandler` stopped the payment before it started — it answered
+    /// `false`, or it never answered within the SDK's timeout. No authorization request was sent,
+    /// so this is explicitly *not* a decline and should not be reported to the customer as one.
+    case validationFailed = "VALIDATION_FAILED"
 }
 
 /// The payload passed to `onAuthorizeFailed(_:failure:)` on every card-family delegate and
@@ -151,6 +228,21 @@ public extension AuthorizationFailure {
     /// User abandoned the flow (swiped the 3DS sheet away, or issuer hit the cancel URL).
     static var userCancelled: AuthorizationFailure {
         AuthorizationFailure(code: .userCancelled, message: "User abandoned the flow.", rawError: nil)
+    }
+
+    /// The merchant's `RequestStartHandler` refused the attempt before authorization started.
+    ///
+    /// `message` is the merchant's own reason from `.refuse(message:)`, when they gave one. A
+    /// silent or throwing handler gets the generic description instead: the SDK's diagnostics for
+    /// those cases are logged, not surfaced, since they describe an integration fault and are not
+    /// phrased for a customer.
+    static func validationFailed(message: String? = nil) -> AuthorizationFailure {
+        AuthorizationFailure(
+            code: .validationFailed,
+            message: message
+                ?? "The payment was blocked before authorization by the onRequestStart handler.",
+            rawError: nil
+        )
     }
 
     /// Unexpected error. `message` is derived from the supplied error when available; the
