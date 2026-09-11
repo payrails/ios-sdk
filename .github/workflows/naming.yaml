@@ -1,0 +1,10 @@
+name: Naming
+
+on: pull_request
+
+jobs:
+  naming:
+    name: Reusable
+    uses: payrails/actions/.github/workflows/reusable-naming.yaml@main
+    secrets:
+      linear_api_key_read: ${{ secrets.LINEAR_API_KEY_READ }}
