@@ -831,6 +831,8 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(CardNetwork.JCB.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/jcb.png")
         XCTAssertEqual(CardNetwork.DINERS.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/diners.png")
         XCTAssertEqual(CardNetwork.UNIONPAY.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/unionpay.png")
+        XCTAssertEqual(CardNetwork.CARTES_BANCAIRES.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/cartesbancaires/logo-full.png")
+        XCTAssertEqual(CardNetwork.MADA.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/mada/logo-full.png")
         XCTAssertEqual(CardNetwork.UNKNOWN.iconURL?.absoluteString, "https://assets.payrails.io/img/logos/card/ic-card.png")
     }
 
@@ -857,6 +859,11 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(CardNetwork.detect(pan: ""), .UNKNOWN)
     }
 
+    func testLocalSchemeCardTypesDoNotParticipateInPanDetection() {
+        XCTAssertEqual(CardType.forCardNumber(cardNumber: ""), .EMPTY)
+        XCTAssertEqual(CardType.forCardNumber(cardNumber: "4"), .VISA)
+    }
+
     func testCardNetworkManualSchemeMapping() {
         XCTAssertEqual(CardNetwork.from(cardType: .VISA), .VISA)
         XCTAssertEqual(CardNetwork.from(cardType: .MASTERCARD), .MASTERCARD)
@@ -865,13 +872,233 @@ final class PayrailsTests: XCTestCase {
         XCTAssertEqual(CardNetwork.from(cardType: .JCB), .JCB)
         XCTAssertEqual(CardNetwork.from(cardType: .DINERS_CLUB), .DINERS)
         XCTAssertEqual(CardNetwork.from(cardType: .UNIONPAY), .UNIONPAY)
-        XCTAssertNil(CardNetwork.from(cardType: .CARTES_BANCAIRES))
+        XCTAssertEqual(CardNetwork.from(cardType: .CARTES_BANCAIRES), .CARTES_BANCAIRES)
+        XCTAssertEqual(CardNetwork.from(cardType: .MADA), .MADA)
         XCTAssertEqual(CardNetwork.from(schemeName: "Master card"), .MASTERCARD)
         XCTAssertEqual(CardNetwork.from(schemeName: "American Express"), .AMEX)
         XCTAssertEqual(CardNetwork.from(schemeName: "Diners Club"), .DINERS)
         XCTAssertEqual(CardNetwork.from(schemeName: "Jcb"), .JCB)
         XCTAssertEqual(CardNetwork.from(schemeName: "Unionpay"), .UNIONPAY)
-        XCTAssertNil(CardNetwork.from(schemeName: "Cartes Bancaires"))
+        XCTAssertEqual(CardNetwork.from(schemeName: "Cartes Bancaires"), .CARTES_BANCAIRES)
+        XCTAssertEqual(CardNetwork.from(schemeName: "mada"), .MADA)
+    }
+
+    func testCardBrandResolverOrdersDetectedSchemesByMerchantPreference() {
+        let resolved = CardBrandResolver.resolve(
+            network: "visa",
+            localNetwork: "mada",
+            preferredSchemes: ["cartesbancaires", "visa", "mada"]
+        )
+
+        XCTAssertTrue(resolved.isCoBranded)
+        XCTAssertEqual(resolved.availableSchemes, ["visa", "mada"])
+        XCTAssertEqual(resolved.selectedScheme, "visa")
+    }
+
+    func testCardBrandResolverKeepsMadaAndMastercardForMadaBin() {
+        let resolved = CardBrandResolver.resolve(
+            network: "mastercard",
+            localNetwork: "mada",
+            preferredSchemes: ["cartesbancaires", "mada", "visa"]
+        )
+
+        XCTAssertTrue(resolved.isCoBranded)
+        XCTAssertEqual(resolved.availableSchemes, ["mada", "mastercard"])
+        XCTAssertEqual(resolved.selectedScheme, "mada")
+    }
+
+    func testCoBrandedSchemeStateSelectsSchemeForPaymentOnlyWhenCoBranded() {
+        let state = CoBrandedSchemeState()
+
+        XCTAssertTrue(state.applyLookup(
+            bin: "41111111",
+            lookup: BinLookupResponse(bin: "41111111", network: "visa", localNetwork: "mada"),
+            preferredSchemes: ["mada", "visa"]
+        ))
+        XCTAssertEqual(state.availableCardTypes, [.MADA, .VISA])
+        XCTAssertEqual(state.preferredSchemeForPayment, "mada")
+
+        state.selectScheme(code: "visa")
+        XCTAssertEqual(state.preferredSchemeForPayment, "visa")
+
+        XCTAssertTrue(state.applyLookup(
+            bin: "55555555",
+            lookup: BinLookupResponse(bin: "55555555", network: "mastercard"),
+            preferredSchemes: ["mada", "visa"]
+        ))
+        XCTAssertNil(state.preferredSchemeForPayment)
+    }
+
+    func testCoBrandedSchemeStateExposesCardSchemesPayloadMatchingWeb() {
+        let state = CoBrandedSchemeState()
+
+        XCTAssertTrue(state.applyLookup(
+            bin: "52974111",
+            lookup: BinLookupResponse(bin: "52974111", network: "mastercard", localNetwork: "mada"),
+            preferredSchemes: ["mada", "visa"]
+        ))
+
+        // Resolved co-branded: ordered schemes, default (preferred) one flagged, with logo URLs
+        // sourced from CardNetwork — same data web exposes via cardSchemes.
+        let schemes = state.cardSchemes
+        XCTAssertEqual(schemes.map(\.code), ["mada", "mastercard"])
+        XCTAssertEqual(schemes.map(\.selected), [true, false])
+        XCTAssertEqual(schemes.map(\.name), [
+            CardType.MADA.instance.defaultName,
+            CardType.MASTERCARD.instance.defaultName
+        ])
+        XCTAssertEqual(schemes[0].logoUrl?.absoluteString, "https://assets.payrails.io/img/logos/mada/logo-full.png")
+        XCTAssertEqual(schemes[1].logoUrl?.absoluteString, "https://assets.payrails.io/img/logos/card/mastercard.png")
+
+        // Shopper switches the preferred brand: order/codes unchanged, selected flag moves.
+        state.selectScheme(code: "mastercard")
+        XCTAssertEqual(state.cardSchemes.map(\.code), ["mada", "mastercard"])
+        XCTAssertEqual(state.cardSchemes.map(\.selected), [false, true])
+
+        // Non-co-branded card → empty payload (web returns undefined here).
+        XCTAssertTrue(state.applyLookup(
+            bin: "55555555",
+            lookup: BinLookupResponse(bin: "55555555", network: "mastercard"),
+            preferredSchemes: ["mada", "visa"]
+        ))
+        XCTAssertTrue(state.cardSchemes.isEmpty)
+    }
+
+    func testConvertToJSONIncludesPreferredSchemeForCardPayments() throws {
+        let composition = PaymentComposition(
+            paymentMethodCode: Payrails.PaymentType.card.rawValue,
+            integrationType: "api",
+            amount: Amount(value: "10.00", currency: "EUR"),
+            storeInstrument: false,
+            paymentInstrumentData: PaymentInstrumentData(
+                encryptedData: "encrypted-card",
+                vaultProviderConfigId: "provider-config-id",
+                preferredScheme: "mada"
+            ),
+            enrollInstrumentToNetworkOffers: false
+        )
+
+        let data = try XCTUnwrap(convertToJSON(body: ["paymentComposition": [composition]]))
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let paymentComposition = try XCTUnwrap(json["paymentComposition"] as? [[String: Any]])
+        let paymentInstrumentData = try XCTUnwrap(paymentComposition.first?["paymentInstrumentData"] as? [String: Any])
+
+        XCTAssertEqual(paymentInstrumentData["encryptedData"] as? String, "encrypted-card")
+        XCTAssertEqual(paymentInstrumentData["vaultProviderConfigId"] as? String, "provider-config-id")
+        XCTAssertEqual(paymentInstrumentData["preferredScheme"] as? String, "mada")
+    }
+
+    func testCardNumberFieldShowsAllCoBrandedIconsOnTheRightSide() {
+        UIView.setAnimationsEnabled(false)
+        let madaIcon = makeCardIconImage(color: .systemGreen)
+        let mastercardIcon = makeCardIconImage(color: .systemOrange)
+        TextField.cardIconImageFetcher = { url, completion in
+            if url.absoluteString.contains("/mada/") {
+                completion(madaIcon)
+            } else if url.absoluteString.contains("/mastercard") {
+                completion(mastercardIcon)
+            } else {
+                completion(self.makeCardIconImage())
+            }
+            return nil
+        }
+
+        let field = makeCardNumberField(showCardIcon: true, alignment: .left)
+        field.textField.frame = CGRect(x: 0, y: 0, width: 320, height: 48)
+        field.textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 24, height: 24))
+        field.textField.leftViewMode = .always
+        field.setValue(value: "529741")
+        var coBrandedOptions = CollectElementOptions()
+        coBrandedOptions.cardSchemeMetadata = CardSchemeMetadata(
+            schemes: [CardType.MADA, CardType.MASTERCARD],
+            selectedScheme: CardType.MADA
+        )
+        field.update(updateOptions: coBrandedOptions)
+        field.textFieldDidChange(field.textField)
+        flushMainQueue()
+
+        XCTAssertEqual(field.coBrandedCardIconCountForTesting, 2)
+        XCTAssertEqual(field.coBrandedCardIconURLsForTesting, [
+            "https://assets.payrails.io/img/logos/mada/logo-full.png",
+            "https://assets.payrails.io/img/logos/card/mastercard.png"
+        ])
+        XCTAssertEqual(field.listCardTypes, [.MADA, .MASTERCARD])
+        XCTAssertEqual(field.selectedCardBrand, .MADA)
+        XCTAssertNil(field.textField.leftView)
+        XCTAssertEqual(field.textField.leftViewMode, .never)
+        XCTAssertTrue(field.textField.rightView === field.rightViewForIcons)
+        XCTAssertTrue(field.isCoBrandedCardIconContainerAttachedToRightForTesting)
+        XCTAssertEqual(field.textField.padding.left, 0)
+
+        let rightViewRect = field.textField.rightViewRect(forBounds: field.textField.bounds)
+        let editingRect = field.textField.editingRect(forBounds: field.textField.bounds)
+        XCTAssertGreaterThan(rightViewRect.minX, 200)
+        XCTAssertLessThanOrEqual(editingRect.maxX, rightViewRect.minX)
+    }
+
+    func testCardBrandSelectorRendersAndChangesSelectedScheme() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage(size: CGSize(width: 260, height: 160)))
+            return nil
+        }
+        let selector = CardBrandSelectorView()
+        var selected: CardType?
+        selector.onSchemeSelected = { selected = $0 }
+
+        selector.update(cardTypes: [.MADA, .MASTERCARD], selected: .MADA)
+        flushMainQueue()
+
+        let host = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 200))
+        host.addSubview(selector)
+        selector.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            selector.topAnchor.constraint(equalTo: host.topAnchor),
+            selector.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            selector.trailingAnchor.constraint(equalTo: host.trailingAnchor)
+        ])
+        host.layoutIfNeeded()
+
+        XCTAssertFalse(selector.isHidden)
+        XCTAssertEqual(selector.schemeButtonsForTesting.count, 2)
+        XCTAssertEqual(selector.selectedCardTypeForTesting, .MADA)
+        XCTAssertTrue(selector.schemeButtonsForTesting.allSatisfy { $0.bounds.height <= 64 })
+
+        selector.schemeButtonsForTesting[1].sendActions(for: .touchUpInside)
+
+        XCTAssertEqual(selected, .MASTERCARD)
+        XCTAssertEqual(selector.selectedCardTypeForTesting, .MASTERCARD)
+    }
+
+    func testCardBrandSelectorAppliesCustomTextAndColors() {
+        UIView.setAnimationsEnabled(false)
+        TextField.cardIconImageFetcher = { _, completion in
+            completion(self.makeCardIconImage())
+            return nil
+        }
+
+        let style = CardBrandSelectorStyle(
+            titleColor: .systemPink,
+            subtitleColor: .systemTeal,
+            selectedTileBorderColor: .systemGreen
+        )
+        let selector = CardBrandSelectorView(
+            title: "Marca de tarjeta",
+            subtitle: "Elige tu marca preferida",
+            style: style
+        )
+        selector.update(cardTypes: [.MADA, .MASTERCARD], selected: .MADA)
+        flushMainQueue()
+
+        // Localized text + custom color flow through to the rendered selector.
+        XCTAssertEqual(selector.titleTextForTesting, "Marca de tarjeta")
+        XCTAssertEqual(selector.subtitleTextForTesting, "Elige tu marca preferida")
+        XCTAssertEqual(selector.titleColorForTesting, .systemPink)
+
+        // Defaults still apply when no customization is supplied.
+        let defaultSelector = CardBrandSelectorView()
+        XCTAssertEqual(defaultSelector.titleTextForTesting, "Card Brand")
+        XCTAssertEqual(defaultSelector.titleColorForTesting, .label)
     }
 
     func testCardIconIntegrationRightAlignmentUpdatesFromVisaToAmexToJcb() {
@@ -1742,11 +1969,14 @@ final class PayrailsTests: XCTestCase {
         )
     }
 
-    private func makeCardIconImage() -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 20, height: 20))
+    private func makeCardIconImage(
+        color: UIColor = .black,
+        size: CGSize = CGSize(width: 20, height: 20)
+    ) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
-            UIColor.black.setFill()
-            context.cgContext.fill(CGRect(x: 0, y: 0, width: 20, height: 20))
+            color.setFill()
+            context.cgContext.fill(CGRect(origin: .zero, size: size))
         }
     }
 
@@ -2232,7 +2462,9 @@ final class PayrailsTests: XCTestCase {
     private func makeQueryTestSession(
         holderReference: String = "holder-ref-123",
         includeLinks: Bool = true,
-        includeCardInstruments: Bool = false
+        includeCardInstruments: Bool = false,
+        preferredSchemes: [String]? = nil,
+        coBrandedCardsRollout: Double? = nil
     ) throws -> Payrails.Session {
         let instrumentsJSON: String
         if includeCardInstruments {
@@ -2248,16 +2480,26 @@ final class PayrailsTests: XCTestCase {
 
         let linksJSON = includeLinks ? """
         "links": {
+          "binLookup": {"method": "POST", "href": "https://api.payrails.com/binlookup"},
           "instrumentDelete": {"method": "DELETE", "href": "https://api.payrails.com/instruments/del"},
           "instrumentUpdate": {"method": "PATCH",  "href": "https://api.payrails.com/instruments/upd"}
         },
         """ : ""
+        let preferredSchemesJSON = preferredSchemes.map { schemes in
+            let values = schemes.map { "\"\($0)\"" }.joined(separator: ", ")
+            return "\"preferredSchemes\": [\(values)],"
+        } ?? ""
+        let featureConfigJSON = coBrandedCardsRollout.map { rollout in
+            "\"featureConfig\": {\"coBrandedCardsRollout\": \(rollout)},"
+        } ?? ""
 
         let json = """
         {
           "token": "test-token",
           "holderReference": "\(holderReference)",
           "amount": {"value": "99.00", "currency": "EUR"},
+          \(featureConfigJSON)
+          \(preferredSchemesJSON)
           \(linksJSON)
           "execution": {
             "id": "exec-abc-123",
@@ -2351,6 +2593,134 @@ final class PayrailsTests: XCTestCase {
         } else {
             XCTFail("Expected .link result for binLookup")
         }
+    }
+
+    func testSessionBinLookupReturnsNilWhenBinIsTooShort() async throws {
+        let session = try makeQueryTestSession()
+
+        let response = await session.binLookup("52974")
+
+        XCTAssertNil(response)
+    }
+
+    func testSessionBinLookupReturnsNilWhenBinLookupLinkIsMissing() async throws {
+        let session = try makeQueryTestSession(includeLinks: false)
+
+        let response = await session.binLookup("529741")
+
+        XCTAssertNil(response)
+    }
+
+    func testSDKConfigDecodesTopLevelBinLookupAndCoBrandedConfig() throws {
+        let json = """
+        {
+          "token": "test-token",
+          "holderReference": "holder-ref",
+          "amount": {"value": "10.00", "currency": "EUR"},
+          "links": {
+            "binLookup": {"method": "POST", "link": "https://api.payrails.com/binlookup"}
+          },
+          "featureConfig": {
+            "coBrandedCardsRollout": 100
+          },
+          "preferredSchemes": ["mada", "visa"]
+        }
+        """
+
+        let config = try JSONDecoder.API().decode(SDKConfig.self, from: Data(json.utf8))
+
+        XCTAssertEqual(config.binLookupLink?.method, "POST")
+        XCTAssertEqual(config.binLookupLink?.href, "https://api.payrails.com/binlookup")
+        XCTAssertEqual(config.featureConfig?.coBrandedCardsRollout, 100)
+        XCTAssertEqual(config.preferredSchemes, ["mada", "visa"])
+    }
+
+    func testCoBrandedCardsRolloutDisabledWhenBackendRolloutIsZero() throws {
+        let session = try makeQueryTestSession(
+            preferredSchemes: ["cartes_bancaires", "visa"],
+            coBrandedCardsRollout: 0
+        )
+
+        XCTAssertFalse(session.isCoBrandedCardsEnabled())
+    }
+
+    func testFeatureFlagEvaluatorUsesConfiguredRolloutAndCachesDecision() throws {
+        var samples: [Double] = [49, 99]
+        let evaluator = FeatureFlagEvaluator(
+            randomPercentageProvider: { samples.removeFirst() }
+        )
+        let config = try makeFeatureFlagConfig(
+            binLookupHref: "https://api.payrails.com/binlookup",
+            preferredSchemes: ["mada", "mastercard"],
+            coBrandedCardsRollout: 50
+        )
+
+        XCTAssertTrue(evaluator.isEnabled(.coBrandedCards, config: config))
+        XCTAssertTrue(evaluator.isEnabled(.coBrandedCards, config: config))
+        XCTAssertEqual(samples, [99], "Cached decisions should not resample the same feature flag")
+
+        evaluator.reset()
+
+        XCTAssertFalse(evaluator.isEnabled(.coBrandedCards, config: config))
+        XCTAssertTrue(samples.isEmpty)
+    }
+
+    func testFeatureFlagEvaluatorReportsRolloutIndependentlyOfConfigPrerequisites() throws {
+        // The evaluator reports ONLY the rollout flag. Config prerequisites (links.binLookup,
+        // preferredSchemes) are no longer part of the flag decision — they gate co-branded at the
+        // session level via `isCoBrandedCardsEnabled()`. Rollout 100 → enabled even with neither.
+        let evaluator = FeatureFlagEvaluator(randomPercentageProvider: { 0 })
+        let config = try makeFeatureFlagConfig(
+            binLookupHref: nil,
+            preferredSchemes: [],
+            coBrandedCardsRollout: 100
+        )
+
+        XCTAssertTrue(evaluator.isEnabled(.coBrandedCards, config: config))
+    }
+
+    func testIsCoBrandedCardsEnabledRequiresBinLookupLink() throws {
+        // Co-branded must stay off when links.binLookup is absent — without the endpoint the SDK
+        // can't resolve the local scheme.
+        let withoutBinLookup = try makeQueryTestSession(
+            includeLinks: false,
+            coBrandedCardsRollout: 100
+        )
+        XCTAssertFalse(withoutBinLookup.isCoBrandedCardsEnabled())
+
+        // With links.binLookup present and the flag on, the combined check is enabled — and it no
+        // longer requires preferredSchemes (dropped from the gate).
+        let withBinLookup = try makeQueryTestSession(coBrandedCardsRollout: 100)
+        XCTAssertTrue(withBinLookup.isCoBrandedCardsEnabled())
+    }
+
+    private func makeFeatureFlagConfig(
+        binLookupHref: String?,
+        preferredSchemes: [String],
+        coBrandedCardsRollout: Double
+    ) throws -> SDKConfig {
+        let binLookupJSON = binLookupHref.map {
+            """
+            "binLookup": {"method": "POST", "href": "\($0)"}
+            """
+        } ?? ""
+        let preferredSchemesJSON = preferredSchemes.map { "\"\($0)\"" }.joined(separator: ", ")
+        let json = """
+        {
+          "token": "test-token",
+          "holderReference": "holder-ref",
+          "amount": {"value": "10.00", "currency": "EUR"},
+          "links": {
+            \(binLookupJSON)
+          },
+          "featureConfig": {
+            "coBrandedCardsRollout": \(coBrandedCardsRollout)
+          },
+          "preferredSchemes": [\(preferredSchemesJSON)]
+        }
+        """
+
+        return try JSONDecoder.API().decode(SDKConfig.self, from: Data(json.utf8))
     }
 
     func testQueryInstrumentDelete() throws {
@@ -3308,3 +3678,353 @@ private final class SpyPaymentHandlerDelegate: PaymentHandlerDelegate {
 // Lightweight WKNavigationDelegate stub used only to satisfy PayWebViewController's
 // initializer in tests; it intentionally performs no navigation handling.
 private final class DummyNavigationDelegate: NSObject, WKNavigationDelegate {}
+
+// MARK: - onRequestStart pre-authorization gate (ONB-1384)
+
+/// Covers the gate's decision semantics. Every case here is a *block*, which is exactly the part
+/// that needs no network stubbing: a blocked attempt returns before `prepareHandler` and before any
+/// request is built, so the assertions are about `OnPayResult` and session state only.
+///
+/// The allow path is asserted as far as "the gate was consulted and answered true" — the suite has
+/// no HTTP mocking layer, so the authorize request that follows cannot be driven end to end here.
+final class RequestStartGateTests: XCTestCase {
+
+    private struct GateTestInstrument: StoredInstrument {
+        let id: String
+        let email: String?
+        let description: String?
+        let type: Payrails.PaymentType
+        var isDefault: Bool = false
+    }
+
+    private static let defaultTimeout = Payrails.Session.requestStartTimeout
+
+    override func tearDown() {
+        Payrails.Session.requestStartTimeout = Self.defaultTimeout
+        super.tearDown()
+    }
+
+    private func makeSession(
+        onRequestStart: RequestStartHandler? = nil
+    ) throws -> Payrails.Session {
+        let json = """
+        {
+          "token": "test-token",
+          "holderReference": "holder-ref-123",
+          "amount": {"value": "99.00", "currency": "EUR"},
+          "execution": {
+            "id": "exec-abc-123",
+            "status": [{"code": "pending", "time": "2024-01-01T00:00:00Z"}],
+            "createdAt": "2024-01-01T00:00:00Z",
+            "merchantReference": "merchant-ref",
+            "holderReference": "holder-ref-123",
+            "holderId": "holder-id",
+            "workflow": {"code": "default", "version": 1.0},
+            "links": {
+              "self": "https://api.payrails.com/executions/exec-abc-123"
+            },
+            "initialResults": [
+              {
+                "httpCode": 200,
+                "body": {
+                  "name": "lookup",
+                  "actionId": "action-1",
+                  "executedAt": "2024-01-01T00:00:00Z",
+                  "data": {
+                    "paymentCompositionOptions": [
+                      {
+                        "integrationType": "api",
+                        "paymentMethodCode": "card",
+                        "clientConfig": {"flow": "inline", "displayName": "Credit Card"}
+                      },
+                      {
+                        "integrationType": "hpp",
+                        "paymentMethodCode": "payPal",
+                        "clientConfig": {"flow": "redirect", "displayName": "PayPal"}
+                      }
+                    ]
+                  },
+                  "links": {
+                    "execution": "https://api.payrails.com/executions/exec-abc-123",
+                    "authorize": {"method": "POST", "href": "https://api.payrails.com/authorize"}
+                  }
+                }
+              }
+            ]
+          }
+        }
+        """
+        let config = Payrails.Configuration(
+            initData: Payrails.InitData(version: "1", data: Data(json.utf8).base64EncodedString()),
+            option: Payrails.Options()
+        )
+        return try Payrails.Session(config, onRequestStart: onRequestStart)
+    }
+
+    // MARK: Blocking
+
+    func testGateAnsweringFalseBlocksWithValidationFailed() throws {
+        let session = try makeSession { _, completion in completion(.refuse()) }
+
+        let reported = expectation(description: "onResult reported the block")
+        var received: AuthorizationFailure?
+
+        session.executePayment(with: .payPal, presenter: nil) { result in
+            if case let .authorizationFailed(failure) = result {
+                received = failure
+            }
+            reported.fulfill()
+        }
+
+        wait(for: [reported], timeout: 2)
+        XCTAssertEqual(received?.code, .validationFailed)
+        XCTAssertEqual(received?.code.rawValue, "VALIDATION_FAILED", "must match the Web SDK's code")
+        XCTAssertFalse(session.isPaymentInProgress, "a block must return the session to idle")
+    }
+
+    func testRefusalMessageReachesTheMerchantAsTheFailureMessage() throws {
+        let session = try makeSession { _, completion in
+            completion(.refuse(message: "Your voucher expired."))
+        }
+
+        let reported = expectation(description: "onResult reported the refusal")
+        var received: AuthorizationFailure?
+
+        session.executePayment(with: .payPal, presenter: nil) { result in
+            if case let .authorizationFailed(failure) = result {
+                received = failure
+            }
+            reported.fulfill()
+        }
+
+        wait(for: [reported], timeout: 2)
+        // The reason the decision is an enum rather than a Bool: the merchant knows why they
+        // refused, and only they can phrase it for the customer.
+        XCTAssertEqual(received?.message, "Your voucher expired.")
+        XCTAssertEqual(received?.code, .validationFailed)
+    }
+
+    func testRefusalWithoutAMessageFallsBackToTheGenericDescription() throws {
+        let session = try makeSession { _, completion in completion(.refuse()) }
+
+        let reported = expectation(description: "onResult reported the refusal")
+        var received: AuthorizationFailure?
+
+        session.executePayment(with: .payPal, presenter: nil) { result in
+            if case let .authorizationFailed(failure) = result {
+                received = failure
+            }
+            reported.fulfill()
+        }
+
+        wait(for: [reported], timeout: 2)
+        XCTAssertTrue(
+            received?.message.contains("onRequestStart") == true,
+            "expected the SDK's own description, got: \(received?.message ?? "nil")"
+        )
+    }
+
+    func testTimeoutDoesNotSurfaceTheSDKDiagnosticAsTheMerchantMessage() throws {
+        Payrails.Session.requestStartTimeout = 0.3
+        let session = try makeSession { _, _ in }
+
+        let reported = expectation(description: "onResult reported the timeout")
+        var received: AuthorizationFailure?
+
+        session.executePayment(with: .payPal, presenter: nil) { result in
+            if case let .authorizationFailed(failure) = result {
+                received = failure
+            }
+            reported.fulfill()
+        }
+
+        wait(for: [reported], timeout: 2)
+        // The timeout is logged, not delivered: it describes an integration fault rather than
+        // anything phrased for a customer. Only a deliberate .refuse(message:) travels outward.
+        XCTAssertTrue(
+            received?.message.contains("onRequestStart") == true,
+            "expected the generic description, got: \(received?.message ?? "nil")"
+        )
+        XCTAssertFalse(
+            received?.message.contains("did not answer") == true,
+            "the SDK's timeout diagnostic must not be surfaced as the merchant's message"
+        )
+    }
+
+    func testGateNeverAnsweringBlocksOnceTheTimeoutElapses() throws {
+        Payrails.Session.requestStartTimeout = 0.3
+
+        // Deliberately drops the completion — the merchant's endpoint hung, or a branch forgot
+        // to answer. Without the timeout this attempt would never resolve.
+        let session = try makeSession { _, _ in }
+
+        let reported = expectation(description: "the timeout blocked the payment")
+        var received: AuthorizationFailure?
+
+        session.executePayment(with: .payPal, presenter: nil) { result in
+            if case let .authorizationFailed(failure) = result {
+                received = failure
+            }
+            reported.fulfill()
+        }
+
+        wait(for: [reported], timeout: 3)
+        XCTAssertEqual(received?.code, .validationFailed)
+        XCTAssertFalse(session.isPaymentInProgress)
+    }
+
+    func testGateBlocksStoredInstrumentPaymentsToo() throws {
+        let session = try makeSession { _, completion in completion(.refuse()) }
+        let instrument = GateTestInstrument(
+            id: "instr-A",
+            email: nil,
+            description: nil,
+            type: .payPal
+        )
+
+        let reported = expectation(description: "stored-instrument block reported")
+        var received: AuthorizationFailure?
+
+        session.executePayment(withStoredInstrument: instrument, presenter: nil) { result in
+            if case let .authorizationFailed(failure) = result {
+                received = failure
+            }
+            reported.fulfill()
+        }
+
+        wait(for: [reported], timeout: 2)
+        XCTAssertEqual(received?.code, .validationFailed)
+        XCTAssertFalse(session.isPaymentInProgress)
+    }
+
+    // MARK: Context
+
+    func testContextDescribesTheAttempt() throws {
+        let seen = expectation(description: "gate consulted")
+        var context: Payrails.RequestStartContext?
+
+        let session = try makeSession { ctx, completion in
+            context = ctx
+            seen.fulfill()
+            completion(.refuse())
+        }
+
+        session.executePayment(with: .payPal, presenter: nil) { _ in }
+
+        wait(for: [seen], timeout: 2)
+        XCTAssertEqual(context?.paymentMethodCode, "payPal")
+        XCTAssertEqual(context?.executionId, "exec-abc-123")
+        XCTAssertEqual(context?.action, .authorize)
+        XCTAssertEqual(context?.action.rawValue, "AUTHORIZE", "must match the Web SDK's action")
+    }
+
+    func testExplicitPaymentMethodCodeWinsOverThePaymentType() throws {
+        let seen = expectation(description: "gate consulted")
+        var code: String?
+
+        let session = try makeSession { ctx, completion in
+            code = ctx.paymentMethodCode
+            seen.fulfill()
+            completion(.refuse())
+        }
+
+        // A stored-instrument card charge reports its own method rather than the enum's raw value.
+        session.executePayment(
+            with: .card,
+            paymentMethodCode: "someOtherMethod",
+            presenter: nil
+        ) { _ in }
+
+        wait(for: [seen], timeout: 2)
+        XCTAssertEqual(code, "someOtherMethod")
+    }
+
+    // MARK: Misbehaving handlers
+
+    func testFirstAnswerWinsWhenTheCompletionIsCalledTwice() throws {
+        // Answers false, then immediately true. The first answer must stand, and `onResult` must
+        // fire exactly once — a second resume would otherwise trap the process.
+        let session = try makeSession { _, completion in
+            completion(.refuse())
+            completion(.proceed)
+        }
+
+        let reported = expectation(description: "onResult fired")
+        reported.assertForOverFulfill = true
+        var received: AuthorizationFailure?
+
+        session.executePayment(with: .payPal, presenter: nil) { result in
+            if case let .authorizationFailed(failure) = result {
+                received = failure
+            }
+            reported.fulfill()
+        }
+
+        wait(for: [reported], timeout: 2)
+        XCTAssertEqual(received?.code, .validationFailed, "the later .proceed must be ignored")
+    }
+
+    func testAnswerAfterTheTimeoutIsIgnored() throws {
+        Payrails.Session.requestStartTimeout = 0.2
+
+        let session = try makeSession { _, completion in
+            // Answers well after the SDK gave up.
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) { completion(.proceed) }
+        }
+
+        let reported = expectation(description: "onResult fired once")
+        reported.assertForOverFulfill = true
+
+        session.executePayment(with: .payPal, presenter: nil) { _ in reported.fulfill() }
+
+        wait(for: [reported], timeout: 3)
+        // Give the late completion time to arrive; it must not resume anything a second time.
+        Thread.sleep(forTimeInterval: 1.2)
+    }
+
+    // MARK: Opting out
+
+    func testGateIsNotConsultedWhenNoHandlerIsRegistered() throws {
+        let session = try makeSession()
+
+        // With no handler the flow stays synchronous, so by the time executePayment returns the
+        // attempt is already underway rather than parked on a gate.
+        session.executePayment(with: .payPal, presenter: nil) { _ in }
+
+        XCTAssertTrue(
+            session.isPaymentInProgress,
+            "without a gate the payment should proceed immediately, not wait on anything"
+        )
+    }
+}
+
+/// Verifies the deprecated no-reason `onAuthorizeFailed` still fires for integrations written
+/// before the failure-carrying overload existed, via the protocol extension's forwarding default.
+final class LegacyAuthorizeFailedForwardingTests: XCTestCase {
+
+    private final class LegacyPayPalDelegate: PayrailsPayPalButtonDelegate {
+        var legacyCallCount = 0
+
+        func onPaymentButtonClicked(_ button: Payrails.PayPalButton) {}
+        func onAuthorizeSuccess(_ button: Payrails.PayPalButton) {}
+        func onPaymentSessionExpired(_ button: Payrails.PayPalButton) {}
+
+        // Implements ONLY the old signature, as an existing merchant integration would.
+        func onAuthorizeFailed(_ button: Payrails.PayPalButton) {
+            legacyCallCount += 1
+        }
+    }
+
+    func testFailureWithReasonReachesALegacyPayPalDelegate() {
+        let delegate = LegacyPayPalDelegate()
+        let button = Payrails.PayPalButton()
+
+        (delegate as PayrailsPayPalButtonDelegate)
+            .onAuthorizeFailed(button, failure: .validationFailed())
+
+        XCTAssertEqual(
+            delegate.legacyCallCount, 1,
+            "the forwarding default must keep old integrations working"
+        )
+    }
+}

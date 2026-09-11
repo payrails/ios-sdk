@@ -12,7 +12,8 @@
 import Foundation
 
 internal enum PayrailsAssets {
-    static let cardIconBaseURL = "https://assets.payrails.io/img/logos/card"
+    static let logosBaseURL = "https://assets.payrails.io/img/logos"
+    static let cardIconBaseURL = "\(logosBaseURL)/card"
 }
 
 internal class CreditCard {
@@ -55,6 +56,10 @@ public enum  CardType: CaseIterable {
     case UNIONPAY
     case HIPERCARD
     case CARTES_BANCAIRES
+    case MADA
+    case BANCONTACT
+    case DANKORT
+    case EFTPOS
     case UNKNOWN
     case EMPTY
 
@@ -115,8 +120,33 @@ public enum  CardType: CaseIterable {
             defaultName: "Empty", regex: "^$",
             cardLengths: [12, 13, 14, 15, 16, 17, 18, 19], formatPattern: "#### #### #### #### ###",
             securityCodeLength: 3, securityCodeName: SecurityCode.cvv.rawValue, imageName: "Unknown-Card")
+        // Local/domestic schemes below use the never-match regex "a^" on purpose: they can't be
+        // detected from the PAN — resolution is BIN-lookup only (links.binLookup + co-branding).
         case .CARTES_BANCAIRES:
-            return CreditCard(defaultName: "Cartes Bancaires", imageName: "Cartes-Bancaires-Card")
+            return CreditCard(
+                defaultName: "Cartes Bancaires", regex: "a^", cardLengths: [],
+                formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
+                securityCodeName: SecurityCode.cvv.rawValue, imageName: "Cartes-Bancaires-Card")
+        case .MADA:
+            return CreditCard(
+                defaultName: "mada", regex: "a^", cardLengths: [],
+                formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
+                securityCodeName: SecurityCode.cvv.rawValue, imageName: "Mada-Card")
+        case .BANCONTACT:
+            return CreditCard(
+                defaultName: "Bancontact", regex: "a^", cardLengths: [],
+                formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
+                securityCodeName: SecurityCode.cvv.rawValue, imageName: "Bancontact-Card")
+        case .DANKORT:
+            return CreditCard(
+                defaultName: "Dankort", regex: "a^", cardLengths: [],
+                formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
+                securityCodeName: SecurityCode.cvv.rawValue, imageName: "Dankort-Card")
+        case .EFTPOS:
+            return CreditCard(
+                defaultName: "eftpos", regex: "a^", cardLengths: [],
+                formatPattern: "#### #### #### #### ###", securityCodeLength: 3,
+                securityCodeName: SecurityCode.cvv.rawValue, imageName: "Eftpos-Card")
         }
     }
         static func forCardNumber(cardNumber: String) -> CardType {
@@ -136,6 +166,55 @@ public enum  CardType: CaseIterable {
             }
             return CardType.EMPTY
         }
+
+    internal static func fromSchemeCode(_ code: String?) -> CardType? {
+        guard let code else { return nil }
+        switch schemeKey(code) {
+        case "visa":
+            return .VISA
+        case "mastercard", "master":
+            return .MASTERCARD
+        case "amex", "americanexpress":
+            return .AMEX
+        case "discover":
+            return .DISCOVER
+        case "diners", "dinersclub":
+            return .DINERS_CLUB
+        case "jcb":
+            return .JCB
+        case "maestro":
+            return .MAESTRO
+        case "unionpay":
+            return .UNIONPAY
+        case "hipercard":
+            return .HIPERCARD
+        case "cartesbancaires", "cartesbancaire":
+            return .CARTES_BANCAIRES
+        case "mada":
+            return .MADA
+        case "bancontact":
+            return .BANCONTACT
+        case "dankort":
+            return .DANKORT
+        case "eftpos":
+            return .EFTPOS
+        default:
+            return nil
+        }
+    }
+
+    internal static func fromDisplayName(_ displayName: String?) -> CardType? {
+        guard let displayName else { return nil }
+        let key = schemeKey(displayName)
+        return allCases.first { schemeKey($0.instance.defaultName) == key }
+    }
+
+    internal static func schemeKey(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
 }
 
 internal enum SecurityCode: String {
@@ -158,9 +237,15 @@ internal enum CardNetwork: Equatable {
     case JCB
     case DINERS
     case UNIONPAY
+    case CARTES_BANCAIRES
+    case MADA
+    case BANCONTACT
+    case DANKORT
+    case EFTPOS
     case UNKNOWN
 
     private static let baseIconURL = PayrailsAssets.cardIconBaseURL
+    private static let baseLogoURL = PayrailsAssets.logosBaseURL
     private static let genericCardIconURL = "\(baseIconURL)/ic-card.png"
 
     private struct NetworkConfig {
@@ -221,6 +306,41 @@ internal enum CardNetwork: Equatable {
             iconFileName: "unionpay.png",
             cardTypes: [.UNIONPAY],
             schemeAliases: []
+        ),
+        NetworkConfig(
+            network: .CARTES_BANCAIRES,
+            detectionRegex: nil,
+            iconFileName: nil,
+            cardTypes: [.CARTES_BANCAIRES],
+            schemeAliases: ["cartes bancaires", "cartesbancaires", "cartes_bancaires"]
+        ),
+        NetworkConfig(
+            network: .MADA,
+            detectionRegex: nil,
+            iconFileName: nil,
+            cardTypes: [.MADA],
+            schemeAliases: ["mada"]
+        ),
+        NetworkConfig(
+            network: .BANCONTACT,
+            detectionRegex: nil,
+            iconFileName: nil,
+            cardTypes: [.BANCONTACT],
+            schemeAliases: ["bancontact"]
+        ),
+        NetworkConfig(
+            network: .DANKORT,
+            detectionRegex: nil,
+            iconFileName: nil,
+            cardTypes: [.DANKORT],
+            schemeAliases: ["dankort"]
+        ),
+        NetworkConfig(
+            network: .EFTPOS,
+            detectionRegex: nil,
+            iconFileName: nil,
+            cardTypes: [.EFTPOS],
+            schemeAliases: ["eftpos"]
         ),
         NetworkConfig(
             network: .UNKNOWN,
@@ -289,6 +409,21 @@ internal enum CardNetwork: Equatable {
     }
 
     internal var iconURL: URL? {
+        switch self {
+        case .CARTES_BANCAIRES:
+            return URL(string: "\(Self.baseLogoURL)/cartesbancaires/logo-full.png")
+        case .MADA:
+            return URL(string: "\(Self.baseLogoURL)/mada/logo-full.png")
+        case .BANCONTACT:
+            return URL(string: "\(Self.baseLogoURL)/bancontact/logo-full.png")
+        case .DANKORT:
+            return URL(string: "\(Self.baseLogoURL)/dankort/logo-full.png")
+        case .EFTPOS:
+            return URL(string: "\(Self.baseLogoURL)/eftpos/logo-full.png")
+        default:
+            break
+        }
+
         if self == .UNKNOWN {
             return URL(string: Self.genericCardIconURL)
         }

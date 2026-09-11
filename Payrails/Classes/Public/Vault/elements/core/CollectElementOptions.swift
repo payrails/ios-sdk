@@ -16,17 +16,18 @@ public struct CollectElementOptions {
     var translation: [ Character: String ]?
     var enableCopy: Bool
     var showRequiredAsterisk: Bool
-    var cardMetaData: [ String: Any]?
+    // Typed co-branded scheme payload (set internally by the card form), replacing the former
+    // stringly-typed `[String: Any]` dictionary. Not part of the public init — set via the property.
+    var cardSchemeMetadata: CardSchemeMetadata?
     var fieldVariant: FieldVariant
 
-    public init(required: Bool? = false, enableCardIcon: Bool = true, format: String = "mm/yy", translation: [ Character: String ]? = nil, enableCopy: Bool = false, showRequiredAsterisk: Bool = true, cardMetaData: [ String: Any]? = nil, fieldVariant: FieldVariant = .outlined) {
+    public init(required: Bool? = false, enableCardIcon: Bool = true, format: String = "mm/yy", translation: [ Character: String ]? = nil, enableCopy: Bool = false, showRequiredAsterisk: Bool = true, fieldVariant: FieldVariant = .outlined) {
         self.required = required!
         self.enableCardIcon = enableCardIcon
         self.format = format
         self.translation = translation
         self.enableCopy = enableCopy
         self.showRequiredAsterisk = showRequiredAsterisk
-        self.cardMetaData = cardMetaData
         self.fieldVariant = fieldVariant
 
         if self.translation != nil {

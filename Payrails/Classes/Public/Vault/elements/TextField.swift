@@ -17,6 +17,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
     private struct CardIconStyleConfig {
         let cardIconSize: CGFloat
         let copyIconSize: CGFloat
+        let coBrandedIconWidth: CGFloat
+        let coBrandedIconHeight: CGFloat
         let spacing: CGFloat
         let rightTrailingInset: CGFloat
         let animationDuration: TimeInterval
@@ -24,6 +26,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
         static let defaultConfig = CardIconStyleConfig(
             cardIconSize: 24,
             copyIconSize: 24,
+            coBrandedIconWidth: 40,
+            coBrandedIconHeight: 24,
             spacing: 8,
             rightTrailingInset: 8,
             animationDuration: 0.2
@@ -56,6 +60,7 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var rightViewForIcons = UIView()
     internal var copyContainerView = UIView()
     internal var cardIconContainerView = UIView()
+    internal var coBrandedCardIconContainerView = UIView()
     internal var cardIconImageView = UIImageView()
     internal var detectedCardNetwork: CardNetwork = .UNKNOWN
     internal var resolvedCardIconURL: URL?
@@ -78,6 +83,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
     private var cardIconSize: CGFloat { Self.cardIconConfig.style.cardIconSize }
     private var copyIconSize: CGFloat { Self.cardIconConfig.style.copyIconSize }
     private var cardIconSpacing: CGFloat { Self.cardIconConfig.style.spacing }
+    private var coBrandedCardIconWidth: CGFloat { Self.cardIconConfig.style.coBrandedIconWidth }
+    private var coBrandedCardIconHeight: CGFloat { Self.cardIconConfig.style.coBrandedIconHeight }
     private var rightIconTrailingInset: CGFloat { Self.cardIconConfig.style.rightTrailingInset }
     private var cardIconAnimationDuration: TimeInterval { Self.cardIconConfig.style.animationDuration }
     private static let defaultCardIconImageFetcher: (URL, @escaping (UIImage?) -> Void) -> URLSessionDataTask? = { url, completion in
@@ -104,6 +111,19 @@ public class TextField: SkyflowElement, Element, BaseElement {
     internal var listCardTypes: [CardType]?
     internal var dropdownButton = UIButton()
     internal var selectedCardBrand: CardType?
+    private var isShowingCoBrandedCardIcons = false
+    private var coBrandedCardIconImageViews: [UIImageView] = []
+    private var coBrandedCardIconURLs: [URL] = []
+    internal var coBrandedCardIconCountForTesting: Int {
+        coBrandedCardIconImageViews.count
+    }
+    internal var coBrandedCardIconURLsForTesting: [String] {
+        coBrandedCardIconURLs.map(\.absoluteString)
+    }
+    internal var isCoBrandedCardIconContainerAttachedToRightForTesting: Bool {
+        coBrandedCardIconContainerView.superview === rightViewForIcons &&
+            textField.rightView === rightViewForIcons
+    }
 
     internal var uuid: String = ""
 
@@ -312,27 +332,40 @@ public class TextField: SkyflowElement, Element, BaseElement {
     }
 
     public func update(updateOptions: CollectElementOptions) {
-        if updateOptions.cardMetaData != nil && self.fieldType == .CARD_NUMBER {
-            self.options.cardMetaData = updateOptions.cardMetaData
+        if updateOptions.cardSchemeMetadata != nil && self.fieldType == .CARD_NUMBER {
+            self.options.cardSchemeMetadata = updateOptions.cardSchemeMetadata
 
-            if let schemes = self.options.cardMetaData?["scheme"] as? [CardType] {
+            if let schemes = self.options.cardSchemeMetadata?.schemes {
                 if schemes.isEmpty {
                     selectedCardBrand = nil
                     listCardTypes = nil
-
+                    dropdownButton.isHidden = true
+                    clearCoBrandedCardIcons()
                 } else {
-                    for _ in schemes {
-                        listCardTypes = schemes
-                        if let cardTypes = listCardTypes, cardTypes.count >= 2 {
-                            getDropDownIcon()
-                        }
+                    listCardTypes = schemes
+                    if
+                        let selectedScheme = self.options.cardSchemeMetadata?.selectedScheme,
+                        schemes.contains(where: { $0.instance.defaultName == selectedScheme.instance.defaultName }) {
+                        selectedCardBrand = selectedScheme
+                    } else if let selectedCardBrand,
+                              schemes.contains(where: { $0.instance.defaultName == selectedCardBrand.instance.defaultName }) {
+                        // Keep the shopper's selected scheme when the same co-branded card is re-rendered.
+                    } else {
+                        selectedCardBrand = schemes.first
+                    }
+
+                    if schemes.count >= 2 {
+                        dropdownButton.isHidden = true
+                        updateCoBrandedCardIcons(cardTypes: schemes)
+                        return
+                    } else {
+                        dropdownButton.isHidden = true
+                        clearCoBrandedCardIcons()
                     }
                 }
-                let t = self.textField.secureText ?? ""
-                updateImage(name: "", cardNumber: t)
             }
             let t = self.textField.secureText ?? ""
-            updateImage(name: "", cardNumber: t)
+            updateImage(name: selectedCardBrand?.instance.defaultName ?? "", cardNumber: t)
         }
 
     }
@@ -486,7 +519,9 @@ public class TextField: SkyflowElement, Element, BaseElement {
         if self.options.enableCopy {
             textField.rightViewMode = .always
             addCopyIcon()
-            if self.fieldType == .CARD_NUMBER {
+            if isShowingCoBrandedCardIcons, let listCardTypes, listCardTypes.count >= 2 {
+                updateCoBrandedCardIcons(cardTypes: listCardTypes)
+            } else if self.fieldType == .CARD_NUMBER {
                 if self.options.enableCardIcon && cardIconAlignment == .left {
                     textField.rightView = copyContainerView
                     textField.rightView?.isHidden = true
@@ -535,6 +570,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
 
     private func setupCardIconViews() {
         cardIconContainerView.subviews.forEach { $0.removeFromSuperview() }
+        coBrandedCardIconContainerView.subviews.forEach { $0.removeFromSuperview() }
+        coBrandedCardIconContainerView.removeFromSuperview()
         rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
 
         cardIconImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: cardIconSize, height: cardIconSize))
@@ -549,7 +586,12 @@ public class TextField: SkyflowElement, Element, BaseElement {
         cardIconContainerView.addSubview(cardIconImageView)
         cardIconImageView.center = CGPoint(x: cardIconContainerView.bounds.midX, y: cardIconContainerView.bounds.midY)
 
-        if self.options.enableCardIcon {
+        if isShowingCoBrandedCardIcons {
+            textField.leftView = nil
+            textField.leftViewMode = .never
+            textField.rightViewMode = .always
+            textField.rightView = rightViewForIcons
+        } else if self.options.enableCardIcon {
             if cardIconAlignment == .left {
                 textField.leftViewMode = .always
                 textField.leftView = cardIconContainerView
@@ -645,6 +687,11 @@ public class TextField: SkyflowElement, Element, BaseElement {
             return
         }
 
+        if isShowingCoBrandedCardIcons, let listCardTypes, listCardTypes.count >= 2 {
+            updateCoBrandedCardIcons(cardTypes: listCardTypes)
+            return
+        }
+
         let explicitSchemeName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let network = CardNetwork.resolve(
             schemeName: explicitSchemeName,
@@ -700,7 +747,137 @@ public class TextField: SkyflowElement, Element, BaseElement {
         }
     }
 
+    private func updateCoBrandedCardIcons(cardTypes: [CardType]) {
+        guard fieldType == .CARD_NUMBER, cardTypes.count >= 2 else {
+            clearCoBrandedCardIcons()
+            return
+        }
+
+        isShowingCoBrandedCardIcons = true
+        let iconURLs = cardTypes.compactMap { CardNetwork.from(cardType: $0)?.iconURL }
+        coBrandedCardIconURLs = iconURLs
+
+        cardIconImageTask?.cancel()
+        cardIconContainerView.removeFromSuperview()
+        cardIconContainerView.isHidden = true
+        coBrandedCardIconContainerView.subviews.forEach { $0.removeFromSuperview() }
+        coBrandedCardIconImageViews.removeAll()
+
+        let spacing = max(4, cardIconSpacing / 2)
+        let iconCount = iconURLs.count
+        let iconWidth = CGFloat(iconCount) * coBrandedCardIconWidth + CGFloat(max(0, iconCount - 1)) * spacing
+        let iconHeight = max(coBrandedCardIconHeight, copyIconSize)
+        coBrandedCardIconContainerView.frame = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
+        coBrandedCardIconContainerView.alpha = 1.0
+        coBrandedCardIconContainerView.isHidden = false
+
+        for (index, iconURL) in iconURLs.enumerated() {
+            let imageView = UIImageView(frame: CGRect(
+                x: CGFloat(index) * (coBrandedCardIconWidth + spacing),
+                y: (iconHeight - coBrandedCardIconHeight) / 2,
+                width: coBrandedCardIconWidth,
+                height: coBrandedCardIconHeight
+            ))
+            imageView.contentMode = .scaleAspectFit
+            imageView.clipsToBounds = true
+            coBrandedCardIconContainerView.addSubview(imageView)
+            coBrandedCardIconImageViews.append(imageView)
+            setCardBrandIconImage(from: iconURL, into: imageView)
+        }
+
+        layoutCoBrandedCardIconAccessory(width: iconWidth, height: iconHeight)
+    }
+
+    private func clearCoBrandedCardIcons() {
+        guard isShowingCoBrandedCardIcons || !coBrandedCardIconImageViews.isEmpty else {
+            return
+        }
+
+        isShowingCoBrandedCardIcons = false
+        coBrandedCardIconURLs.removeAll()
+        coBrandedCardIconImageViews.removeAll()
+        coBrandedCardIconContainerView.subviews.forEach { $0.removeFromSuperview() }
+        coBrandedCardIconContainerView.removeFromSuperview()
+        cardIconContainerView.subviews.forEach { $0.removeFromSuperview() }
+        cardIconContainerView.isHidden = false
+        cardIconContainerView.frame = CGRect(
+            x: 0,
+            y: 0,
+            width: cardIconSize,
+            height: max(cardIconSize, copyIconSize)
+        )
+        cardIconContainerView.addSubview(cardIconImageView)
+        cardIconImageView.frame = CGRect(x: 0, y: 0, width: cardIconSize, height: cardIconSize)
+        cardIconImageView.center = CGPoint(x: cardIconContainerView.bounds.midX, y: cardIconContainerView.bounds.midY)
+    }
+
+    private func setCardBrandIconImage(from iconURL: URL, into imageView: UIImageView) {
+        if let cachedImage = TextField.cardIconConfig.cache.object(forKey: iconURL as NSURL) {
+            imageView.image = cachedImage
+            return
+        }
+
+        _ = TextField.cardIconImageFetcher(iconURL) { [weak imageView] image in
+            DispatchQueue.main.async {
+                guard let imageView else { return }
+                guard let image else {
+                    let symbolConfig = UIImage.SymbolConfiguration(pointSize: self.cardIconSize, weight: .regular)
+                    imageView.image = UIImage(systemName: "creditcard", withConfiguration: symbolConfig)?
+                        .withRenderingMode(.alwaysTemplate)
+                    imageView.tintColor = .secondaryLabel
+                    return
+                }
+
+                TextField.cardIconConfig.cache.setObject(image, forKey: iconURL as NSURL)
+                imageView.image = image
+            }
+        }
+    }
+
+    private func layoutCoBrandedCardIconAccessory(width: CGFloat, height: CGFloat) {
+        textField.leftView = nil
+        textField.leftViewMode = .never
+
+        rightViewForIcons.subviews.forEach { $0.removeFromSuperview() }
+        if options.enableCopy {
+            copyContainerView.frame = CGRect(
+                x: 0,
+                y: (height - copyIconSize) / 2,
+                width: copyIconSize,
+                height: copyIconSize
+            )
+            coBrandedCardIconContainerView.frame = CGRect(
+                x: copyIconSize + cardIconSpacing,
+                y: 0,
+                width: width,
+                height: height
+            )
+            rightViewForIcons.addSubview(copyContainerView)
+            rightViewForIcons.addSubview(coBrandedCardIconContainerView)
+            rightViewForIcons.frame = CGRect(
+                x: 0,
+                y: 0,
+                width: copyIconSize + cardIconSpacing + width + rightIconTrailingInset,
+                height: height
+            )
+        } else {
+            coBrandedCardIconContainerView.frame = CGRect(x: 0, y: 0, width: width, height: height)
+            rightViewForIcons.addSubview(coBrandedCardIconContainerView)
+            rightViewForIcons.frame = CGRect(
+                x: 0,
+                y: 0,
+                width: width + rightIconTrailingInset,
+                height: height
+            )
+        }
+        textField.rightView = rightViewForIcons
+        textField.rightViewMode = .always
+        updateInputStyle()
+        textField.setNeedsLayout()
+    }
+
     private func setCardIconImage(_ image: UIImage) {
+        guard !isShowingCoBrandedCardIcons else { return }
         ensureCardIconAttached()
         UIView.transition(with: cardIconImageView, duration: cardIconAnimationDuration, options: .transitionCrossDissolve, animations: {
             self.cardIconImageView.image = image
@@ -737,6 +914,8 @@ public class TextField: SkyflowElement, Element, BaseElement {
     /// Used when brand detection triggers an icon on a card number field
     /// that didn't initially have icon views attached (both flags false).
     private func ensureCardIconAttached() {
+        guard !isShowingCoBrandedCardIcons else { return }
+
         if cardIconAlignment == .left {
             guard textField.leftView !== cardIconContainerView else { return }
             textField.leftView = cardIconContainerView
@@ -1241,7 +1420,9 @@ extension TextField {
 
         self.textField.tintColor = style?.cursorColor ?? fallbackStyle?.cursorColor ?? self.tintColor
         var p = style?.padding ?? fallbackStyle?.padding ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        if (self.options.enableCardIcon || isClearButtonVisible || textField.leftView === cardIconContainerView) && cardIconAlignment == .left {
+        if !isShowingCoBrandedCardIcons &&
+            (self.options.enableCardIcon || isClearButtonVisible || textField.leftView === cardIconContainerView) &&
+            cardIconAlignment == .left {
             p.left = cardIconSize + 12
         }
 

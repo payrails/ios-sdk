@@ -141,6 +141,49 @@ The SDK writes to `LogStore.shared` and also calls `Swift.print`. To see logs in
 
 ---
 
+## Pre-authorization gate issues
+
+### Payments are blocked and no request reaches the backend
+
+The `onRequestStart` handler supplied at `createSession` answered `false`, or did not answer at all.
+Check `failure.code == .validationFailed` in `onAuthorizeFailed(_:failure:)` to confirm — a block is
+reported with that code and never as `.authorizationError`.
+
+The most common cause is a handler that only answers on the branch it cares about. The gate fires
+for **every** payment method on the session, so any branch that does not call `completion(.proceed)`
+blocks that method:
+
+```swift
+onRequestStart: { context, completion in
+    guard context.paymentMethodCode == "payPal" else {
+        completion(.proceed)   // ← omitting this blocks card, wallets, everything else
+        return
+    }
+    myBackend.validate { completion($0) }
+}
+```
+
+### A payment is blocked roughly ten seconds after tapping
+
+The handler never called its completion. The SDK stops the attempt rather than leaving the element
+spinning, and logs:
+
+```
+⚠️ onRequestStart did not answer within 10s for <method>; the payment was blocked.
+```
+
+Enable debug logs (see above) to see it. Check every path through the handler — including error and
+early-return branches — calls `completion` exactly once.
+
+### Only PayPal or Apple Pay report a block without a reason
+
+Those two delegates still expose a deprecated `onAuthorizeFailed(_ button:)` with no payload, and a
+default implementation forwards to it for backwards compatibility. Implement
+`onAuthorizeFailed(_ button:, failure:)` instead — it is the only variant carrying the code that
+distinguishes a gate block from an issuer decline.
+
+---
+
 ## Stored instruments issues
 
 **`Payrails.getStoredInstruments()` returns an empty array**

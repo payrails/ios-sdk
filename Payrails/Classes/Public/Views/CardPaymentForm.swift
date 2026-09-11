@@ -149,6 +149,7 @@ public extension Payrails {
                         result = await payrails.executePayment(
                             with: paymentType,
                             saveInstrument: false,
+                            preferredScheme: self?.cardForm.selectedPreferredScheme,
                             presenter: paymentPresenter
                         )
                     }

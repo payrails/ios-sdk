@@ -5,6 +5,7 @@ class CardPaymentHandler: NSObject {
     private weak var delegate: PaymentHandlerDelegate?
     private var response: Any?
     private let vaultProviderConfigId: String?
+    private let preferredScheme: String?
     private let saveInstrument: Bool
     public weak var presenter: PaymentPresenter?
     private var webViewController: PayWebViewController?
@@ -23,12 +24,14 @@ class CardPaymentHandler: NSObject {
         delegate: PaymentHandlerDelegate?,
         saveInstrument: Bool,
         presenter: PaymentPresenter?,
-        vaultProviderConfigId: String?
+        vaultProviderConfigId: String?,
+        preferredScheme: String? = nil
     ) {
         self.delegate = delegate
         self.saveInstrument = saveInstrument
         self.presenter = presenter
         self.vaultProviderConfigId = vaultProviderConfigId
+        self.preferredScheme = preferredScheme
         self.selfLink = ""
     }
 }
@@ -65,11 +68,17 @@ extension CardPaymentHandler: PaymentHandler {
             return
         }
 
-        var data: [String: Any] = [:]
-        data["card"] = [
+        var cardData: [String: Any] = [
             "vaultProviderConfigId": vaultProviderConfigId,
             "encryptedData": encryptedCardData
         ]
+
+        if let preferredScheme, !preferredScheme.isEmpty {
+            cardData["preferredScheme"] = preferredScheme
+        }
+
+        var data: [String: Any] = [:]
+        data["card"] = cardData
 
         delegate?.paymentHandlerDidFinish(
             handler: self,
@@ -144,7 +153,8 @@ extension CardPaymentHandler: PaymentHandler {
 
         let instrumentData = PaymentInstrumentData(
             encryptedData: encryptedData,
-            vaultProviderConfigId: vaultProviderConfigId
+            vaultProviderConfigId: vaultProviderConfigId,
+            preferredScheme: cardData["preferredScheme"] as? String
         )
 
         let paymentComposition = PaymentComposition(

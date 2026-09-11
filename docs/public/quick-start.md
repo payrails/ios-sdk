@@ -180,7 +180,9 @@ Conform to `PayrailsCardPaymentButtonDelegate`:
 extension CheckoutViewController: PayrailsCardPaymentButtonDelegate {
 
     func onPaymentButtonClicked(_ button: Payrails.CardPaymentButton) {
-        // Optional: show a loading indicator
+        // Notification only — the SDK does not wait for this. Use it for analytics or a
+        // loading indicator. To make the payment conditional on your own check, see
+        // How to Run a Merchant Check Before Authorization.
     }
 
     func onAuthorizeSuccess(_ button: Payrails.CardPaymentButton) {
@@ -240,5 +242,6 @@ Use Payrails sandbox card numbers to test different payment outcomes.
 - [Styling Guide](merchant-styling-guide.md) — customise card form and button appearance
 - [How to Tokenize a Card](how-to-tokenize-card.md) — save a card without immediate payment
 - [How to Query Session Data](how-to-query-session-data.md) — read execution ID, amount, and more
+- [How to Run a Merchant Check Before Authorization](how-to-gate-payment-authorization.md) — approve a payment against your own backend first
 - [SDK API Reference](sdk-api-reference.md) — complete API documentation
 - [Troubleshooting](troubleshooting.md) — common issues and fixes

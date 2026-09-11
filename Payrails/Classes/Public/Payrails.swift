@@ -11,12 +11,14 @@ public class Payrails {
     static func createSession(
         with configuration: Payrails.Configuration,
         onSessionExpired: SessionExpiredHandler? = nil,
+        onRequestStart: RequestStartHandler? = nil,
         onInit: OnInitCallback
     ) {
         do {
             let payrailsSession = try Payrails.Session(
                 configuration,
-                onSessionExpired: onSessionExpired
+                onSessionExpired: onSessionExpired,
+                onRequestStart: onRequestStart
             )
             currentSession = payrailsSession
             onInit(.success(payrailsSession))
@@ -37,12 +39,14 @@ public class Payrails {
 public extension Payrails {
     static func createSession(
         with configuration: Payrails.Configuration,
-        onSessionExpired: SessionExpiredHandler? = nil
+        onSessionExpired: SessionExpiredHandler? = nil,
+        onRequestStart: RequestStartHandler? = nil
     ) async throws -> Payrails.Session {
         let result = try await withCheckedThrowingContinuation({ continuation in
             Payrails.createSession(
                 with: configuration,
-                onSessionExpired: onSessionExpired
+                onSessionExpired: onSessionExpired,
+                onRequestStart: onRequestStart
             ) { result in
                 switch result {
                 case let .success(session):

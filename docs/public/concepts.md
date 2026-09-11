@@ -181,6 +181,73 @@ When a user selects an instrument from the list, the button automatically switch
 
 ---
 
+## The pre-authorization gate
+
+Every element — card form, card button, Apple Pay, PayPal, generic redirect, stored instrument —
+routes its payment through a single `Session` method. That convergence is what makes one
+merchant-supplied gate able to cover all of them, present and future, rather than each element
+carrying its own hook.
+
+```mermaid
+flowchart TD
+    Element["Any element<br/>(card · PayPal · wallet · redirect)"] --> Session["Payrails Session"]
+    Session --> Gate{"onRequestStart<br/>registered?"}
+    Gate -- "no" --> Authorize["POST authorize"]
+    Gate -- "yes" --> Ask["Merchant handler answers"]
+    Ask -- "proceed" --> Authorize
+    Ask -- "refuse · timeout" --> Blocked["Stopped<br/>VALIDATION_FAILED"]
+    Authorize --> Provider["Provider UI<br/>(sheet · redirect)"]
+    Provider --> Confirm["POST confirm"]
+```
+
+The gate sits **before** the authorization request and before any provider UI. That position is the
+whole point: a merchant revalidating a voucher, wallet balance or loyalty points needs the answer to
+arrive while the customer is still on the checkout screen, not after they have approved a payment in
+PayPal. Validating when the element is first drawn would answer against a basket the customer can
+still change; the further the tap drifts from the check, the staler the answer.
+
+Two design consequences follow.
+
+**Silence is a block, not a pass.** If the handler never answers, the SDK stops the payment after
+ten seconds rather than proceeding. A gate whose failure mode is "authorize anyway" gives no
+guarantee at all, and the alternative — an element spinning indefinitely because a merchant endpoint
+hung — is worse than a refused payment the customer can retry.
+
+**A block is not a decline.** It surfaces as `AuthorizationFailureReason.validationFailed`, distinct
+from `authorizationError`, so a merchant's own decision never lands in their analytics as an issuer
+rejection. Nothing reached the backend, so there is no payment attempt to reconcile.
+
+**The refusal carries its own reason.** `.refuse(message:)` rather than a bare `false`, because only
+the merchant knows *why* they refused — an expired voucher reads differently to a changed basket —
+and only they can phrase it for their customer. The message arrives as `AuthorizationFailure.message`,
+the same place all other failure text comes from, so it needs no separate channel and no correlation
+by `executionId`. The SDK's own timeout diagnostic is deliberately *not* delivered this way: it
+describes an integration fault, not something a customer should read.
+
+The handler receives the payment method code and can therefore gate one method while leaving the
+rest untouched. It is opt-in: sessions created without it keep a fully synchronous payment path.
+
+### Why not `onPaymentButtonClicked`?
+
+The two hooks look adjacent but answer different questions, and conflating them is the mistake worth
+avoiding:
+
+| | `onPaymentButtonClicked` | `onRequestStart` |
+|---|---|---|
+| Purpose | The customer tapped | May this payment proceed? |
+| Returns | `Void` | A `Bool`, via its completion |
+| SDK waits for it | No | Yes |
+| Can stop the payment | No | Yes |
+| Use for | Analytics, observability, spinners | Any check the payment depends on |
+
+`onPaymentButtonClicked` is deliberately a notification. It cannot gate anything, because the SDK
+never looks at it and does not wait — work started inside it races the authorization rather than
+preceding it. The Web SDK draws the same line between its `buttonClicked` and `requestStart` events.
+
+See [How to run a merchant check before authorization](how-to-gate-payment-authorization.md).
+
+---
+
 ## Security model
 
 - **Card data is never exposed in plaintext.** The SDK encrypts card fields using PayrailsCSE (a Skyflow vault client) before they leave the device.
@@ -202,3 +269,4 @@ If the user navigates away during a payment, the in-flight `Task` is cancelled i
 - [Quick Start](quick-start.md) — get to a running integration in 15 minutes
 - [SDK API Reference](sdk-api-reference.md) — complete API surface
 - [Styling Guide](merchant-styling-guide.md) — customise the UI
+- [How to run a merchant check before authorization](how-to-gate-payment-authorization.md) — gate a payment on your own backend

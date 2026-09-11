@@ -154,8 +154,60 @@ public struct CardWrapperStyle {
     }
 }
 
+/// Styling for the co-branded Card Brand selector. All fields optional; anything left `nil`
+/// falls back to the selector's built-in defaults (system colors / fonts), so existing
+/// integrations look unchanged. Mirrors the web SDK's `cardBrandSelectorStyles`.
+public struct CardBrandSelectorStyle {
+    public let titleColor: UIColor?
+    public let titleFont: UIFont?
+    public let subtitleColor: UIColor?
+    public let subtitleFont: UIFont?
+    public let tileTitleColor: UIColor?
+    public let tileTitleFont: UIFont?
+    public let tileBackgroundColor: UIColor?
+    public let tileBorderColor: UIColor?
+    public let selectedTileBorderColor: UIColor?
+
+    public init(
+        titleColor: UIColor? = nil,
+        titleFont: UIFont? = nil,
+        subtitleColor: UIColor? = nil,
+        subtitleFont: UIFont? = nil,
+        tileTitleColor: UIColor? = nil,
+        tileTitleFont: UIFont? = nil,
+        tileBackgroundColor: UIColor? = nil,
+        tileBorderColor: UIColor? = nil,
+        selectedTileBorderColor: UIColor? = nil
+    ) {
+        self.titleColor = titleColor
+        self.titleFont = titleFont
+        self.subtitleColor = subtitleColor
+        self.subtitleFont = subtitleFont
+        self.tileTitleColor = tileTitleColor
+        self.tileTitleFont = tileTitleFont
+        self.tileBackgroundColor = tileBackgroundColor
+        self.tileBorderColor = tileBorderColor
+        self.selectedTileBorderColor = selectedTileBorderColor
+    }
+
+    public func merged(over base: CardBrandSelectorStyle?) -> CardBrandSelectorStyle {
+        .init(
+            titleColor: titleColor ?? base?.titleColor,
+            titleFont: titleFont ?? base?.titleFont,
+            subtitleColor: subtitleColor ?? base?.subtitleColor,
+            subtitleFont: subtitleFont ?? base?.subtitleFont,
+            tileTitleColor: tileTitleColor ?? base?.tileTitleColor,
+            tileTitleFont: tileTitleFont ?? base?.tileTitleFont,
+            tileBackgroundColor: tileBackgroundColor ?? base?.tileBackgroundColor,
+            tileBorderColor: tileBorderColor ?? base?.tileBorderColor,
+            selectedTileBorderColor: selectedTileBorderColor ?? base?.selectedTileBorderColor
+        )
+    }
+}
+
 public struct CardFormStylesConfig {
     public let wrapperStyle: CardWrapperStyle?
+    public let cardBrandSelector: CardBrandSelectorStyle?
     public let errorTextStyle: CardStyle?
     public let allInputFieldStyles: CardFieldSpecificStyles?
     public let inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]?
@@ -165,6 +217,7 @@ public struct CardFormStylesConfig {
 
     public init(
         wrapperStyle: CardWrapperStyle? = nil,
+        cardBrandSelector: CardBrandSelectorStyle? = nil,
         errorTextStyle: CardStyle? = nil,
         allInputFieldStyles: CardFieldSpecificStyles? = nil,
         inputFieldStyles: [CardFieldType: CardFieldSpecificStyles]? = nil,
@@ -173,6 +226,7 @@ public struct CardFormStylesConfig {
         sectionSpacing: CGFloat? = nil
     ) {
         self.wrapperStyle = wrapperStyle
+        self.cardBrandSelector = cardBrandSelector
         self.errorTextStyle = errorTextStyle
         self.allInputFieldStyles = allInputFieldStyles
         self.inputFieldStyles = inputFieldStyles
@@ -218,6 +272,8 @@ public struct CardFormStylesConfig {
 
          let finalWrapperStyle = self.wrapperStyle?.merged(over: baseConfig.wrapperStyle) ?? baseConfig.wrapperStyle
 
+         let finalCardBrandSelector = self.cardBrandSelector?.merged(over: baseConfig.cardBrandSelector) ?? baseConfig.cardBrandSelector
+
          let finalErrorTextStyle = self.errorTextStyle?.merged(over: baseConfig.errorTextStyle) ?? baseConfig.errorTextStyle
 
          let finalAllInputFieldStyles = self.allInputFieldStyles?.merged(over: baseConfig.allInputFieldStyles) ?? baseConfig.allInputFieldStyles
@@ -238,6 +294,7 @@ public struct CardFormStylesConfig {
 
          return .init(
              wrapperStyle: finalWrapperStyle,
+             cardBrandSelector: finalCardBrandSelector,
              errorTextStyle: finalErrorTextStyle,
              allInputFieldStyles: finalAllInputFieldStyles,
              inputFieldStyles: finalInputFieldStyles.isEmpty ? nil : finalInputFieldStyles,
