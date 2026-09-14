@@ -31,8 +31,8 @@ jobs:
 
           VERSION="$(sed -nE 's/^let version = "([^"]+)".*/\1/p' Package.swift)"
           if [ -z "$VERSION" ]; then
-            echo "could not read 'let version' from Package.swift" >&2
-            exit 1
+            echo "Package.swift declares no 'let version' - not a release manifest, nothing to do."
+            exit 0
           fi
 
           if ! RELEASE="$(gh release view "$VERSION" --json isDraft,assets 2>/dev/null)"; then
