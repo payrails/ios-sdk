@@ -67,39 +67,3 @@ They are frozen at [2.1.0](https://github.com/payrails/ios-sdk/tree/2.1.0), they
 not what 3.x ships, and Swift Package Manager does not read them - `Package.swift`
 resolves the SDK from the release archive. The same goes for `Payrails.podspec`:
 CocoaPods is not supported, as above.
-
-## Security Policy
-
-### Reporting a Vulnerability
-
-If you find any vulnerability in Payrails iOS SDK, do not hesitate to _report them_.
-
-1. Send the disclosure to security@payrails.com
-
-2. Describe the vulnerability.
-
-   If you have a fix, that is most welcome -- please attach or summarize it in your message!
-
-3. We will evaluate the vulnerability and, if necessary, release a fix or mitigating steps to address it. We will contact you to let you know the outcome, and will credit you in the report.
-
-   Please **do not disclose the vulnerability publicly** until a fix is released!
-
-4. Once we have either a) published a fix, or b) declined to address the vulnerability for whatever reason, you are free to publicly disclose it.
-
-## Security Policy
-
-### Reporting a Vulnerability
-
-If you find any vulnerability in Payrails iOS SDK, do not hesitate to _report them_.
-
-1. Send the disclosure to security@payrails.com
-
-2. Describe the vulnerability.
-
-   If you have a fix, that is most welcome -- please attach or summarize it in your message!
-
-3. We will evaluate the vulnerability and, if necessary, release a fix or mitigating steps to address it. We will contact you to let you know the outcome, and will credit you in the report.
-
-   Please **do not disclose the vulnerability publicly** until a fix is released!
-
-4. Once we have either a) published a fix, or b) declined to address the vulnerability for whatever reason, you are free to publicly disclose it.
