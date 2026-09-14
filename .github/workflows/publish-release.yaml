@@ -1,35 +1,13 @@
 name: Publish release
 
-# Phase 2 of the release. Owned by the private source repository - edit it there, in
-# distribution/.github/workflows/, not here. Every publish rsyncs that directory over
-# this repo, so a change made here is overwritten by the next release.
-#
-# The source repo builds and signs the XCFramework, opens the pull request that bumps
-# Package.swift, and parks the zip on a DRAFT release. A draft creates no git tag and
-# its asset is not downloadable anonymously, so no merchant can resolve the version
-# while the pull request is in review. Merging it runs this workflow, which publishes
-# that draft at the squash commit: that is the moment the tag appears and the asset
-# goes public.
-#
-# The zip is never rebuilt here. Its checksum is already in the Package.swift that was
-# reviewed and merged, and the build is not reproducible - rebuilding would produce a
-# different checksum from the one merchants verify against.
-
 on:
   push:
     branches: [main]
-    # Deliberately no `paths:` filter. It would add a mode where this never fires and
-    # leaves no record that it did not - a release pull request carrying a manifest
-    # identical to main, say, because the only change was elsewhere on the branch. The
-    # guards below make the job a cheap no-op when there is nothing to publish, and a
-    # run that says "nothing to do" is easier to debug than a run that never happened.
 
 permissions:
   contents: write
 
 concurrency:
-  # Publishing creates a tag. Two of these at once would race on which commit a tag
-  # points at, and a tag cannot be moved once anything has resolved it.
   group: publish-release
   cancel-in-progress: false
 
@@ -40,10 +18,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          # Nothing here pushes. gh authenticates from GH_TOKEN below, so leaving the
-          # token in .git/config would only widen what a later step could do with it.
           persist-credentials: false
 
       - name: Publish the draft release named in Package.swift
@@ -59,11 +35,8 @@ jobs:
             exit 1
           fi
 
-          # Package.swift can change without a release behind it - a dependency bump, a
-          # hand edit. No draft for this version means there is nothing to publish, and
-          # that is not a failure.
           if ! RELEASE="$(gh release view "$VERSION" --json isDraft,assets 2>/dev/null)"; then
-            echo "no release $VERSION on this repo - Package.swift changed without a publish behind it, nothing to do."
+            echo "no release $VERSION on this repo - nothing to do."
             exit 0
           fi
 
@@ -72,26 +45,13 @@ jobs:
             exit 0
           fi
 
-          # Publishing creates the tag, and the tag is what SPM resolves. Doing that
-          # while the asset is missing gives every merchant a 404 that cannot be fixed
-          # by re-uploading, because SPM caches by tag. Fail loudly instead.
           if [ "$(echo "$RELEASE" | jq -r '[.assets[].name] | index("Payrails.xcframework.zip")')" = "null" ]; then
             echo "draft $VERSION has no Payrails.xcframework.zip attached - refusing to publish it." >&2
-            echo "delete the draft, then re-run the release workflow on the source repository:" >&2
+            echo "delete the draft, then re-run the release workflow:" >&2
             echo "  gh release delete $VERSION --repo $GITHUB_REPOSITORY --yes" >&2
             exit 1
           fi
 
-          # Verify the parked zip against the manifest that was just merged. The two are
-          # written by different runs, days apart, and the branch is editable in between
-          # - a conflict resolution against another release, a "fix" push, a hand edit to
-          # the manifest. Anything that lets them disagree ships a version that fails
-          # checksum verification in every merchant's build, and that cannot be corrected
-          # afterwards: SPM records the checksum, so the only remedy is a new version.
-          # This is the machine version of the check step 7 asks the reviewer to make.
-          #
-          # `swift package compute-checksum` is a plain SHA-256 of the archive, so this
-          # needs no Swift toolchain.
           CHECKSUM="$(sed -nE 's/^let checksum = "([^"]+)".*/\1/p' Package.swift)"
           gh release download "$VERSION" --pattern Payrails.xcframework.zip --dir "$RUNNER_TEMP"
           ACTUAL="$(shasum -a 256 "$RUNNER_TEMP/Payrails.xcframework.zip" | cut -d' ' -f1)"
@@ -99,14 +59,9 @@ jobs:
             echo "checksum mismatch - refusing to publish $VERSION." >&2
             echo "  Package.swift declares $CHECKSUM" >&2
             echo "  the parked zip is       $ACTUAL" >&2
-            echo "Merchants verify the manifest against the asset, so this would fail in" >&2
-            echo "their build and could not be fixed by re-uploading. Ship a new version." >&2
             exit 1
           fi
 
-          # One call: the tag is created at --target the moment the draft is published.
-          # $SHA is the squash commit on main, the only merge method this branch allows,
-          # so the release branch's own commit is never on main and cannot be the target.
           gh release edit "$VERSION" --target "$SHA" --draft=false
 
           echo "published $VERSION at $SHA" >> "$GITHUB_STEP_SUMMARY"
