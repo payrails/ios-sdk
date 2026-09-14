@@ -1,0 +1,68 @@
+name: Publish release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish draft release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Publish the draft release named in Package.swift
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(sed -nE 's/^let version = "([^"]+)".*/\1/p' Package.swift)"
+          if [ -z "$VERSION" ]; then
+            echo "Package.swift declares no 'let version' - not a release manifest, nothing to do."
+            exit 0
+          fi
+
+          if ! RELEASE="$(gh release view "$VERSION" --json isDraft,assets 2>/dev/null)"; then
+            echo "no release $VERSION on this repo - nothing to do."
+            exit 0
+          fi
+
+          if [ "$(echo "$RELEASE" | jq -r '.isDraft')" != "true" ]; then
+            echo "release $VERSION is already published - nothing to do."
+            exit 0
+          fi
+
+          if [ "$(echo "$RELEASE" | jq -r '[.assets[].name] | index("Payrails.xcframework.zip")')" = "null" ]; then
+            echo "draft $VERSION has no Payrails.xcframework.zip attached - refusing to publish it." >&2
+            echo "delete the draft, then re-run the release workflow:" >&2
+            echo "  gh release delete $VERSION --repo $GITHUB_REPOSITORY --yes" >&2
+            exit 1
+          fi
+
+          CHECKSUM="$(sed -nE 's/^let checksum = "([^"]+)".*/\1/p' Package.swift)"
+          gh release download "$VERSION" --pattern Payrails.xcframework.zip --dir "$RUNNER_TEMP"
+          ACTUAL="$(shasum -a 256 "$RUNNER_TEMP/Payrails.xcframework.zip" | cut -d' ' -f1)"
+          if [ "$ACTUAL" != "$CHECKSUM" ]; then
+            echo "checksum mismatch - refusing to publish $VERSION." >&2
+            echo "  Package.swift declares $CHECKSUM" >&2
+            echo "  the parked zip is       $ACTUAL" >&2
+            exit 1
+          fi
+
+          gh release edit "$VERSION" --target "$SHA" --draft=false
+
+          echo "published $VERSION at $SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/Payrails.xcframework.zip" >> "$GITHUB_STEP_SUMMARY"
