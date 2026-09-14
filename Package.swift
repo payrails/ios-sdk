@@ -5,8 +5,8 @@
 // rewrites them on every release. Everything else is reviewed here, in the source repo.
 import PackageDescription
 
-let version = "3.0.0-rc.5"
-let checksum = "bd3e2a69faeb9341d826a55ca77904c30bfa68d833fe852fd646daf355b82240"
+let version = "3.0.0"
+let checksum = "005d7684288f0bef88f78f9cbca7348e7bd7a19fdf924cf4dd85c73516d5d4ef"
 let repository = "payrails/ios-sdk"
 
 let package = Package(
