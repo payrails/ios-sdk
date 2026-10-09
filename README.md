@@ -15,7 +15,7 @@ dependency in a `Package.swift` instead:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/payrails/ios-sdk.git", from: "3.0.0")
+    .package(url: "https://github.com/payrails/ios-sdk.git", from: "3.1.0")
 ]
 ```
 
