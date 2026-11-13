@@ -50,7 +50,7 @@ separate package dependencies and appear in your project alongside `Payrails`.
 
 | Requirement | Value |
 |---|---|
-| iOS deployment target | 14.0+ |
+| iOS deployment target | 15.0+ |
 | Swift version | 5.0+ |
 
 ## Documentation
