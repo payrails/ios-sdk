@@ -5,14 +5,14 @@
 // rewrites them on every release. Everything else is reviewed here, in the source repo.
 import PackageDescription
 
-let version = "3.2.0"
-let checksum = "ae1bf30c171c89d81c0ceff3219702017e8a364c4086fc1708fc6e8ea44c13b5"
+let version = "3.3.0"
+let checksum = "2a93f8962d0cb26aa6e6cb6f29a2929bbef71c89103d40933b9096a91f6e4b73"
 let repository = "payrails/ios-sdk"
 
 let package = Package(
     name: "Payrails",
     platforms: [
-        .iOS(.v14)
+        .iOS(.v15)
     ],
     products: [
         .library(
@@ -22,7 +22,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/paypal/paypalcheckout-ios", from: "1.0.0"),
-        .package(url: "https://github.com/payrails/ios-cse.git", from: "2.0.0")
+        .package(url: "https://github.com/payrails/ios-cse.git", from: "2.0.1")
     ],
     targets: [
         .binaryTarget(
